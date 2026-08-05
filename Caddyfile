@@ -1,0 +1,31 @@
+# Single origin (docs/ARCHITECTURE.md §11.1).
+#
+# `/api/*` -> FastAPI, everything else -> Next.js, both under the same host.
+# This keeps the session cookie first-party: no CORS with credentials, no
+# SameSite=None, no fighting browser protections that harden every year.
+#
+# The proxy does TLS termination and nothing else. It never authenticates and
+# never injects identity headers — the API would then have to trust them, which
+# is invariant I6 displaced by one hop.
+
+:8080 {
+	handle /api/* {
+		reverse_proxy api:8000
+	}
+
+	handle {
+		reverse_proxy web:3000
+	}
+}
+
+# Production: replace the block above with your domain so Caddy provisions a
+# certificate automatically.
+#
+# meal-planner.example.com {
+# 	handle /api/* {
+# 		reverse_proxy api:8000
+# 	}
+# 	handle {
+# 		reverse_proxy web:3000
+# 	}
+# }

@@ -1,0 +1,27 @@
+{
+  "app": {
+    "title": "Meal Planner",
+    "tagline": "Planifier la semaine quand tout le monde ne mange pas la même chose"
+  },
+  "home": {
+    "signedOutHeading": "Bienvenue",
+    "signedOutBody": "Connectez-vous pour préparer la semaine de votre foyer.",
+    "signIn": "Se connecter avec Google",
+    "signedInHeading": "Votre foyer",
+    "membersHeading": "Membres",
+    "noMembers": "Aucun membre pour l'instant.",
+    "pendingTransitionsHeading": "Changements d'étape à confirmer",
+    "pendingTransition": "{name} passerait de {from} à {to}",
+    "confirm": "Confirmer",
+    "signOut": "Se déconnecter"
+  },
+  "lifeStage": {
+    "baby": "Bébé",
+    "young_child": "Jeune enfant",
+    "teen_adult": "Ado / adulte"
+  },
+  "mealType": {
+    "lunch": "Midi",
+    "dinner": "Soir"
+  }
+}

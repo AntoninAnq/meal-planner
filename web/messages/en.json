@@ -1,0 +1,27 @@
+{
+  "app": {
+    "title": "Meal Planner",
+    "tagline": "Planning the week when not everyone eats the same thing"
+  },
+  "home": {
+    "signedOutHeading": "Welcome",
+    "signedOutBody": "Sign in to plan your household's week.",
+    "signIn": "Sign in with Google",
+    "signedInHeading": "Your household",
+    "membersHeading": "Members",
+    "noMembers": "No members yet.",
+    "pendingTransitionsHeading": "Life-stage changes to confirm",
+    "pendingTransition": "{name} would move from {from} to {to}",
+    "confirm": "Confirm",
+    "signOut": "Sign out"
+  },
+  "lifeStage": {
+    "baby": "Baby",
+    "young_child": "Young child",
+    "teen_adult": "Teen / adult"
+  },
+  "mealType": {
+    "lunch": "Lunch",
+    "dinner": "Dinner"
+  }
+}

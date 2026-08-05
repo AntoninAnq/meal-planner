@@ -1,0 +1,45 @@
+[tool.poetry]
+name = "meal-planner-api"
+version = "0.1.0"
+description = "Meal planning for households where not everyone eats the same thing"
+authors = ["Antonin"]
+readme = "../README.md"
+packages = [{ include = "app" }]
+
+[tool.poetry.dependencies]
+python = "^3.13"
+fastapi = "^0.118"
+uvicorn = { extras = ["standard"], version = "^0.37" }
+sqlalchemy = "^2.0"
+psycopg = { extras = ["binary"], version = "^3.2" }
+alembic = "^1.16"
+pydantic-settings = "^2.10"
+itsdangerous = "^2.2"
+httpx = "^0.28"
+pyjwt = { extras = ["crypto"], version = "^2.10" }
+jsonschema = "^4.25"
+anthropic = "^0.75"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.4"
+ruff = "^0.14"
+mypy = "^1.18"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.mypy]
+python_version = "3.13"
+strict = true
+plugins = []

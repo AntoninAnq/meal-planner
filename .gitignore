@@ -1,0 +1,14 @@
+.env
+*.pyc
+__pycache__/
+.venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+node_modules/
+.next/
+out/
+caddy_data/
+caddy_config/
+postgres_data/
+.DS_Store

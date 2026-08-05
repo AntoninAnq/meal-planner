@@ -1,0 +1,78 @@
+# Four services from the first commit, even locally (docs/ARCHITECTURE.md §7).
+#
+# Note on `llm`: Ollama deliberately runs on the HOST, not in a container
+# (§7.3). Re-running it here would duplicate a 5 GB model and the RAM that
+# goes with it. The dependency is therefore a configuration value
+# (OLLAMA_BASE_URL), which is exactly what invariant I8 asks for.
+
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    # Exposed for local tooling (psql, migrations from the host). Not published
+    # in production.
+    ports:
+      - "127.0.0.1:5432:5432"
+
+  api:
+    build:
+      context: ./api
+    env_file: .env
+    environment:
+      # Built from the SAME interpolated variables the `db` service uses, so the
+      # two can never diverge. This matters more than it looks: Compose resolves
+      # ${...} from the shell environment BEFORE the .env file, so an exported
+      # POSTGRES_PASSWORD on the host silently reaches Postgres while a literal
+      # DATABASE_URL written in .env does not — and you get an authentication
+      # failure whose cause is nowhere in the file you are reading.
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+    depends_on:
+      db:
+        condition: service_healthy
+    # Lets the container reach Ollama running on the host.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./api:/app
+    command: >
+      sh -c "alembic upgrade head &&
+             uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+
+  web:
+    build:
+      context: ./web
+    env_file: .env
+    depends_on:
+      - api
+    volumes:
+      - ./web:/app
+      - /app/node_modules
+      - /app/.next
+    command: npm run dev
+
+  proxy:
+    image: caddy:2-alpine
+    depends_on:
+      - api
+      - web
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  postgres_data:
+  caddy_data:
+  caddy_config:
