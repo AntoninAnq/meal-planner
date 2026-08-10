@@ -7,7 +7,7 @@ from datetime import UTC, date, datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.auth.deps import CurrentHousehold
@@ -133,6 +133,34 @@ def confirm_life_stage(
     member.life_stage_confirmed_at = datetime.now(UTC)
     db.commit()
     return member
+
+
+@router.delete("/{member_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_member(member_id: uuid.UUID, db: DbDep, household_id: CurrentHousehold) -> None:
+    """Remove a member, along with their constraints, assignments and history.
+
+    Everything hanging off a member cascades, which is what we want: their past
+    meals should stop feeding the anti-repetition signal the moment they are no
+    longer part of the household.
+
+    A household must keep at least one member — an empty one can generate
+    nothing, and leaves the user facing an error rather than an explanation.
+    """
+    member = _load(db, member_id, household_id)
+
+    remaining = db.scalar(
+        select(func.count())
+        .select_from(Member)
+        .where(Member.household_id == household_id, Member.id != member_id)
+    )
+    if not remaining:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            "a household needs at least one member",
+        )
+
+    db.delete(member)
+    db.commit()
 
 
 # Constraints live in `routers/constraints.py`, NOT nested here: an aversion may
