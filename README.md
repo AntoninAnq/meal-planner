@@ -74,31 +74,3 @@ meal-planner/
 ├── db/                    seed du référentiel d'ingrédients (phase 1)
 └── eval/                  fixtures figées + banc d'essai (phase 2)
 ```
-
-## Les neuf invariants
-
-Détail et justification dans `docs/ARCHITECTURE.md` §5.
-
-| # | Invariant |
-|---|---|
-| I1 | Aucune décision de sécurité n'est prise par un LLM |
-| I2 | Le filtre allergène porte sur des tags vérifiables, jamais sur du texte libre |
-| I3 | `allergens_verified` est dérivé, jamais déclaré |
-| I4 | Le matching approché ne s'applique jamais sans confirmation humaine |
-| I5 | Le constructeur de prompt ne reçoit jamais l'entité `member` |
-| I6 | `household_id` est dérivé de l'identité authentifiée |
-| I7 | Aucun contenu généré par IA n'entre au catalogue |
-| I8 | Aucune dépendance technique n'est codée en dur |
-| I9 | Aucune republication de contenu externe |
-
-## Phasage
-
-| Phase | Contenu | Sortie |
-|---|---|---|
-| **0** | Fondations | *(en cours)* |
-| **0-bis — V0** | Graphe agentic à coutures bouchonnées + conception UX | En ligne, usage interne |
-| **1** | Scraper + référentiel + CRUD recettes | 300 recettes résolues |
-| **2 — V1** | Workflow semaine réel + harness d'éval | MVP testable |
-| **3** | Goûter et invités | |
-| **4** | Anti-gaspi, scan frigo | |
-| **5** | Polissage du front | |
