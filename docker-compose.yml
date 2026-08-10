@@ -1,9 +1,20 @@
-# Four services from the first commit, even locally (docs/ARCHITECTURE.md §7).
+# Four services from the first commit, even locally.
 #
-# Note on `llm`: Ollama deliberately runs on the HOST, not in a container
-# (§7.3). Re-running it here would duplicate a 5 GB model and the RAM that
-# goes with it. The dependency is therefore a configuration value
-# (OLLAMA_BASE_URL), which is exactly what invariant I8 asks for.
+# Note on `llm`: Ollama itself deliberately runs on the HOST, untouched, still
+# listening only on 127.0.0.1. A container cannot reach the host's loopback, so
+# this service is a minimal relay that bridges the two.
+#
+# Why a relay rather than telling Ollama to listen more widely:
+#
+#   * `OLLAMA_HOST=0.0.0.0` would expose an UNAUTHENTICATED model server to the
+#     whole local network — every café Wi-Fi, every shared office.
+#   * `OLLAMA_HOST=<bridge ip>` would keep the LAN out but break `ollama run`
+#     from a terminal, which then needs the same variable exported.
+#
+# The relay binds only to the Docker bridge interface, which is `scope link` and
+# therefore not routable from the LAN: containers reach it, nothing else does.
+# Ollama keeps its default configuration, the CLI keeps working, and no root
+# access or systemd edit is needed. It disappears with `docker compose down`.
 
 services:
   db:
@@ -24,6 +35,17 @@ services:
     ports:
       - "127.0.0.1:5432:5432"
 
+  llm:
+    image: alpine/socat:1.8.0.0
+    # Host networking is what lets this container reach Ollama on 127.0.0.1.
+    # It is a local-development convenience only: in production the LLM is a
+    # cloud API and this service does not exist.
+    network_mode: host
+    restart: unless-stopped
+    command: >
+      TCP-LISTEN:11434,bind=${DOCKER_BRIDGE_IP:-172.17.0.1},fork,reuseaddr
+      TCP:127.0.0.1:11434
+
   api:
     build:
       context: ./api
@@ -39,7 +61,9 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    # Lets the container reach Ollama running on the host.
+      llm:
+        condition: service_started
+    # Resolves to the Docker bridge, where the `llm` relay listens.
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
