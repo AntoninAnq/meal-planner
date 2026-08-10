@@ -14,6 +14,7 @@ The `sub` claim becomes `google:<sub>` in `household_access.auth_subject`.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import timedelta
 from urllib.parse import urlencode
 
 import httpx
@@ -26,6 +27,20 @@ JWKS_URL = "https://www.googleapis.com/oauth2/v3/certs"
 VALID_ISSUERS = ("https://accounts.google.com", "accounts.google.com")
 
 SUBJECT_PREFIX = "google"
+
+#: Tolerance on time-based claims (`iat`, `nbf`, `exp`).
+#:
+#: Two servers never agree on the time to the second. Even with NTP running and
+#: reporting "synchronized", a couple of seconds of residual drift is ordinary —
+#: and verifying `iat` with zero tolerance turns that into a hard login failure
+#: ("The token is not yet valid (iat)"). Clock skew is a fact of distributed
+#: systems, not an anomaly to be fixed at the machine level.
+#:
+#: 60 seconds is the usual figure: wide enough to absorb real drift, narrow
+#: enough that it changes nothing about the security of the check — the
+#: signature, issuer, audience and nonce are what actually authenticate the
+#: token.
+CLOCK_SKEW_LEEWAY = timedelta(seconds=60)
 
 _jwk_client = PyJWKClient(JWKS_URL, cache_keys=True)
 
@@ -100,6 +115,7 @@ def verify_id_token(*, id_token: str, client_id: str, nonce: str) -> GoogleIdent
             id_token,
             signing_key.key,
             algorithms=["RS256"],
+            leeway=CLOCK_SKEW_LEEWAY,
             audience=client_id,
             issuer=list(VALID_ISSUERS),
             options={"require": ["exp", "iat", "aud", "iss", "sub"]},
