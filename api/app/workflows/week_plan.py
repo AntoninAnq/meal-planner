@@ -76,6 +76,11 @@ class EmptyCatalogue:
 class PlanRequest:
     spec: list[SlotSpec]
     prompt_context: PromptContext
+    #: Dish titles and serving variants are shown to the household as-is, so
+    #: the model must write them in the right language. It travels with the
+    #: request rather than living in the instructions, which stay stable and
+    #: cacheable.
+    language: str = "fr"
     user_constraints: list[str] = field(default_factory=list)
     #: Free-text labels eaten recently, for the anti-repetition signal. Computed
     #: from past planned dishes — history is implicit in V0.
@@ -147,6 +152,7 @@ def build_graph(llm: LLMClient, catalogue: CataloguePort) -> Any:
             "context": build_context(
                 spec=request.spec,
                 prompt_context=request.prompt_context,
+                language=request.language,
                 user_constraints=request.user_constraints,
                 candidate_lines=state.get("candidate_lines", []),
                 recent_meals=request.recent_meals,

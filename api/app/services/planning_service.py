@@ -150,6 +150,7 @@ def generate_plan(
     member_ids: Sequence[uuid.UUID] | None = None,
     guests: Sequence[GuestGroup] = (),
     user_constraints: Sequence[str] = (),
+    language: str = "fr",
 ) -> tuple[MealPlan, PlanOutcome]:
     """Generate for a whole week, or for a subset of slots.
 
@@ -186,6 +187,7 @@ def generate_plan(
         PlanRequest(
             spec=spec,
             prompt_context=_with_guests(prompt_context, guests, guest_aliases),
+            language=language,
             user_constraints=list(user_constraints),
             recent_meals=recent_meals(db, household_id, before=week_start),
             with_catalogue=False,

@@ -151,3 +151,25 @@ def test_soft_signals_reach_the_prompt_as_context() -> None:
     context = llm.calls[0]["context"]
     assert "legumes" in context
     assert "Gratin de courgettes" in context
+
+
+def test_the_language_travels_with_the_request_not_the_instructions() -> None:
+    """Dish titles are shown to the household as-is, so they must be in its language.
+
+    The instructions stay stable and cacheable, so the language cannot live in
+    them — a per-request block carries it instead.
+    """
+    llm = FakeLLMClient([GOOD])
+    run_plan(_request(language="fr"), llm=llm)
+
+    call = llm.calls[0]
+    assert "LANGUAGE\nFrench" in call["context"]
+    assert "French" not in call["instructions"]
+
+
+def test_an_unknown_language_code_is_passed_through() -> None:
+    """A locale we have no name for still reaches the model rather than silently defaulting."""
+    llm = FakeLLMClient([GOOD])
+    run_plan(_request(language="es"), llm=llm)
+
+    assert "LANGUAGE\nes" in llm.calls[0]["context"]

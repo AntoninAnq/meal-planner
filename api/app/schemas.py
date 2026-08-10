@@ -161,6 +161,9 @@ class GeneratePlanRequest(BaseModel):
     member_ids: list[uuid.UUID] | None = None
     guests: list[GuestGroupIn] = Field(default_factory=list)
     constraints: list[str] = Field(default_factory=list)
+    #: Language of the dish titles the model writes. Sent by the frontend,
+    #: which knows the active locale.
+    language: str = "fr"
 
 
 class DishEaterOut(BaseModel):

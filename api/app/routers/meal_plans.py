@@ -99,8 +99,16 @@ def _serialise(db: Session, plan: MealPlan, violations: list[str] | None = None)
 
 
 @router.post("/interpret", response_model=InterpretResponse)
-def interpret(payload: InterpretRequest, llm: LLMDep) -> InterpretResponse:
+def interpret(
+    payload: InterpretRequest,
+    llm: LLMDep,
+    household_id: CurrentHousehold,
+) -> InterpretResponse:
     """Free text -> structured constraints, shown to the user before generating.
+
+    The household is not used to interpret anything — it is required so the
+    endpoint is not an open, unauthenticated LLM proxy that anyone could point
+    arbitrary text at, on our tokens.
 
     Cheap and short compared with a generation, which is exactly the point: a
     misunderstanding is corrected in one click rather than by rerunning a
@@ -158,6 +166,7 @@ def create_plan(
                 for group in payload.guests
             ],
             user_constraints=payload.constraints,
+            language=payload.language,
         )
     except ValueError as exc:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(exc)) from exc

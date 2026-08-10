@@ -43,21 +43,33 @@ Rules you must follow:
 7. Treat the soft signals as preferences, not orders. They should yield to
    anything that would make a meal unappealing or impossible.
 
+8. Do not repeat a dish within the plan you are producing, and avoid dishes
+   listed as recently eaten. This is a preference, not a rule: a repeat is far
+   better than a meal nobody can eat.
+9. Write every dish title and serving variant in the language given under
+   LANGUAGE. These strings are shown to the household as-is — they are not
+   translated afterwards.
+
 Answer with identifiers and short titles only. No explanation, no commentary, no
 reasoning — a separate call handles that.
 """
+
+#: Instructions are stable and cacheable, so the language cannot be baked into
+#: them: it travels with the request instead.
+LANGUAGE_NAMES = {"fr": "French", "en": "English"}
 
 
 def build_context(
     *,
     spec: Sequence[SlotSpec],
     prompt_context: PromptContext,
+    language: str = "fr",
     user_constraints: Sequence[str] = (),
     candidate_lines: Sequence[str] = (),
     recent_meals: Sequence[str] = (),
 ) -> str:
     """Assemble the per-request half of the prompt."""
-    blocks: list[str] = []
+    blocks: list[str] = [f"LANGUAGE\n{LANGUAGE_NAMES.get(language, language)}"]
 
     eaters = "\n".join(
         f"- {member.alias}: stage={member.life_stage}"
