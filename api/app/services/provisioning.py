@@ -4,7 +4,7 @@ Signing in with an identity that has no household creates one — that is the
 signup path. A new identity gets its own empty household and no visibility on
 anyone else's, so this is safe to leave open.
 
-The default slot grid is "weekday dinners + full weekend" (§4.7): in the typical
+The default slot grid is "weekday dinners + full weekend": in the typical
 French case the school canteen covers weekday lunches.
 """
 

@@ -1,8 +1,8 @@
-"""SQLAlchemy models — phase 0 scope (docs/ARCHITECTURE.md §7.3, §8).
+"""SQLAlchemy models — phase 0 scope.
 
-Covers §8.1 (household, access, members, constraints, slots, config), §8.3
-(plans and history) and §8.4 (snacks). The catalogue tables of §8.2 (recipes,
-ingredients, categories) arrive in phase 1.
+Covers households, access, members, constraints, slots, configuration, plans,
+history and snacks. The catalogue tables (recipes, ingredients, categories)
+arrive in phase 1.
 
 `recipe_id` columns already exist on plan and history rows so the V0 write shape
 never changes, but carry no foreign key yet — the phase 1 migration adds the
@@ -78,7 +78,7 @@ class Household(Base):
 
 
 class HouseholdAccess(Base):
-    """Who may act on a household (docs/ARCHITECTURE.md §11.1).
+    """Who may act on a household.
 
     `auth_subject` is PREFIXED by its mechanism — `google:117482…`,
     `password:antonin`, `email:antonin@…`. Without the prefix, two mechanisms
@@ -109,7 +109,7 @@ class HouseholdSettings(Base):
         ForeignKey("household.id", ondelete="CASCADE"), primary_key=True
     )
     snacks_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
-    # Soft penalty, never a hard constraint (§4.2). The only hard bound is
+    # Soft penalty, never a hard constraint. The only hard bound is
     # "at worst one dish per member", which is trivially satisfiable.
     max_dishes_soft_limit: Mapped[int] = mapped_column(SmallInteger, default=2)
 
@@ -127,7 +127,7 @@ class Member(Base):
     birth_date: Mapped[date | None] = mapped_column(Date)
 
     #: EFFECTIVE stage, confirmed by a parent. `birth_date` only ever produces a
-    #: proposal (§4.3) — crossing BABY -> YOUNG_CHILD widens what is allowed, so
+    #: proposal — crossing BABY -> YOUNG_CHILD widens what is allowed, so
     #: it is never applied silently.
     life_stage: Mapped[LifeStage] = mapped_column(life_stage_enum)
     life_stage_confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
@@ -139,7 +139,7 @@ class Member(Base):
 
 
 class DietaryConstraint(Base):
-    """Severity decides the SCOPE of the filter (§4.6).
+    """Severity decides the SCOPE of the filter.
 
     Default severity when the user does not say is SEVERE_ALLERGY: an
     over-constrained household gets slightly dull menus, an under-constrained
@@ -149,26 +149,43 @@ class DietaryConstraint(Base):
     __tablename__ = "dietary_constraint"
     __table_args__ = (
         CheckConstraint(
-            "(allergen_code IS NOT NULL) OR (ingredient_id IS NOT NULL)",
+            "(allergen_code IS NOT NULL) OR (ingredient_id IS NOT NULL) OR (label IS NOT NULL)",
             name="ck_dietary_constraint_target",
+        ),
+        # Only an aversion may float free of a member. An allergy without
+        # someone it belongs to is meaningless — and its household scope comes
+        # from its SEVERITY, not from its storage.
+        CheckConstraint(
+            "(member_id IS NOT NULL) OR (severity = 'aversion')",
+            name="ck_dietary_constraint_member_required",
         ),
     )
 
     id: Mapped[uuid.UUID] = _pk()
-    member_id: Mapped[uuid.UUID] = mapped_column(
+    household_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("household.id", ondelete="CASCADE"), index=True
+    )
+    #: NULL = applies to the whole household ("we don't eat that here").
+    #: Refinement goes one way only: household -> member, never the reverse.
+    member_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("member.id", ondelete="CASCADE"), index=True
     )
     allergen_code: Mapped[AllergenCode | None] = mapped_column(allergen_enum)
     # FK added in phase 1, with the ingredient referential.
     ingredient_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    #: Free text, used by V0 aversions — there is no ingredient referential yet.
+    label: Mapped[str | None] = mapped_column(String(120))
     severity: Mapped[ConstraintSeverity] = mapped_column(
         severity_enum, default=ConstraintSeverity.SEVERE_ALLERGY
     )
     note: Mapped[str | None] = mapped_column(Text)
 
+    #: Optional: a household-wide aversion has no member.
+    member: Mapped[Member | None] = relationship(back_populates="constraints")
+
 
 class MealSlotConfig(Base):
-    """Which slots this household wants planned (§4.7). Household level, not per member."""
+    """Which slots this household wants planned. Household level, not per member."""
 
     __tablename__ = "meal_slot_config"
     __table_args__ = (
@@ -186,7 +203,7 @@ class MealSlotConfig(Base):
 
 
 class PortionCoefficient(Base):
-    """Configurable, never hardcoded (§4.4, invariant I8)."""
+    """Configurable, never hardcoded (invariant I8)."""
 
     __tablename__ = "portion_coefficient"
 
@@ -195,7 +212,7 @@ class PortionCoefficient(Base):
 
 
 class LifeStageThreshold(Base):
-    """Upper bound in months, exclusive. NULL = open-ended (§4.3)."""
+    """Upper bound in months, exclusive. NULL = open-ended."""
 
     __tablename__ = "life_stage_threshold"
 
@@ -223,7 +240,7 @@ class MealPlan(Base):
 
 
 class PlannedDish(Base):
-    """One dish on one slot. A slot carries 1..N of these (§4.1)."""
+    """One dish on one slot. A slot carries 1..N of these."""
 
     __tablename__ = "planned_dish"
     __table_args__ = (
@@ -246,13 +263,18 @@ class PlannedDish(Base):
     free_text_label: Mapped[str | None] = mapped_column(String(200))
     source: Mapped[DishSource] = mapped_column(dish_source_enum)
     position: Mapped[int] = mapped_column(SmallInteger, default=0)
+    #: Two preparations sharing a base. Drawn now, always NULL
+    #: until the catalogue exists: overlap is not computable without ingredients.
+    derived_from_dish_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("planned_dish.id", ondelete="SET NULL")
+    )
 
     plan: Mapped[MealPlan] = relationship(back_populates="dishes")
     eaters: Mapped[list[PlannedDishMember]] = relationship(back_populates="dish")
 
 
 class PlannedDishMember(Base):
-    """The assignment of §4.1 — and what makes per-member anti-repetition possible.
+    """Who eats which dish — and what makes per-member anti-repetition possible.
 
     A "group" is the set of members sharing a dish on a given slot: emergent,
     recomputed every slot, never stored as a partition of the household.
@@ -266,6 +288,13 @@ class PlannedDishMember(Base):
     member_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("member.id", ondelete="CASCADE"), primary_key=True
     )
+    #: Same preparation, different plate. "sans olives",
+    #: "part prélevée avant salage et mixée". Carried by the ASSIGNMENT because
+    #: two people can have different variants on the same dish.
+    #:
+    #: It describes HOW to serve, never WHETHER the assignment is allowed: a
+    #: variant can never make acceptable an assignment that was not (I1).
+    serving_variant: Mapped[str | None] = mapped_column(String(200))
 
     dish: Mapped[PlannedDish] = relationship(back_populates="eaters")
 
@@ -294,10 +323,15 @@ class MealHistory(Base):
     free_text_label: Mapped[str | None] = mapped_column(String(200))
     source: Mapped[DishSource] = mapped_column(dish_source_enum)
     rating: Mapped[int | None] = mapped_column(SmallInteger)
+    #: History is implicit in V0: a past planned dish counts as
+    #: eaten, and nothing is ever confirmed. Rating a dish will fill this later
+    #: — rating IS an implicit confirmation — with no migration needed, and the
+    #: eval harness can then tell assumed history from real history.
+    confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class SnackSuggestion(Base):
-    """Separate object, optional module (§4.8).
+    """Separate object, optional module.
 
     A snack has no dish, no multi-group assignment and no overlap. Modelling it
     as a regular slot would pollute the planner with special cases.

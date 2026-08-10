@@ -1,4 +1,4 @@
-"""Google OAuth (docs/ARCHITECTURE.md §11.1).
+"""Google OAuth.
 
 Chosen over magic links because a magic link drags in an email sending service,
 a domain with SPF/DKIM and deliverability to monitor — and deliverability is

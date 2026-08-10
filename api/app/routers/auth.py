@@ -1,4 +1,4 @@
-"""Authentication endpoints (docs/ARCHITECTURE.md §11.1)."""
+"""Authentication endpoints."""
 
 from __future__ import annotations
 

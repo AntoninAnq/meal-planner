@@ -1,4 +1,4 @@
-"""The envelope — hostile LLM output (docs/ARCHITECTURE.md §13.1, layer 2).
+"""The envelope — hostile LLM output.
 
 This is the harness. Without tests that inject invalid LLM output, the
 re-validation code is never executed before the day it matters, and it will be
@@ -23,7 +23,7 @@ from app.llm.fake import (
 )
 
 # A miniature version of the week-plan envelope: the model emits IDENTIFIERS,
-# never prose (§6.5).
+# never prose.
 PLAN_SCHEMA: dict[str, Any] = {
     "type": "object",
     "properties": {
@@ -130,7 +130,7 @@ def test_provider_failure_is_not_swallowed() -> None:
 
 
 def test_telemetry_accumulates_across_retries() -> None:
-    """The eval harness (§14.5) reads these off the return value, not off logs."""
+    """The eval harness reads these off the return value, not off logs."""
     client = FakeLLMClient(
         [malformed_json(), valid(GOOD_PAYLOAD)],
         input_tokens=1_500,

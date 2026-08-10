@@ -8,7 +8,7 @@ import { apiGet, type Household, type Member, type PendingTransition } from "@/l
  * confirmation — not to look like a product.
  *
  * The real UX is designed in phase 0-bis, against the FINAL API contract rather
- * than against whatever the stubs happen to return (docs/ARCHITECTURE.md §10.3).
+ * than against whatever the stubs happen to return.
  */
 export default async function HomePage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
@@ -56,7 +56,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
       {pending.length > 0 && (
         <section>
           {/* A stage change is proposed, never applied on its own: crossing
-              baby -> young_child widens what is allowed (§4.3). */}
+              baby -> young_child widens what is allowed. */}
           <h2>{t("pendingTransitionsHeading")}</h2>
           <ul>
             {pending.map((transition) => (

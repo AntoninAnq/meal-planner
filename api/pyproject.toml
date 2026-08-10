@@ -19,6 +19,7 @@ httpx = "^0.28"
 pyjwt = { extras = ["crypto"], version = "^2.10" }
 jsonschema = "^4.25"
 anthropic = "^0.75"
+langgraph = "^1.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.4"

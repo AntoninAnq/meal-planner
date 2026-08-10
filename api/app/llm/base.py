@@ -1,4 +1,4 @@
-"""The single LLM interface (docs/ARCHITECTURE.md §7.1).
+"""The single LLM interface.
 
 Three real implementations back this protocol — Ollama (dev), Anthropic (prod),
 Fake (tests). An interface with three real implementations does not leak; with
@@ -7,7 +7,7 @@ escaped through it.
 
 Deliberately absent: `temperature` (removed on recent models, and determinism is
 not steered there), `effort` (rejected by Haiku 4.5), `stream` (the LLM emits
-identifiers, there is nothing to stream — see §6.5).
+identifiers, there is nothing to stream).
 """
 
 from __future__ import annotations
@@ -43,7 +43,7 @@ class StructuredResult:
     """A validated structure, plus the telemetry the eval harness aggregates.
 
     Telemetry lives in the return value on purpose: outside of it, the eval
-    script (§14.5) would have to parse logs.
+    script would have to parse logs.
     """
 
     data: dict[str, Any]

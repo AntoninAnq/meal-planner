@@ -1,4 +1,4 @@
-"""Deterministic core — portion scaling (docs/ARCHITECTURE.md §13.1, layer 1)."""
+"""Deterministic core — portion scaling."""
 
 from decimal import Decimal
 

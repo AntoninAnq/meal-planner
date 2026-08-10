@@ -45,7 +45,7 @@ def update_household(
 
 @router.get("/slots", response_model=list[MealSlotOut])
 def read_slots(db: DbDep, household_id: CurrentHousehold) -> list[MealSlotConfig]:
-    """The slot grid is declared at HOUSEHOLD level, not per member (§4.7)."""
+    """The slot grid is declared at HOUSEHOLD level, not per member."""
     return list(
         db.scalars(
             select(MealSlotConfig)

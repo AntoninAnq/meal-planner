@@ -44,7 +44,7 @@ class MemberContext:
 @dataclass(frozen=True)
 class PromptContext:
     members: tuple[MemberContext, ...]
-    #: Severe allergies are excluded household-wide (§4.6), so they are stated
+    #: Severe allergies are excluded household-wide, so they are stated
     #: once for the whole prompt rather than per member.
     household_excluded_allergens: tuple[AllergenCode, ...]
     #: Days since the last occurrence, per food category.

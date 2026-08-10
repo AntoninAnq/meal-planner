@@ -1,8 +1,8 @@
 """Initial schema — phase 0
 
-Scope (docs/ARCHITECTURE.md §7.3): everything in §8 except the scraped
+Scope: everything except the scraped
 catalogue. Household, access, members, constraints, slots, configuration, plans,
-history and snacks. The catalogue tables of §8.2 arrive in phase 1, and add the
+history and snacks. The catalogue tables arrive in phase 1, and add the
 foreign keys on the `recipe_id` columns created here.
 
 Revision ID: 0001
@@ -70,7 +70,7 @@ def upgrade() -> None:
 
     # auth_subject is prefixed by its mechanism: 'google:117482…'.
     # Holds no secret and no personal data, and survives every change of
-    # authentication mechanism (§11.1).
+    # authentication mechanism.
     op.create_table(
         "household_access",
         sa.Column("auth_subject", sa.String(255), primary_key=True),
@@ -112,7 +112,7 @@ def upgrade() -> None:
         sa.Column("display_name", sa.String(80), nullable=False),
         sa.Column("birth_date", sa.Date(), nullable=True),
         # Effective stage, confirmed by a parent. birth_date only produces a
-        # proposal (§4.3).
+        # proposal.
         sa.Column("life_stage", life_stage, nullable=False),
         sa.Column("life_stage_confirmed_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column(
@@ -214,7 +214,7 @@ def upgrade() -> None:
     )
     op.create_index("ix_planned_dish_meal_plan_id", "planned_dish", ["meal_plan_id"])
 
-    # The assignment of §4.1, and what makes per-member anti-repetition possible.
+    # Who eats which dish, and what makes per-member anti-repetition possible.
     op.create_table(
         "planned_dish_member",
         sa.Column(
@@ -292,7 +292,7 @@ def upgrade() -> None:
     )
 
     # 18 months rather than 12: the regulatory prohibitions (honey, cow's milk)
-    # lift at 12 months, but textures and choking risk do not (§4.3).
+    # lift at 12 months, but textures and choking risk do not.
     op.bulk_insert(
         sa.table(
             "life_stage_threshold",

@@ -1,4 +1,4 @@
-"""Session cookie (docs/ARCHITECTURE.md §11.1).
+"""Session cookie.
 
 Signed, `HttpOnly`, `SameSite=Lax`, `Secure` outside dev. Never a token in
 `localStorage`: that is readable by any injected script, and there is health

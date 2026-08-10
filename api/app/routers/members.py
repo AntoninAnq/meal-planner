@@ -11,13 +11,11 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.auth.deps import CurrentHousehold
-from app.db.models import DietaryConstraint, LifeStageThreshold, Member
+from app.db.models import LifeStageThreshold, Member
 from app.db.session import get_db
 from app.domain.enums import LifeStage
 from app.domain.life_stage import pending_transition, proposed_life_stage
 from app.schemas import (
-    DietaryConstraintCreate,
-    DietaryConstraintOut,
     LifeStageConfirmation,
     MemberCreate,
     MemberOut,
@@ -99,7 +97,7 @@ def update_member(
 def list_pending_transitions(
     db: DbDep, household_id: CurrentHousehold
 ) -> list[PendingTransitionOut]:
-    """Stage changes the age suggests, awaiting parental confirmation (§4.3)."""
+    """Stage changes the age suggests, awaiting parental confirmation."""
     thresholds = _thresholds(db)
     today = date.today()
     out: list[PendingTransitionOut] = []
@@ -137,40 +135,5 @@ def confirm_life_stage(
     return member
 
 
-@router.get("/{member_id}/constraints", response_model=list[DietaryConstraintOut])
-def list_constraints(
-    member_id: uuid.UUID, db: DbDep, household_id: CurrentHousehold
-) -> list[DietaryConstraint]:
-    _load(db, member_id, household_id)
-    return list(
-        db.scalars(select(DietaryConstraint).where(DietaryConstraint.member_id == member_id))
-    )
-
-
-@router.post(
-    "/{member_id}/constraints",
-    response_model=DietaryConstraintOut,
-    status_code=status.HTTP_201_CREATED,
-)
-def add_constraint(
-    member_id: uuid.UUID,
-    payload: DietaryConstraintCreate,
-    db: DbDep,
-    household_id: CurrentHousehold,
-) -> DietaryConstraint:
-    _load(db, member_id, household_id)
-    if payload.allergen_code is None:
-        raise HTTPException(
-            status.HTTP_422_UNPROCESSABLE_ENTITY,
-            "allergen_code is required until the ingredient referential lands (phase 1)",
-        )
-
-    constraint = DietaryConstraint(
-        member_id=member_id,
-        allergen_code=payload.allergen_code,
-        severity=payload.severity,
-        note=payload.note,
-    )
-    db.add(constraint)
-    db.commit()
-    return constraint
+# Constraints live in `routers/constraints.py`, NOT nested here: an aversion may
+# have no member at all, so the URL cannot hang off a member.

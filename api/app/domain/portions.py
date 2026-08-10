@@ -1,4 +1,4 @@
-"""Portion scaling (docs/ARCHITECTURE.md §4.4).
+"""Portion scaling.
 
 Deliberately NOT nutrition: no calories, no macronutrients, no daily intakes.
 The life stage is the only adequacy proxy, and a per-stage coefficient is all

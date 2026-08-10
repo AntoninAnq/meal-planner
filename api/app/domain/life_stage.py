@@ -1,4 +1,4 @@
-"""Life-stage derivation (docs/ARCHITECTURE.md §4.3).
+"""Life-stage derivation.
 
 Pure functions: no database, no I/O. The stored `member.life_stage` is the
 EFFECTIVE value, confirmed by a parent. `birth_date` only ever produces a

@@ -1,4 +1,4 @@
-"""Fake implementation — the harness (docs/ARCHITECTURE.md §13).
+"""Fake implementation — the harness.
 
 This is the THIRD real implementation of the interface, not a test double bolted
 on afterwards. It exists so the CI can drive the graph with *hostile* model
@@ -78,7 +78,7 @@ class FakeLLMClient(RetryingLLMClient):
 
 # --- Hostile output builders -------------------------------------------------
 #
-# The mandatory list from §13.1. Kept here so every test suite reaches for the
+# The mandatory list. Kept here so every test suite reaches for the
 # same ones and none is quietly forgotten.
 
 

@@ -5,7 +5,7 @@ and it supports structured outputs. Sonnet 5 is the quality fallback.
 
 Two model-specific notes that must not be "helpfully" added back:
   * Haiku 4.5 REJECTS the `effort` parameter.
-  * Nothing is streamed — the LLM emits identifiers (§6.5).
+  * Nothing is streamed — the LLM emits identifiers.
 
 Invariant I5 is enforced upstream, in the prompt builder: this client never sees
 a `member` entity, only the constraint DTO it is handed.
@@ -50,7 +50,7 @@ class AnthropicClient(RetryingLLMClient):
                 max_tokens=_MAX_TOKENS,
                 # `instructions` is stable and cacheable; `context` changes every
                 # call. Keeping them apart is what makes prompt caching possible
-                # at all (§7.1).
+                # at all.
                 system=system,
                 messages=[{"role": "user", "content": context}],
                 output_config={"format": {"type": "json_schema", "schema": schema}},

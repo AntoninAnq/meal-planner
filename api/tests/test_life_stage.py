@@ -1,4 +1,4 @@
-"""Deterministic core — life-stage derivation (docs/ARCHITECTURE.md §13.1, layer 1)."""
+"""Deterministic core — life-stage derivation."""
 
 from datetime import date
 

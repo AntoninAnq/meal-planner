@@ -70,7 +70,7 @@ def test_no_database_identifier_reaches_the_prompt() -> None:
 
 
 def test_severe_allergies_are_hoisted_to_household_scope() -> None:
-    """Severe allergy excludes the allergen for EVERYONE (§4.6), so it is stated once."""
+    """Severe allergy excludes the allergen for EVERYONE, so it is stated once."""
     context, _ = build_prompt_context(MEMBERS)
 
     assert context.household_excluded_allergens == (AllergenCode.PEANUTS,)
@@ -88,7 +88,7 @@ def test_intolerances_stay_member_scoped() -> None:
 
 
 def test_rotation_signals_are_passed_as_context() -> None:
-    """Rotation is a SIGNAL, never a filter (§6.3)."""
+    """Rotation is a SIGNAL, never a filter."""
     context, _ = build_prompt_context(MEMBERS, rotation_signals={"legumes": 23, "fish": 4})
 
     assert context.rotation_signals == {"legumes": 23, "fish": 4}

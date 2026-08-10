@@ -1,6 +1,6 @@
 """Ollama implementation — the development workhorse.
 
-Runs on the HOST, not in a container (docs/ARCHITECTURE.md §7.3). Target model
+Runs on the HOST, not in a container. Target model
 is an 8B q4: the dev machine has no GPU and ~8 GB of free RAM, so a 27B q3
 (13 GB) would swap and make the workstation unusable.
 

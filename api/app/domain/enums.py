@@ -9,7 +9,7 @@ from enum import StrEnum
 
 
 class LifeStage(StrEnum):
-    """What counts as a real meal for a member (docs/ARCHITECTURE.md §4.3)."""
+    """What counts as a real meal for a member."""
 
     BABY = "baby"
     YOUNG_CHILD = "young_child"
@@ -22,7 +22,7 @@ class MealType(StrEnum):
 
 
 class ConstraintSeverity(StrEnum):
-    """Severity decides the SCOPE of the filter (docs/ARCHITECTURE.md §4.6).
+    """Severity decides the SCOPE of the filter.
 
     SEVERE_ALLERGY -> household-wide exclusion (cross-contamination is real)
     INTOLERANCE    -> member-level exclusion (allows one more dish)

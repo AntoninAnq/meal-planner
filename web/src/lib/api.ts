@@ -3,7 +3,7 @@ import { cookies } from "next/headers";
 /**
  * Server-side API access.
  *
- * Single origin behind the proxy (docs/ARCHITECTURE.md §11.1): `/api` is
+ * Single origin behind the proxy: `/api` is
  * same-origin for the browser, and Server Components reach the API container
  * directly. Neither path ever sends a `household_id` — it is derived from the
  * session on the API side (invariant I6).

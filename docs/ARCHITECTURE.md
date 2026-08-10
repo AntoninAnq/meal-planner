@@ -121,11 +121,13 @@ Un seul champ, une seule règle, en SQL, qui couvre les deux directions :
 | `young_child` | 18 mois – 11 ans |
 | `teen_adult` | 11 ans et plus |
 
-Le stade est **dérivé de la date de naissance**, avec override manuel toujours possible dans les deux sens. Les seuils sont **configurables**, pas codés en dur (I8).
+**Le stade est choisi par l'utilisateur, pas dérivé.** La date de naissance est optionnelle et n'est pas collectée par l'interface (voir `UX-V0.md` §9) ; la dérivation reste implémentée mais dormante, disponible si l'on veut un jour proposer la date de naissance en option contre des rappels automatiques. Les seuils ci-dessus sont **configurables**, pas codés en dur (I8).
 
 > **Pourquoi 18 mois et non 12.** Les interdits réglementaires (miel, lait de vache) lèvent à 12 mois, mais les textures et le risque de fausse route non. Le seuil de sécurité doit être plus conservateur que le seuil légal.
 
-> **Toute transition de stade est proposée par le système et validée par le parent.** Aucune bascule silencieuse, dans aucun sens.
+> **Pourquoi un stade choisi et non dérivé est acceptable.** Les groupes ne se franchissent que dans le sens de l'âge, donc **oublier de mettre à jour est toujours du côté sûr** : un enfant resté marqué `baby` garde le catalogue le plus restrictif — agaçant, pas dangereux, et auto-correctif, puisque le parent verra des purées proposées à un enfant qui mange comme tout le monde. L'erreur inverse exigerait d'avancer volontairement le groupe trop tôt : un acte délibéré, pas un oubli. En prime, plus aucune date de naissance de mineur en base.
+
+> **Quand une date de naissance est présente, toute transition est proposée par le système et validée par le parent.** Aucune bascule silencieuse, dans aucun sens.
 >
 > **Pourquoi.** Franchir `baby` → `young_child` **élargit** ce qui est autorisé : du jour au lendemain, l'ensemble des candidats s'ouvre à des plats salés, épicés, en morceaux, sans que personne n'ait jugé si cet enfant-là est prêt. C'est la symétrie du §4.5 (`baby` n'est jamais implicite). Une règle uniforme est plus simple qu'une règle asymétrique, et le parent garde la main.
 
@@ -172,6 +174,8 @@ Une recette « pour 4 » se recalcule pour « 2 adultes + 1 jeune enfant » sans
 
 **Défaut quand l'utilisateur ne précise pas la sévérité : `severe_allergy`.**
 
+**Le membre est optionnel — mais pour les aversions seulement.** Une aversion sans membre s'applique au foyer entier (« on n'aime pas ça ici ») ; avec un membre, à cette personne seule. Un seul concept, une seule table, un seul chemin de filtrage (voir `UX-V0.md` §10). Une allergie sans personne à qui elle appartient n'a en revanche pas de sens : sa portée foyer vient déjà de sa **sévérité**, pas de son stockage. Une contrainte de base le vérifie.
+
 > **Pourquoi la portée foyer pour les allergies sévères.** La contamination croisée est réelle : même plan de travail, même huile, même éponge. Filtrer seulement l'assiette de la personne ne protège de rien. C'est d'ailleurs le comportement réel des familles concernées — on n'achète pas de cacahuètes quand un enfant y est allergique.
 >
 > **Pourquoi le défaut sévère.** Une famille sur-contrainte a des menus un peu ternes. Une famille sous-contrainte a un passage aux urgences. Le défaut tombe du côté sûr.
@@ -189,6 +193,24 @@ Défaut à l'inscription : **soirs en semaine + week-end complet** (la cantine c
 Le goûter n'a pas de plat, pas d'assignation multi-groupes, pas de recouvrement. Le modéliser comme un créneau normal polluerait le planificateur de cas particuliers.
 
 → **Objet distinct, module optionnel, workflow et endpoint séparés.**
+
+### 4.9 Trois façons de nourrir des besoins différents
+
+Un plat n'est pas atomique. Il existe **trois mécanismes**, et ils n'ont pas le même coût de cuisine — ce qui compte, puisque l'objectif est de ne pas cuisiner deux fois :
+
+| Niveau | Mécanisme | Effort |
+|---|---|---|
+| 1 | Même plat, même assiette | Une préparation |
+| 2 | **Même préparation, assiette différente** — sans olives pour Léo, part du bébé prélevée avant salage et mixée | **Une préparation** |
+| 3 | Deux plats distincts sur une base commune | Deux préparations |
+
+**Le niveau 2 est le meilleur résultat possible du système**, meilleur que le niveau 3 : zéro cuisine supplémentaire et chacun mange ce qui lui convient. C'est aussi une piste sérieuse pour la déclinaison bébé — dans beaucoup de cas, ce n'est pas une recette bébé qui manque, c'est une **instruction de service**.
+
+La **variante de service** est portée par l'**assignation** (`planned_dish_member`), pas par le plat : deux personnes peuvent avoir des variantes différentes sur le même plat. Texte libre en V0, structurée en V1 une fois les ingrédients disponibles.
+
+> **La frontière de sécurité ne bouge pas.** Le code décide **si** un membre peut être assigné à ce plat (`suitable_stages`, allergènes) ; la variante décrit seulement **comment** le servir. Une variante ne peut jamais rendre acceptable une assignation qui ne l'était pas — sinon le LLM redeviendrait juge de la sécurité et I1 tombe.
+
+Le niveau 3 exige les ingrédients, donc le catalogue : le lien `derived_from_dish_id` existe dans le contrat dès la V0 mais reste nul.
 
 ---
 
@@ -533,15 +555,24 @@ Objet séparé (§4.8).
 
 **Une façade FastAPI unique** côté frontend, qui route en interne vers les workflows. Pas d'API séparée par workflow technique. Endpoints orientés métier.
 
+Le contrat détaillé et sa justification sont dans **`UX-V0.md` §13** — c'est l'UX qui le définit (§10.3), pas l'inverse.
+
 | Endpoint | Phase |
 |---|---|
-| `POST /meal-plans/week` | V0 (bouchonné) → V1 (réel) |
-| `POST /meal-plans/week/{id}/revise` | V1 — réparation locale, pas recalcul complet |
-| `GET /meal-plans/week/{id}/dishes/{dish_id}/explanation` | V1 — appel LLM séparé |
+| `POST /meal-plans/interpret` — texte libre → contraintes structurées, montrées et corrigeables | V0 |
+| `POST /meal-plans` — **une seule opération paramétrée** : portée (semaine \| créneau) + convives (membres \| invités transitoires) | V0 (bouchonné) → V1 (réel) |
+| `GET /meal-plans?week_start=…` — la vue charge un plan existant, elle ne dépend pas de la réponse de génération | V0 |
+| `GET …/dishes/{id}/alternatives` — candidats écartés, **aucun appel LLM** | V0 (vide) → V1 |
+| `PUT …/dishes/{id}` — remplacement, écriture immédiate | V0 |
+| `POST …/dishes/{id}/regenerate` — réparation dirigée, avec la raison | V0 |
+| `POST …/dishes/{id}/rating` — amorce le score d'appétence et confirme implicitement | V0 |
+| `GET …/dishes/{id}/explanation` — appel LLM séparé | **V1** — en V0 il n'y aurait rien de réel à expliquer |
+| `GET`/`POST` `/household/constraints` — **pas** imbriqué sous un membre : une aversion peut n'en avoir aucun | V0 |
 | `POST /meal-plans/snack` | Phase 3 |
-| `POST /meal-plans/guests` | Phase 3 |
 | `POST /meal-plans/leftover-rescue` | Phase 4 |
-| CRUD `households`, `members`, `dietary-constraints`, `recipes`, `history` | Phases 0-1 |
+| CRUD `households`, `members`, `recipes` | Phases 0-1 |
+
+> **Il n'y a pas d'endpoint « invités ».** Le mode invités est la même génération avec une portée d'un créneau et des convives transitoires. Deux endpoints partageant 90 % de leur logique divergent toujours : une correction appliquée à l'un, oubliée sur l'autre.
 
 **Synchrone d'abord.** Bascule en asynchrone (job + polling/websocket) seulement si la latence mesurée le justifie. La règle « le LLM émet des identifiants » (§6.5) rend le synchrone tenable.
 
