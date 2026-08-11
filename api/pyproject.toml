@@ -32,6 +32,10 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# `python -m pytest` adds the current directory to sys.path, plain `pytest`
+# does not. Stating it here makes both invocations work — and the CI runs the
+# plain one.
+pythonpath = ["."]
 
 [tool.ruff]
 line-length = 100

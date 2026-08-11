@@ -8,7 +8,9 @@ WORKDIR /app
 
 RUN pip install --no-cache-dir poetry==2.1.3
 
-COPY pyproject.toml ./
+# The lock file is copied too: without it the container and the CI resolve
+# their own versions, and "it works in Docker" stops meaning anything.
+COPY pyproject.toml poetry.lock ./
 RUN poetry install --no-root --no-interaction
 
 COPY . .

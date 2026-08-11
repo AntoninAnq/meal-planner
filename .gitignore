@@ -12,3 +12,4 @@ caddy_data/
 caddy_config/
 postgres_data/
 .DS_Store
+tsconfig.tsbuildinfo

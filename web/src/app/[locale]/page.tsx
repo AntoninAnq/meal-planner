@@ -1,6 +1,7 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
-import { apiGet, type Household, type Member, type PendingTransition } from "@/lib/api";
+import { apiGet } from "@/lib/api/server";
+import type { Household, Member, PendingTransition } from "@/lib/api/types";
 
 /**
  * Phase 0 skeleton. It exists to prove the seams end to end — sign-in, session
@@ -23,6 +24,10 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
       <main>
         <h1>{t("signedOutHeading")}</h1>
         <p>{t("signedOutBody")}</p>
+        {/* A real browser navigation, not a Next.js route: `/api/*` is proxied
+            to FastAPI, which answers with a redirect to Google. `next/link`
+            would try to resolve it client-side and never leave the app. */}
+        {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
         <a href="/api/auth/login">{t("signIn")}</a>
       </main>
     );

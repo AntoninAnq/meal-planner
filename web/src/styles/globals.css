@@ -1,0 +1,79 @@
+@import "tailwindcss";
+
+/* The only place design tokens are declared.
+ *
+ * Everything visual derives from this block: a change here moves the whole
+ * interface at once. Utility classes in components are LOCAL adjustments —
+ * anything that should apply everywhere belongs here instead.
+ *
+ * No literal colour, radius or font is written in a component. If you find
+ * yourself typing `bg-[#f4f1ea]`, the token is missing. */
+@theme {
+  /* Warm neutrals rather than pure greys: this is a kitchen, not a dashboard. */
+  --color-surface: oklch(98.5% 0.006 85);
+  --color-surface-raised: oklch(100% 0 0);
+  --color-surface-sunken: oklch(96% 0.008 85);
+  --color-border: oklch(89% 0.008 85);
+  --color-border-strong: oklch(78% 0.01 85);
+
+  --color-ink: oklch(24% 0.012 60);
+  --color-ink-muted: oklch(52% 0.012 70);
+  --color-ink-faint: oklch(66% 0.01 75);
+
+  --color-accent: oklch(52% 0.11 155);
+  --color-accent-hover: oklch(46% 0.11 155);
+  --color-accent-soft: oklch(94% 0.04 155);
+  --color-accent-ink: oklch(100% 0 0);
+
+  /* Reserved for the allergen notice and destructive actions. Deliberately
+   * scarce: if warnings are everywhere, none of them is read. */
+  --color-danger: oklch(52% 0.17 27);
+  --color-danger-soft: oklch(95% 0.03 27);
+
+  --color-warn: oklch(70% 0.13 75);
+  --color-warn-soft: oklch(96% 0.04 75);
+
+  --radius-card: 0.75rem;
+  --radius-control: 0.5rem;
+
+  /* System stack: no font is fetched, so nothing blocks the first paint and
+   * no external host is contacted. */
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+}
+
+body {
+  background-color: var(--color-surface);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+}
+
+/* The two week views (docs/UX-V0.md §2).
+ *
+ * Both trees are rendered; this decides which one is visible. Without a
+ * cookie the container is `auto` and the media query picks — so the very
+ * first paint is right on any device, with no JavaScript. An explicit choice
+ * is read server-side from a session cookie and wins over the media query,
+ * which is why toggling then reloading never flashes. */
+[data-view] > [data-week-view] {
+  display: none;
+}
+
+[data-view="auto"] > [data-week-view="list"] {
+  display: block;
+}
+
+@media (min-width: 64rem) {
+  [data-view="auto"] > [data-week-view="list"] {
+    display: none;
+  }
+
+  [data-view="auto"] > [data-week-view="grid"] {
+    display: block;
+  }
+}
+
+[data-view="grid"] > [data-week-view="grid"],
+[data-view="list"] > [data-week-view="list"] {
+  display: block;
+}

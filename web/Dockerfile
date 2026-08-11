@@ -2,8 +2,10 @@ FROM node:22-alpine
 
 WORKDIR /app
 
-COPY package.json ./
-RUN npm install
+# `npm ci` rather than `npm install`: it installs exactly the lock file, which
+# is what makes the container and the CI agree on versions.
+COPY package.json package-lock.json ./
+RUN npm ci
 
 COPY . .
 

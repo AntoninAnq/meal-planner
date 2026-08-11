@@ -1,0 +1,61 @@
+# Runs on every push (docs/ARCHITECTURE.md §13.5).
+#
+# No LLM call, no database: the API tests replace the model with the Fake
+# implementation and the domain is pure. That is what keeps this fast enough
+# to actually be waited for.
+#
+# No deployment step. Automating a deployment that has never been done by hand
+# is the classic way to end up with an outage nobody can diagnose.
+
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  api:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: api
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+
+      # Pinned to the version the Dockerfile installs, so a lock file written
+      # in the container resolves identically here.
+      - run: pipx install poetry==2.1.3
+
+      - run: poetry install --no-root --no-interaction
+
+      - run: poetry run ruff check .
+
+      - run: poetry run pytest
+
+  web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - run: npm ci
+
+      # `lint` also enforces the rule the component library rests on:
+      # components/ui/ never imports lib/api (§12.3).
+      - run: npm run lint
+
+      - run: npm run typecheck
+
+      - run: npm test

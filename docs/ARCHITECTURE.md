@@ -372,7 +372,10 @@ Cette règle rend l'endpoint synchrone parfaitement tenable, y compris sans GPU.
 | Migrations | **Alembic** dès le premier schéma | Les phases 1 et 2 modifient le schéma ; une base créée à la main devient infaisable à faire évoluer une fois qu'elle contient de l'historique réel |
 | LLM | Interface unique, **3 implémentations** | §7.1 |
 | Frontend | **Next.js** (PWA à terme), i18n-ready | Dès la phase 0 |
+| Styles | **Tailwind v4**, jetons dans un unique bloc `@theme` | §7.4 |
+| Tests front | **Vitest** sur des fonctions pures | §13.4 |
 | Conteneurs | **Docker Compose**, services séparés `db` / `api` / `llm` / `web` | Dès le premier commit, même en local |
+| Intégration continue | **GitHub Actions** | §13.5 |
 | Configuration | **Variables d'environnement uniquement** | Aucune valeur en dur (I8) |
 
 ### 7.1 L'interface LLM et ses trois implémentations
@@ -449,7 +452,17 @@ Le pré-filtre ne se contente pas de filtrer : il **classe et tronque** à ~15-2
 |---|---|---|
 | **Ollama** | Reste **sur l'hôte**. Le service `llm` du Compose n'est qu'une URL de configuration. | Ollama est déjà installé en systemd avec un modèle de 5 Go ; le relancer en conteneur dupliquerait le modèle et la RAM. Conforme à I8 : c'est une valeur d'environnement, pas une dépendance en dur. |
 | **Périmètre du schéma initial** | Tout le §8 **sauf le catalogue scrapé** : foyer, accès, membres, contraintes, créneaux, coefficients, seuils de stade, plans et historique (avec `free_text_label` pour la V0). | Alembic est là de toute façon, et avoir les tables de plan dès la phase 0 évite une migration au milieu de la V0. |
-| **Next.js** | App Router, appels API depuis des Server Components quand c'est possible, `next-intl` pour l'i18n, aucune bibliothèque de composants. | Le front de la V0 est écrit contre le contrat d'API final (§10.3) ; investir en design avant que l'UX soit validée serait du gaspillage. |
+| **Next.js** | App Router, appels API depuis des Server Components quand c'est possible, `next-intl` pour l'i18n, aucune bibliothèque de composants tierce. | Le front de la V0 est écrit contre le contrat d'API final (§10.3) ; investir en design avant que l'UX soit validée serait du gaspillage. |
+
+### 7.4 Décisions d'implémentation du front
+
+| Sujet | Décision | Justification |
+|---|---|---|
+| **Sens des appels** | **Lectures depuis les Server Components, écritures depuis le navigateur** vers `/api`, puis `router.refresh()`. Pas de Server Actions. | Une Server Action ferait de Next.js un proxy devant une API **déjà en même origine et déjà authentifiée par le même cookie** : un saut de plus qui n'achète rien, et un second endroit où les erreurs sont retraduites. Quand l'API répond `422 constraint requires a member`, c'est ce message qu'on veut voir. Corollaire : la génération partant du navigateur, le délai de 300 s du `fetch` de Node n'est pas dans le chemin. |
+| **Styles** | **Tailwind v4**, jetons dans un unique bloc `@theme`, composants écrits à la main. | La boucle réelle est « je regarde le rendu, je veux changer quelque chose ». Les classes sont écrites textuellement dans le JSX, donc l'ajustement local n'a aucune indirection ; et les modifications systématiques (« resserre tous les espacements ») se font sur le jeton, en un endroit lisible. Le danger réel de Tailwind est la duplication — la parade est la discipline de composants, pas du CSS. |
+| **Pas de bibliothèque de composants** | Ni shadcn/ui, ni Radix, ni Mantine. | Elles apportent une apparence de tableau de bord qu'il faudrait défaire pour un produit dont l'identité est une grille de semaine. La seule chose que Radix achèterait vraiment ici — un `Dialog` accessible — est couverte par l'élément **`<dialog>` natif** : piège de focus, Échap, `aria-modal` et blocage du scroll, sans dépendance. |
+| **Aucune chaîne en dur** | Ni français ni anglais dans un composant : clés `next-intl` ou texte reçu en props. | Le §12.1 l'impose déjà pour l'affichage ; l'appliquer aux composants **sans exception** évite d'avoir à les fouiller le jour de la traduction anglaise. |
+| **`"use client"` le plus bas possible** | Un composant d'affichage reste rendu côté serveur ; seul l'élément interactif bascule. | Sinon la décision « lectures serveur » se vide de son sens : un `"use client"` haut placé fait basculer tout l'arbre en dessous. |
 
 ---
 
@@ -568,6 +581,7 @@ Le contrat détaillé et sa justification sont dans **`UX-V0.md` §13** — c'es
 | `POST …/dishes/{id}/rating` — amorce le score d'appétence et confirme implicitement | V0 |
 | `GET …/dishes/{id}/explanation` — appel LLM séparé | **V1** — en V0 il n'y aurait rien de réel à expliquer |
 | `GET`/`POST` `/household/constraints` — **pas** imbriqué sous un membre : une aversion peut n'en avoir aucun | V0 |
+| `GET`/`PATCH` `/household/settings` — goûter, limite souple de plats, et `onboarded_at` | V0 |
 | `POST /meal-plans/snack` | Phase 3 |
 | `POST /meal-plans/leftover-rescue` | Phase 4 |
 | CRUD `households`, `members`, `recipes` | Phases 0-1 |
@@ -575,6 +589,19 @@ Le contrat détaillé et sa justification sont dans **`UX-V0.md` §13** — c'es
 > **Il n'y a pas d'endpoint « invités ».** Le mode invités est la même génération avec une portée d'un créneau et des convives transitoires. Deux endpoints partageant 90 % de leur logique divergent toujours : une correction appliquée à l'un, oubliée sur l'autre.
 
 **Synchrone d'abord.** Bascule en asynchrone (job + polling/websocket) seulement si la latence mesurée le justifie. La règle « le LLM émet des identifiants » (§6.5) rend le synchrone tenable.
+
+> **Latence mesurée.** Une semaine complète prend **182 s sur `qwen3:8b` en local**
+> — dont deux tentatives, l'enveloppe ayant rejeté la première proposition — contre
+> une trentaine de secondes attendues du modèle cloud. Un facteur six entre les deux
+> déploiements : **tout seuil d'interface lié à cette durée vient de la
+> configuration** (I8), jamais du code.
+>
+> Le synchrone reste tenable parce que le chemin est navigateur → Caddy → FastAPI,
+> et qu'aucun des deux n'impose de délai de réponse. Conséquence à assumer :
+> `generate_plan` ne fait qu'un `commit`, après le retour du modèle, et l'endpoint
+> synchrone n'est pas notifié d'une déconnexion — **un client qui abandonne
+> n'interrompt rien.** L'interface le dit plutôt que de prétendre annuler
+> (`UX-V0.md` §7).
 
 **`household_id` n'apparaît dans aucune signature d'endpoint** — il vient de l'identité (I6).
 
@@ -587,7 +614,7 @@ Le contrat détaillé et sa justification sont dans **`UX-V0.md` §13** — c'es
 | Phase | Back | Front | Sortie |
 |---|---|---|---|
 | **0 — Fondations** | Repo, Docker Compose (`db`/`api`/`llm`/`web`), config env, schéma DB initial, Alembic, auth, interface LLM à 3 implémentations | Squelette Next.js, i18n-ready | — |
-| **0-bis — V0** | Graphe agentic complet, **coutures bouchonnées**, historique | **Conception UX + Next.js écrit contre le contrat d'API final** | **En ligne, usage interne** |
+| **0-bis — V0** | Graphe agentic complet, **coutures bouchonnées**, historique | **Conception UX, puis les six écrans du `UX-V0.md` §14 dans l'ordre**, écrits contre le contrat d'API final | **En ligne, usage interne** |
 | **1 — Catalogue** | Scraper (blogs whitelistés, JSON-LD) + référentiel d'ingrédients + CRUD recettes utilisateur | — (back pur) | **300 recettes à ingrédients résolus** |
 | **2 — V1** | Workflow semaine réel : filtres durs, signaux, arbitrage, re-validation + harness d'éval | Branchement sur les vrais endpoints | **MVP testable sur le fondateur** |
 | **3** | Workflows goûter et invités (réutilisation des nœuds) | Extension | — |
@@ -601,6 +628,19 @@ En V0, le LLM propose des **titres de plats** en texte libre (« poulet aux oliv
 **Conséquence mécanique : plus aucune garantie déterministe.** Pas de référentiel → pas de filtre allergène. Pas de `suitable_stages` → pas de contrôle d'âge.
 
 C'est acceptable **à une condition** : que ce soit un spike, utilisé par le fondateur seul, jamais montré à un autre foyer, avec mention explicite qu'aucune garantie allergène n'existe.
+
+> **Tension à trancher explicitement.** L'ordre de construction du front a été choisi
+> **pour faire tester l'app par d'autres personnes** — ce que la condition ci-dessus
+> interdit. Les deux ne peuvent pas être vrais en même temps.
+>
+> La résolution retenue n'est pas de renoncer aux testeurs, mais de **déplacer la
+> mention hors de ce document** : tant qu'aucun catalogue n'existe, l'interface
+> affiche elle-même, à l'endroit où les allergies se saisissent et sur le plan
+> généré, que **les allergies déclarées ne sont pas filtrées** et que les plats
+> proposés ne sont vérifiés par personne. Une garantie absente qui n'est écrite que
+> dans un fichier d'architecture n'a jamais protégé un enfant allergique.
+>
+> Cette mention disparaît en V1, quand le filtre devient réel (I2, I3).
 
 Deux garde-fous :
 
@@ -725,15 +765,42 @@ meal-planner/
 │   ├── migrations/               Alembic
 │   └── tests/
 ├── web/                          Next.js
+│   └── src/
+│       ├── app/[locale]/         écrans — assemblent, ne stylent rien
+│       ├── components/
+│       │   ├── ui/               ne sait RIEN du domaine
+│       │   └── <feature>/        plan/, members/, constraints/…
+│       ├── lib/
+│       │   ├── api/types.ts      miroir du contrat, source unique
+│       │   ├── api/server.ts     lectures depuis les Server Components
+│       │   ├── api/client.ts     écritures depuis le navigateur
+│       │   └── api/error.ts      `ApiError`, partagé par les deux
+│       └── styles/globals.css    le bloc @theme, seul endroit des jetons
 ├── db/                           init, seed du référentiel d'ingrédients
 └── eval/                         fixtures figées + script d'évaluation
 ```
+
+**La bibliothèque de composants a deux étages, et une seule règle les tient :
+`components/ui/` n'importe jamais `lib/api`.** Dépendance unidirectionnelle,
+vérifiable d'un coup d'œil et vérifiée en CI. Le jour où un `Button` connaît un
+`LifeStage`, la bibliothèque est morte — c'est toujours comme ça que ça commence.
+
+Les primitives sans domaine (`Button`, `Field`, `Dialog`, `Card`, `EmptyState`,
+`Spinner`) sont écrites d'emblée : les deviner ne comporte aucun risque. **Tout ce
+qui a une forme métier attend qu'un deuxième écran le réclame** — et la relecture
+« qu'est-ce qui vient d'être écrit deux fois » a lieu à la fin de chaque écran,
+sans quoi l'extraction reste une intention.
+
+Pas de fichiers `index.ts` de ré-export : ils masquent les cycles d'import et
+cassent le découpage. On importe le chemin complet.
 
 ### 12.3 Règles de code
 
 - Aucune valeur d'infrastructure en dur (I8).
 - Le module `domain/` ne connaît ni SQL, ni HTTP, ni LLM : ce sont des fonctions pures, testables sans base.
 - Toute écriture en base passe par une migration Alembic, jamais par un script ad hoc.
+- `components/ui/` n'importe jamais `lib/api` — la règle est vérifiée en CI.
+- Toute logique dérivée du front vit dans `lib/` sous forme de **fonction pure**, jamais dans un composant : elle survit aux refontes visuelles, et c'est ce qui la rend testable (§13.4).
 
 ---
 
@@ -766,6 +833,44 @@ Les tests vérifient que le validateur **rejette et rejoue**.
 ### 13.3 Le Fake est un citoyen de première classe
 
 L'implémentation factice est la **troisième implémentation** de l'interface LLM (§7.1), au même titre qu'Ollama et l'API cloud. Une interface avec trois implémentations réelles ne fuit pas.
+
+### 13.4 Le front : des fonctions pures, rien d'autre
+
+La quasi-totalité des écrans est de la présentation. Ce qui porte réellement de la
+logique se compte : la résolution de la vue (cookie + media query), le regroupement
+des plats par créneau et la détection de divergence, la localisation des violations
+sur les créneaux, et la logique d'attente (seuil de bascule, plafond
+d'interrogation).
+
+**Ces logiques vivent dans `lib/` sous forme de fonctions pures, et ce sont les
+seules choses testées** — avec Vitest, en quelques lignes.
+
+| Écarté | Pourquoi |
+|---|---|
+| **Tests de rendu** | Ils affirment du balisage sur une interface qu'on ajustera dès qu'on la verra. Ils seraient réécrits à chaque itération visuelle, c'est-à-dire souvent, et maintenant. |
+| **Bout en bout (Playwright)** | Exigerait une pile qui tourne, **une session OAuth Google réelle** — notoirement pénible à automatiser — et un LLM disponible. Beaucoup de machinerie pour vérifier ce qu'on constate en ouvrant l'app. |
+
+L'intérêt de cette contrainte dépasse le test : **sortir ces logiques des composants
+est une meilleure architecture que le test n'est un test.** Le composant peut
+changer trois fois, la fonction reste.
+
+### 13.5 L'intégration continue
+
+GitHub Actions, sur chaque poussée : `ruff` et `pytest` côté API, `tsc --noEmit`,
+`next lint` et `vitest` côté web, plus la vérification de la règle d'import du
+§12.3.
+
+**Pas de déploiement automatique.** Il suppose des décisions non prises — où, comment
+les secrets circulent, ce qui déclenche `alembic upgrade head`, ce qui se passe s'il
+échoue au démarrage. Automatiser un déploiement qu'on n'a jamais fait à la main est
+la façon classique de se retrouver avec une panne qu'on ne sait pas diagnostiquer.
+On le fera à la main d'abord, on l'automatisera quand il sera ennuyeux.
+
+> **Pourquoi maintenant et pas plus tard.** À partir du moment où quelqu'un d'autre
+> ouvre l'app, une régression non vue lui arrive dessus. Et le front ajoute une
+> deuxième chaîne d'outils : cinq commandes à lancer à la main avant chaque
+> poussée, c'est la discipline qui s'érode en premier — pile quand on itère vite
+> sur le rendu.
 
 ---
 

@@ -52,10 +52,36 @@ téléphone est un usage réel, et un design purement piloté par point de ruptu
 l'interdirait. Le basculement est mémorisé **pour la session seulement** — rouvrir
 en grille le lendemain matin dans la cuisine serait contre-productif.
 
-> **Conséquence API.** La vue « aujourd'hui » ne doit pas télécharger sept jours
-> pour afficher un plat, et la vue semaine doit survivre à un rechargement. D'où
+> **Conséquence API.** La vue semaine doit survivre à un rechargement. D'où
 > `GET /meal-plans?week_start=…`, chargé au montage, plutôt qu'un front qui
 > n'affiche que la réponse du `POST` de génération.
+>
+> Une version antérieure de ce paragraphe exigeait aussi que la vue « aujourd'hui »
+> **ne télécharge pas sept jours** — ce que l'endpoint prescrit juste au-dessus
+> fait précisément. La contradiction est levée en faveur de l'endpoint unique :
+> une semaine pèse quelques kilo-octets, et un endpoint par jour multiplierait les
+> chemins de lecture pour une économie invisible. La question redeviendra réelle
+> quand un plat portera ses ingrédients.
+
+### Comment les deux vues coexistent réellement
+
+Le rendu serveur ne connaît pas la taille de l'écran. Trois exigences ci-dessus se
+contredisent donc techniquement : deux arbres distincts, un défaut fixé par
+l'écran, et un basculement mémorisé.
+
+**Les deux arbres sont rendus, le CSS en masque un.** Sans cookie, le conteneur
+porte `data-view="auto"` et la media query tranche : **le tout premier chargement
+est correct sur n'importe quel appareil, sans une ligne de JavaScript.**
+
+**Le choix explicite vit dans un cookie de session**, lu côté serveur, qui écrase
+la media query. Un cookie sans `Max-Age` meurt avec la fenêtre — c'est
+littéralement « la session seulement » — et contrairement à `sessionStorage` il
+est lisible au rendu, donc il n'introduit aucun scintillement au rechargement.
+
+Le prix est d'avoir les deux arbres dans le DOM. Avec neuf créneaux c'est
+négligeable, et `display:none` sort la vue masquée de l'arbre d'accessibilité.
+Cette solution ne tient que tant que les deux vues consomment **la même donnée** —
+le jour où la vue liste ne chargera qu'un jour, il faudra que le serveur choisisse.
 
 ---
 
@@ -200,6 +226,25 @@ Le premier couvre le cas le plus fréquent : « pas envie de celui-là, montre-m
 autre chose ». Le second est là où vit la négociation d'`ARCHITECTURE.md` §6.4 —
 et la raison donnée a de la valeur, elle enrichit les contraintes pour la suite.
 
+### En V0, le premier mécanisme n'existe pas
+
+Sans catalogue il n'y a pas de candidats écartés : `GET …/alternatives` renvoie une
+liste vide. **Le mécanisme que ce paragraphe décrit comme le plus fréquent est donc
+absent de la V0**, et l'interface ne l'affiche pas — ni section vide, ni excuse.
+Une section désactivée avec une explication apprend qu'il y a une fonctionnalité
+cassée, et on cesse d'y regarder, y compris quand elle marche (même raisonnement
+qu'au §11 sur l'absence d'explication).
+
+Reste alors une échappatoire que ce paragraphe mentionne à peine et qui devient
+centrale : **réécrire le titre du plat à la main.** L'utilisateur sait souvent ce
+qu'il veut manger, et le lui laisser écrire est plus rapide que n'importe quelle
+négociation avec un modèle.
+
+D'où l'ordre du panneau en V0, du moins cher au plus cher : **titre éditable en
+place**, puis *« propose autre chose »* avec la raison. C'est l'inverse de la
+hiérarchie V1, où les alternatives passeront devant — et c'est correct, l'ordre
+suit le coût réel du moment.
+
 **Écriture immédiate, aucun brouillon.** Un plan n'est pas un document : un
 mécanisme « modifier puis enregistrer » ajouterait un état, un risque de perdre
 ses modifications et un bouton, pour un objet que l'utilisateur ne considère pas
@@ -210,8 +255,14 @@ comme un document.
 ## 7. L'attente
 
 Le §6.5 impose **un seul appel LLM pour toute la semaine** — le modèle n'émet que
-des identifiants. Il n'y a donc rien à streamer : la sortie arrive d'un bloc,
-après 20-30 secondes (davantage sur le 8B local).
+des identifiants. Il n'y a donc rien à streamer : la sortie arrive d'un bloc.
+
+**Mesure réelle plutôt qu'estimation.** Une semaine complète — neuf créneaux, trois
+mangeurs — a pris **182 secondes sur `qwen3:8b` en local, dont deux tentatives** :
+l'enveloppe a rejeté la première proposition et la boucle de réparation a rattrapé.
+L'estimation initiale de 20-30 secondes valait pour le modèle cloud, pas pour le
+8B. **L'écart entre les deux déploiements est d'un facteur six**, ce qui interdit
+tout seuil écrit en dur.
 
 **Synchrone**, conformément au §9. Mais l'attente doit être bien faite : 25
 secondes de roue qui tourne donnent l'impression que c'est cassé — le seuil où les
@@ -222,12 +273,33 @@ gens rechargent est autour de dix secondes.
 | **Annoncer avant, pas pendant** | *« On prépare ta semaine — compte une trentaine de secondes »*, au clic. Une attente annoncée est deux fois plus courte qu'une attente subie. |
 | **Messages ludiques** | Ton léger pendant l'arbitrage, dans les fichiers de traduction et jamais en dur. |
 | **Ne jamais prétendre une progression** | Ton amusant, oui ; « plus que 20 % », non. Aucune barre factice : une barre qui avance seule puis se bloque à 90 % est pire que pas de barre. |
-| **Seuil de bascule** | Passé environ le double du temps attendu, on abandonne le registre amusant : *« c'est plus long que d'habitude »* + annulation. Un message rigolo à la 90ᵉ seconde, quand le modèle est bloqué, est humiliant. |
+| **Seuil de bascule** | Passé environ le double du temps attendu, on abandonne le registre amusant : *« c'est plus long que d'habitude »*. Un message rigolo à la 90ᵉ seconde, quand le modèle est bloqué, est humiliant. **Le temps attendu vient de la configuration** (I8), jamais du code : 30 secondes en ligne, 180 en local. |
 
 > **Le risque de l'attente synchrone est déjà couvert.** Si la connexion tombe à
 > la 25ᵉ seconde, le plan **a déjà été écrit en base** ; seul le client ne l'a pas
 > vu. C'est pourquoi la vue semaine charge par `GET` au montage : un rechargement
 > récupère tout.
+
+### « Arrêter d'attendre », et non « Annuler »
+
+`generate_plan` ne fait qu'un `commit`, après le retour du modèle, et l'endpoint
+FastAPI est synchrone : il n'est pas notifié d'une déconnexion. **Un client qui
+abandonne n'interrompt rien — le plan sera écrit quand même.**
+
+Un bouton nommé « Annuler » serait donc un mensonge dont l'utilisateur fait les
+frais : il relance, se retrouve avec deux générations en vol, et la seconde écrase
+la première.
+
+| Règle | Détail |
+|---|---|
+| **Le bouton s'appelle « Arrêter d'attendre »** | Suivi de *« ta semaine continue de se préparer, elle apparaîtra ici »*. Trois mots de plus, et le problème disparaît. |
+| **On rend la main, puis on interroge** | `GET /meal-plans?week_start=…` toutes les cinq secondes jusqu'à l'arrivée du plan. Abandonner l'attente ne perd donc **rien** — c'est meilleur qu'une annulation réelle, qui jetterait un appel LLM déjà payé. |
+| **L'interrogation est bornée** | Si le modèle échoue, rien n'est jamais écrit et on interrogerait indéfiniment. Plafond à environ trois fois le temps attendu, puis message d'échec explicite. |
+| **Une génération en vol à la fois** | Le bouton reste désactivé tant qu'une génération est en cours pour cette semaine, **y compris après avoir arrêté d'attendre**. Sinon on reconstruit exactement le problème qu'on vient d'éviter. |
+
+Une annulation réelle — signal au serveur, interruption du travail — supposerait de
+sortir du synchrone : file de tâches, identifiant de travail, jeton d'annulation.
+Hors périmètre V0, et sans bénéfice puisque le résultat arrive de toute façon.
 
 ---
 
@@ -271,13 +343,33 @@ identiquement quand il y en aura.
 > Lui demander les allergies de ses enfants avant de lui avoir rien montré est un
 > mauvais échange.
 
-| Étape | Contenu | Obligatoire |
+| Bloc | Contenu | Obligatoire |
 |---|---|---|
 | 1 | Les membres : **prénom + groupe d'âge** | Oui |
 | 2 | « Quelqu'un a-t-il une allergie ? » avec un **« non » cliquable en un geste** | Posée, pas obligatoire |
 | 3 | « Ce qu'on n'aime pas ici » — champ libre | Non |
 
 Tout le reste (créneaux, affinage des contraintes) se règle depuis les réglages.
+
+### Une seule page, trois blocs — pas trois étapes
+
+Ce sont des **blocs sur une même page**, et non les étapes d'un assistant. C'est la
+conséquence directe du refus ci-dessus : à ce stade l'utilisateur n'a aucune raison
+de faire confiance au produit. **Une page unique montre le coût total d'un coup
+d'œil** — *« trente secondes, et c'est tout ce qu'on me demande »*. Un assistant
+cache sa longueur : chaque étape franchie peut en révéler une autre, et on ne sait
+jamais quand ça s'arrête.
+
+Deux conséquences d'interface :
+
+- **Le bloc allergies s'active quand un membre existe.** Une allergie appartient à
+  quelqu'un (§10), donc tant que la liste est vide il n'y a rien à quoi l'attacher.
+  La page change de forme à mesure qu'on la remplit — l'ordre devient évident sans
+  être numéroté.
+- **Le « non » est pré-sélectionné**, pas à cocher. Deux boutons radio dont
+  « personne ici n'a d'allergie » est déjà retenu : la question est *posée*, elle
+  est à l'écran, et elle ne coûte aucun geste au cas majoritaire. Les 14 allergènes
+  réglementaires n'apparaissent qu'après avoir répondu « oui ».
 
 ### Groupe d'âge choisi, pas de date de naissance
 
@@ -307,6 +399,18 @@ saisir, on a proposé trois semaines de plats potentiellement dangereux. En V0 c
 sans conséquence — ni catalogue, ni garantie, un seul utilisateur — mais la
 question doit être **posée une fois, explicitement**, plutôt qu'enfouie dans des
 réglages.
+
+**Cette exigence impose un état persistant.** Déduire « l'onboarding est fait » du
+seul fait qu'il existe des membres a un trou qui n'est pas tordu : quelqu'un saisit
+ses deux membres, se fait interrompre, revient plus tard. Il a des membres, donc on
+l'envoie sur la semaine — **la question des allergies ne lui sera jamais posée.**
+C'est exactement l'exigence de ce paragraphe qu'on abandonnerait, dans le seul cas
+où elle avait une chance de servir. Une déduction ne sait d'ailleurs détecter que
+« zéro membre », jamais « bloc 2 sur 3 » : l'onboarding devient non reprenable.
+
+D'où **`household_settings.onboarded_at`**, posé à la fin du parcours — y compris
+quand la réponse aux allergies est « non », puisque c'est précisément ce qu'il faut
+enregistrer.
 
 ---
 
@@ -386,7 +490,7 @@ recouvrement.
 ```
 # Interprétation
 POST /meal-plans/interpret     { text }
-                               → { constraints: [ {type, label, value} ] }
+                               → { constraints: [ {kind, label, detail?} ] }
 
 # Génération
 POST /meal-plans               { scope:  {type:"week",  week_start}
@@ -408,9 +512,15 @@ POST /meal-plans/{id}/dishes/{dish_id}/rating         { value }
 GET  /household/constraints
 POST /household/constraints    { member_id?, allergen_code?, label?, severity }
 DELETE /household/constraints/{id}
+
+# Réglages du foyer
+GET   /household/settings      → { snacks_enabled, max_dishes_soft_limit,
+                                   onboarded_at }
+PATCH /household/settings      { snacks_enabled?, max_dishes_soft_limit?,
+                                 onboarded_at? }
 ```
 
-Deux choix qui méritent leur justification :
+Quatre choix qui méritent leur justification :
 
 **Les alternatives passent par un endpoint dédié** plutôt que d'être embarquées
 dans la réponse de génération. L'intention du §6 était d'éviter une
@@ -422,20 +532,68 @@ dont la vue mobile a besoin — et les alternatives disparaîtraient au recharge
 §10 : une aversion peut n'avoir aucun membre, donc l'URL ne peut plus être
 imbriquée sous un membre.
 
+**La fin de l'onboarding passe par `PATCH /household/settings`, pas par un verbe
+dédié.** `household_settings` porte déjà les réglages du foyer, et l'écran 6 devra
+de toute façon écrire dessus pour le goûter et la limite de plats. Un
+`POST /household/onboarding-complete` créerait un second chemin d'écriture vers la
+même ligne.
+
+**`MealPlanOut.violations` porte des objets, pas des chaînes.**
+
+```
+violations: [ { code, detail, day_of_week?, meal_type? } ]
+```
+
+L'API renvoie délibérément un plan rejeté **avec ce qui ne va pas** plutôt que de
+faire semblant qu'il est passé. Encore faut-il que le front puisse en faire quelque
+chose. Les 12 codes (`eater_not_served`, `too_many_dishes`…) ne veulent rien dire
+pour un foyer, mais **la seule réaction utile est par créneau** — régénérer
+celui-là, ou écrire le plat soi-même. Un bandeau qui signale un problème quelque
+part parmi neuf créneaux donne de l'inquiétude sans cible : c'est moins utile que
+le silence.
+
+L'interface affiche donc un message non technique (*« deux repas n'ont pas pu être
+complétés »*) et **marque les créneaux concernés dans la grille**. Les codes
+restent dans les logs, où ils servent au harness d'évaluation.
+
 `household_id` n'apparaît nulle part — il est dérivé de l'identité (I6).
+
+> **Ce que le 503 de génération ne doit pas dire.** Le message d'erreur remontait
+> l'exception brute, ce qui a mis `http://host.docker.internal:11434` dans un
+> navigateur. Un nom d'hôte interne ne sort pas : message générique côté client,
+> exception complète dans les logs.
 
 ---
 
 ## 14. Les écrans
 
-| # | Écran | Contenu |
-|---|---|---|
-| 1 | Connexion | Bouton Google |
-| 2 | Onboarding | Membres, allergies, aversions |
-| 3 | Semaine | Grille ou liste, basculable |
-| 4 | Génération | Texte libre → interprétation confirmable → attente |
-| 5 | Panneau créneau | Alternatives, réparation dirigée, variantes |
-| 6 | Réglages | Foyer, membres, contraintes, créneaux |
+| # | Écran | Contenu | URL |
+|---|---|---|---|
+| 1 | Connexion | Bouton Google | `/` sans session |
+| 2 | Onboarding | Membres, allergies, aversions — une page, trois blocs | `/onboarding` |
+| 3 | Semaine | Grille ou liste, basculable | `/?week=2026-08-10` |
+| 4 | Génération | Texte libre → interprétation confirmable → attente | **dans l'écran 3** |
+| 5 | Panneau créneau | Titre éditable, réparation dirigée, variantes, invités | `/?week=…&slot=3-dinner` |
+| 6 | Réglages | Foyer, membres, contraintes, créneaux | `/settings` |
+
+**L'écran 4 n'est pas un écran.** La génération vit **dans** l'écran de la semaine :
+on compose sa semaine en la regardant, et une fenêtre modale recouvrirait
+précisément ce qu'on est en train de commenter. Le champ de saisie est proéminent
+quand il n'y a pas de plan — c'est le premier écran que voit quelqu'un qui sort de
+l'onboarding — et se replie en une ligne, *« une précision pour cette semaine ? »*,
+une fois la semaine remplie. **La présence du plan suffit à décider**, aucun état
+supplémentaire n'est nécessaire.
+
+L'attente s'affiche à la place de la grille, donc **là où le résultat va
+apparaître**, et non dans une fenêtre qui va disparaître.
+
+La génération **d'un seul créneau et le mode invités** ne passent pas par là : ils
+partent du panneau de l'écran 5, déjà ouvert sur le créneau concerné. Même
+endpoint, même code client, portée différente — exactement ce que décrit le §4.
+
+**L'URL porte la semaine et le créneau ouvert.** Rechargement, retour arrière et
+lien partagé retombent sur le même état, et un `<dialog>` piloté par l'URL n'a pas
+d'état propre à désynchroniser.
 
 **Le goûter est hors périmètre V0** : objet distinct (§4.8), workflow propre,
 prévu en phase 3. L'inclure doublerait la surface de l'interface pour une
@@ -451,10 +609,30 @@ d'implémentation.**
 | Absent | Pourquoi | Arrive en |
 |---|---|---|
 | Le recouvrement entre plats | Pas d'ingrédients, donc pas de base commune calculable | V1 |
+| Les alternatives instantanées | Le pré-filtre est bouchonné : aucun candidat écarté à montrer (§6) | V1 |
 | L'explication d'un choix | Rien de réel à expliquer, le pré-filtre est bouchonné | V1 |
 | Toute garantie allergène | Ni référentiel, ni tags vérifiés | V1 |
 | Le contrôle d'âge des plats | Pas de `suitable_stages` sans catalogue | V1 |
 | Temps, difficulté, quantités | Viendraient du catalogue | V1 |
+
+### L'absence de garantie allergène doit être dite dans l'interface
+
+`ARCHITECTURE.md` §10.2 n'acceptait la V0 sans garantie qu'à la condition d'un usage
+par le fondateur seul. Cette condition tombe dès que l'app est donnée à tester à
+d'autres foyers — ce qui est le but.
+
+**La mention doit donc quitter la documentation et entrer dans l'écran**, à deux
+endroits : là où les allergies se saisissent (bloc 2 de l'onboarding, et les
+réglages), et sur le plan généré. Le contenu est le même et il est littéral : *les
+allergies déclarées ne sont pas filtrées, les plats proposés ne sont vérifiés par
+personne.*
+
+C'est le seul endroit de la V0 où l'interface parle plus fort que d'habitude. Une
+garantie absente qui n'est écrite que dans un fichier d'architecture n'a jamais
+protégé un enfant allergique. La mention disparaît en V1, quand le filtre devient
+réel.
+
+---
 
 Ce que la V0 **prouve** en revanche : la boucle agentic complète, l'interprétation
 d'intention, l'arbitrage sous enveloppe, la re-validation, les variantes de
