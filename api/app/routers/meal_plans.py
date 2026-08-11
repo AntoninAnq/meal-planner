@@ -5,7 +5,9 @@
 
 from __future__ import annotations
 
+import logging
 import uuid
+from collections.abc import Sequence
 from datetime import UTC, date, datetime
 from typing import Annotated
 
@@ -17,6 +19,7 @@ from app.auth.deps import CurrentHousehold
 from app.db.models import MealHistory, MealPlan, PlannedDish, PlannedDishMember
 from app.db.session import get_db
 from app.domain.enums import DishSource
+from app.domain.planning import Violation
 from app.llm.base import LLMClient, LLMError
 from app.llm.factory import get_llm_client
 from app.schemas import (
@@ -32,6 +35,7 @@ from app.schemas import (
     MealPlanOut,
     PlanSlotOut,
     SlotScope,
+    ViolationOut,
 )
 from app.services.planning_service import (
     GuestGroup,
@@ -48,7 +52,22 @@ DbDep = Annotated[Session, Depends(get_db)]
 LLMDep = Annotated[LLMClient, Depends(get_llm_client)]
 
 
-def _serialise(db: Session, plan: MealPlan, violations: list[str] | None = None) -> MealPlanOut:
+logger = logging.getLogger(__name__)
+
+#: What the browser is told when the model is unreachable. The exception text
+#: names the internal host and port it failed to reach — of no use to a
+#: household, and not something an internal address should be printed for.
+LLM_UNAVAILABLE = "the meal suggestion service is unavailable, try again in a moment"
+
+
+def _unavailable(exc: LLMError) -> HTTPException:
+    logger.exception("LLM call failed", exc_info=exc)
+    return HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, LLM_UNAVAILABLE)
+
+
+def _serialise(
+    db: Session, plan: MealPlan, violations: Sequence[Violation] | None = None
+) -> MealPlanOut:
     dishes = list(
         db.scalars(
             select(PlannedDish)
@@ -94,7 +113,15 @@ def _serialise(db: Session, plan: MealPlan, violations: list[str] | None = None)
         id=plan.id,
         week_start=plan.week_start,
         slots=list(slots.values()),
-        violations=violations or [],
+        violations=[
+            ViolationOut(
+                code=violation.code,
+                detail=violation.detail,
+                day_of_week=violation.day_of_week,
+                meal_type=violation.meal_type,
+            )
+            for violation in violations or ()
+        ],
     )
 
 
@@ -121,7 +148,7 @@ def interpret(
             schema=INTERPRETATION_SCHEMA,
         )
     except LLMError as exc:
-        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, str(exc)) from exc
+        raise _unavailable(exc) from exc
 
     return InterpretResponse(
         constraints=[
@@ -171,11 +198,11 @@ def create_plan(
     except ValueError as exc:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(exc)) from exc
     except LLMError as exc:
-        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, str(exc)) from exc
+        raise _unavailable(exc) from exc
 
     # A plan that never satisfied the envelope is returned WITH what is wrong.
     # Nothing here pretends a rejected plan passed.
-    return _serialise(db, plan, [str(violation) for violation in outcome.violations])
+    return _serialise(db, plan, outcome.violations)
 
 
 @router.get("", response_model=MealPlanOut | None)
@@ -264,9 +291,9 @@ def regenerate_dish(
             user_constraints=[payload.reason],
         )
     except LLMError as exc:
-        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, str(exc)) from exc
+        raise _unavailable(exc) from exc
 
-    return _serialise(db, plan, [str(violation) for violation in outcome.violations])
+    return _serialise(db, plan, outcome.violations)
 
 
 @router.post("/{plan_id}/dishes/{dish_id}/rating", status_code=status.HTTP_204_NO_CONTENT)

@@ -517,7 +517,7 @@ DELETE /household/constraints/{id}
 GET   /household/settings      → { snacks_enabled, max_dishes_soft_limit,
                                    onboarded_at }
 PATCH /household/settings      { snacks_enabled?, max_dishes_soft_limit?,
-                                 onboarded_at? }
+                                 onboarding_complete? }
 ```
 
 Quatre choix qui méritent leur justification :
@@ -537,6 +537,11 @@ dédié.** `household_settings` porte déjà les réglages du foyer, et l'écran
 de toute façon écrire dessus pour le goûter et la limite de plats. Un
 `POST /household/onboarding-complete` créerait un second chemin d'écriture vers la
 même ligne.
+
+Noter que la charge utile porte `onboarding_complete` — **une intention, pas une
+date**. Un client n'écrit jamais une valeur d'horloge serveur : elle serait fausse
+de son propre décalage, et rien ne l'empêcherait d'être arbitraire. `true` horodate,
+`false` efface — ce qui rend l'onboarding rejouable pendant le développement.
 
 **`MealPlanOut.violations` porte des objets, pas des chaînes.**
 

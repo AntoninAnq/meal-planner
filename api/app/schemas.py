@@ -7,7 +7,7 @@ the authenticated identity (invariant I6) and appears in no endpoint signature.
 from __future__ import annotations
 
 import uuid
-from datetime import date
+from datetime import date, datetime
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -24,6 +24,26 @@ class HouseholdOut(BaseModel):
 
 class HouseholdUpdate(BaseModel):
     name: str = Field(min_length=1, max_length=120)
+
+
+class HouseholdSettingsOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    snacks_enabled: bool
+    max_dishes_soft_limit: int
+    onboarded_at: datetime | None
+
+
+class HouseholdSettingsUpdate(BaseModel):
+    """Every field optional: this is a patch, not a replacement."""
+
+    snacks_enabled: bool | None = None
+    max_dishes_soft_limit: int | None = Field(default=None, ge=1, le=6)
+    #: An intent, not a timestamp. A client must never write a server clock
+    #: value — it would be wrong by its own skew, and nothing stops it being
+    #: arbitrary. `True` stamps now; `False` clears it, which is what makes the
+    #: onboarding replayable during development.
+    onboarding_complete: bool | None = None
 
 
 class MealSlotOut(BaseModel):
@@ -187,13 +207,28 @@ class PlanSlotOut(BaseModel):
     dishes: list[DishOut]
 
 
+class ViolationOut(BaseModel):
+    """What the re-validation rejected, addressed to two different readers.
+
+    `code` and `detail` are for the logs and the eval harness. `day_of_week`
+    and `meal_type` are for the interface: the only useful reaction to a
+    violation is per slot — regenerate that one, or write the dish yourself —
+    so a message that cannot point at a meal is less useful than silence.
+    """
+
+    code: str
+    detail: str
+    day_of_week: int | None = None
+    meal_type: MealType | None = None
+
+
 class MealPlanOut(BaseModel):
     id: uuid.UUID
     week_start: date
     slots: list[PlanSlotOut]
     #: Present when the model never produced a plan inside the envelope. The
     #: plan is returned anyway, with what is wrong stated plainly.
-    violations: list[str] = Field(default_factory=list)
+    violations: list[ViolationOut] = Field(default_factory=list)
 
 
 class DishReplace(BaseModel):

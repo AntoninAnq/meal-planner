@@ -226,3 +226,30 @@ def test_repair_hint_mentions_every_violation() -> None:
 
     for violation in violations:
         assert violation.code in hint
+
+
+def test_every_violation_carries_the_slot_it_is_about() -> None:
+    """Without this, an interface can only say "something is wrong somewhere".
+
+    The only useful reaction to a violation is per slot — regenerate that one,
+    or write the dish yourself — so a message that cannot point at a meal is
+    less useful than silence.
+    """
+    proposal = [
+        slot(0, dish("m1", "m9")),  # unknown eater, m2/m3 unserved
+        slot(5, dish("m1", "m2", "m3")),  # never requested
+    ]
+    violations = validate_proposal(proposal, SPEC)
+
+    assert violations
+    for violation in violations:
+        assert violation.day_of_week is not None, violation
+        assert violation.meal_type is not None, violation
+
+    # Including the one that says a whole slot is missing: it is about tuesday,
+    # which is precisely the slot the interface has to mark.
+    missing = [v for v in violations if v.code == MISSING_SLOT]
+    assert [(v.day_of_week, v.meal_type) for v in missing] == [(1, MealType.DINNER)]
+
+    invented = [v for v in violations if v.code == UNKNOWN_SLOT]
+    assert [(v.day_of_week, v.meal_type) for v in invented] == [(5, MealType.DINNER)]

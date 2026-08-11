@@ -69,6 +69,12 @@ class ProposedSlot:
 class Violation:
     code: str
     detail: str
+    #: The slot this is about, when there is one. The code and the detail are
+    #: for the repair prompt and the logs; these two are what lets an interface
+    #: point at the meal instead of merely worrying the household. Null only
+    #: for a violation that belongs to no single slot.
+    day_of_week: int | None = None
+    meal_type: MealType | None = None
 
     def __str__(self) -> str:  # pragma: no cover - debugging convenience
         return f"{self.code}: {self.detail}"
@@ -128,15 +134,17 @@ def _check_slot_coverage(
 
     for key, count in seen.items():
         if key not in by_key:
-            violations.append(Violation(UNKNOWN_SLOT, f"day {key[0]} {key[1]} was not requested"))
+            violations.append(
+                Violation(UNKNOWN_SLOT, f"day {key[0]} {key[1]} was not requested", *key)
+            )
         elif count > 1:
             violations.append(
-                Violation(DUPLICATE_SLOT, f"day {key[0]} {key[1]} appears {count} times")
+                Violation(DUPLICATE_SLOT, f"day {key[0]} {key[1]} appears {count} times", *key)
             )
 
     for key in by_key:
         if key not in seen:
-            violations.append(Violation(MISSING_SLOT, f"day {key[0]} {key[1]} is missing"))
+            violations.append(Violation(MISSING_SLOT, f"day {key[0]} {key[1]} is missing", *key))
 
 
 def _check_slot(
@@ -145,10 +153,11 @@ def _check_slot(
     allowed_recipe_ids: frozenset[str] | None,
     violations: list[Violation],
 ) -> None:
+    key = slot.key
     where = f"day {slot.day_of_week} {slot.meal_type}"
 
     if not slot.dishes:
-        violations.append(Violation(EMPTY_SLOT, f"{where} has no dish"))
+        violations.append(Violation(EMPTY_SLOT, f"{where} has no dish", *key))
         return
 
     # The soft limit on dish count is a scoring penalty, never a hard
@@ -160,6 +169,7 @@ def _check_slot(
             Violation(
                 TOO_MANY_DISHES,
                 f"{where} has {len(slot.dishes)} dishes for {len(expected.eater_aliases)} eater(s)",
+                *key,
             )
         )
 
@@ -167,41 +177,44 @@ def _check_slot(
     served: Counter[str] = Counter()
 
     for dish in slot.dishes:
-        _check_dish(dish, where, allowed_eaters, allowed_recipe_ids, violations)
+        _check_dish(dish, key, allowed_eaters, allowed_recipe_ids, violations)
         served.update(dish.eater_aliases)
 
     for alias in expected.eater_aliases:
         if served[alias] == 0:
-            violations.append(Violation(EATER_NOT_SERVED, f"{where}: {alias} eats nothing"))
+            violations.append(Violation(EATER_NOT_SERVED, f"{where}: {alias} eats nothing", *key))
         elif served[alias] > 1:
             violations.append(
                 Violation(
                     EATER_SERVED_TWICE,
                     f"{where}: {alias} is assigned to {served[alias]} dishes",
+                    *key,
                 )
             )
 
 
 def _check_dish(
     dish: ProposedDish,
-    where: str,
+    key: tuple[int, MealType],
     allowed_eaters: set[str],
     allowed_recipe_ids: frozenset[str] | None,
     violations: list[Violation],
 ) -> None:
+    where = f"day {key[0]} {key[1]}"
+
     if dish.recipe_id is None and not (dish.label or "").strip():
         violations.append(
-            Violation(DISH_WITHOUT_IDENTITY, f"{where}: a dish has neither recipe nor label")
+            Violation(DISH_WITHOUT_IDENTITY, f"{where}: a dish has neither recipe nor label", *key)
         )
 
     if not dish.eater_aliases:
         name = dish.recipe_id or dish.label or "?"
-        violations.append(Violation(DISH_WITHOUT_EATER, f"{where}: '{name}' feeds nobody"))
+        violations.append(Violation(DISH_WITHOUT_EATER, f"{where}: '{name}' feeds nobody", *key))
 
     for alias in dish.eater_aliases:
         if alias not in allowed_eaters:
             violations.append(
-                Violation(UNKNOWN_EATER, f"{where}: '{alias}' does not eat at this slot")
+                Violation(UNKNOWN_EATER, f"{where}: '{alias}' does not eat at this slot", *key)
             )
 
     # THE envelope check. Inactive in V0 (allowed_recipe_ids is None) because the
@@ -216,6 +229,7 @@ def _check_dish(
             Violation(
                 DISH_OUTSIDE_CANDIDATES,
                 f"{where}: '{dish.recipe_id}' is not among the pre-filtered candidates",
+                *key,
             )
         )
 
@@ -225,6 +239,7 @@ def _check_dish(
                 Violation(
                     VARIANT_FOR_NON_EATER,
                     f"{where}: a serving variant targets '{alias}', who does not eat this dish",
+                    *key,
                 )
             )
 

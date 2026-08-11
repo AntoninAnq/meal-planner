@@ -5,6 +5,7 @@ Every query is scoped by the household derived from the session (invariant I6).
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -12,9 +13,16 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.auth.deps import CurrentHousehold
-from app.db.models import Household, MealSlotConfig
+from app.db.models import Household, HouseholdSettings, MealSlotConfig
 from app.db.session import get_db
-from app.schemas import HouseholdOut, HouseholdUpdate, MealSlotOut, MealSlotUpdate
+from app.schemas import (
+    HouseholdOut,
+    HouseholdSettingsOut,
+    HouseholdSettingsUpdate,
+    HouseholdUpdate,
+    MealSlotOut,
+    MealSlotUpdate,
+)
 
 router = APIRouter(prefix="/household", tags=["household"])
 
@@ -41,6 +49,47 @@ def update_household(
     household.name = payload.name
     db.commit()
     return household
+
+
+def _load_settings(db: Session, household_id: CurrentHousehold) -> HouseholdSettings:
+    """Provisioning creates this row, so a missing one means a household that
+    predates it. Creating it here is cheaper than a startup migration and keeps
+    every caller from having to handle a null."""
+    settings = db.get(HouseholdSettings, household_id)
+    if settings is None:
+        settings = HouseholdSettings(household_id=household_id)
+        db.add(settings)
+        db.commit()
+    return settings
+
+
+@router.get("/settings", response_model=HouseholdSettingsOut)
+def read_settings(db: DbDep, household_id: CurrentHousehold) -> HouseholdSettings:
+    return _load_settings(db, household_id)
+
+
+@router.patch("/settings", response_model=HouseholdSettingsOut)
+def update_settings(
+    payload: HouseholdSettingsUpdate, db: DbDep, household_id: CurrentHousehold
+) -> HouseholdSettings:
+    """One write path to the settings row, rather than a verb per field.
+
+    The onboarding ends here too: a dedicated `POST /onboarding-complete` would
+    be a second way to write the same row, and the settings screen has to be
+    able to write it anyway.
+    """
+    settings = _load_settings(db, household_id)
+
+    if payload.snacks_enabled is not None:
+        settings.snacks_enabled = payload.snacks_enabled
+    if payload.max_dishes_soft_limit is not None:
+        settings.max_dishes_soft_limit = payload.max_dishes_soft_limit
+    if payload.onboarding_complete is not None:
+        # The server stamps the clock. The client says whether, never when.
+        settings.onboarded_at = datetime.now(UTC) if payload.onboarding_complete else None
+
+    db.commit()
+    return settings
 
 
 @router.get("/slots", response_model=list[MealSlotOut])

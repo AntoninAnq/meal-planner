@@ -44,6 +44,14 @@ export type HouseholdSettings = {
   onboarded_at: string | null;
 };
 
+export type HouseholdSettingsUpdate = {
+  snacks_enabled?: boolean;
+  max_dishes_soft_limit?: number;
+  /** An intent, not a date: the server stamps its own clock. `false` clears
+   * it, which is what makes the onboarding replayable while developing. */
+  onboarding_complete?: boolean;
+};
+
 export type Member = {
   id: string;
   display_name: string;

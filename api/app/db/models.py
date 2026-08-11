@@ -112,6 +112,14 @@ class HouseholdSettings(Base):
     # Soft penalty, never a hard constraint. The only hard bound is
     # "at worst one dish per member", which is trivially satisfiable.
     max_dishes_soft_limit: Mapped[int] = mapped_column(SmallInteger, default=2)
+    # Null until the onboarding is finished. It cannot be derived from "this
+    # household has members": someone interrupted after adding them would never
+    # be asked the allergy question, which is the one thing the onboarding
+    # exists to ask. A derivation also cannot tell "block 2 of 3" from "not
+    # started", so the flow would not be resumable.
+    onboarded_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     household: Mapped[Household] = relationship(back_populates="settings")
 
