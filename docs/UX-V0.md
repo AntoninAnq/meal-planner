@@ -543,11 +543,23 @@ date**. Un client n'écrit jamais une valeur d'horloge serveur : elle serait fau
 de son propre décalage, et rien ne l'empêcherait d'être arbitraire. `true` horodate,
 `false` efface — ce qui rend l'onboarding rejouable pendant le développement.
 
-**`MealPlanOut.violations` porte des objets, pas des chaînes.**
+**`MealPlanOut.violations` porte des objets, pas des chaînes — et il est stocké.**
 
 ```
 violations: [ { code, detail, day_of_week?, meal_type? } ]
 ```
+
+Les violations décrivent le plan écrit, donc **elles vivent avec lui**, dans une
+colonne de `meal_plan`. Elles n'existaient d'abord que dans la réponse du `POST` —
+or la vue charge par `GET`, délibérément, parce que c'est ce qui rend une réponse
+perdue survivable. Un simple rechargement perdait donc exactement l'information qui
+dit que le plan est incomplet : le plan survivait, l'avertissement non. Les lire
+depuis le stockage fait coïncider les deux chemins par construction plutôt que par
+discipline.
+
+Une génération limitée à un créneau ne remplace que **ses** violations : celles des
+autres créneaux décrivent toujours ce qu'il y a dans l'assiette, exactement comme
+les plats.
 
 L'API renvoie délibérément un plan rejeté **avec ce qui ne va pas** plutôt que de
 faire semblant qu'il est passé. Encore faut-il que le front puisse en faire quelque

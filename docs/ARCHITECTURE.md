@@ -944,7 +944,41 @@ Le **Jaccard** sur les recettes est **affiché mais hors score** (0 % = le modè
 | Latence, tokens, coût par plan | La comparaison économique |
 | Appétence (1-5, **saisie humaine**) | La seule métrique non automatisable |
 
-### 14.6 LLM-juge : repoussé
+### 14.6 Ce que `qwen3:8b` fait et ne fait pas — mesuré
+
+Premier essai réel du wedge : un foyer `teen_adult` + `young_child` + `baby`, neuf
+créneaux, aucune contrainte. Trois générations successives, en corrigeant le prompt
+entre chacune. **Les résultats à conserver, parce qu'ils orientent le harness :**
+
+| Mesure | Avant | Après correction du prompt |
+|---|---|---|
+| Créneaux avec variante de service | 0 / 9 | **9 / 9** |
+| Plats dupliqués dans un même créneau | 3 par créneau | 0 |
+| Plats distincts sur la semaine | 1 / 9 | **1 / 9** |
+| Violations | 0 | 0 |
+
+Deux enseignements qui ne se devinent pas :
+
+**Le modèle connaissait les stades de vie et n'en faisait rien.** Le contexte
+envoyait bien `stage=baby` ; les instructions ne disaient nulle part ce qu'un
+stade *implique* pour une assiette. Face à la règle « préférer moins de plats
+distincts », servir un poulet rôti à un nourrisson satisfaisait parfaitement la
+consigne. Le vocabulaire des stades étant fixe, il appartient aux instructions —
+donc à la partie cacheable — et non au contexte.
+
+**Il a ensuite exprimé la variante en fabriquant trois plats de titre identique**,
+au lieu de remplir `serving_variants`. Décrire un mécanisme en prose ne suffit
+pas : il a fallu **nommer le champ et montrer la forme JSON attendue**. C'est une
+défaillance de compréhension du schéma, pas du domaine — et le validateur
+l'acceptait, trois plats pour trois mangeurs restant sous la limite.
+
+**Ce qui résiste : la non-répétition.** Neuf créneaux, le même plat neuf fois,
+malgré une règle explicite et non ambiguë. C'est le plafond du 8B sur cette tâche,
+pas un trou de prompt. La comparaison avec Haiku 4.5 sur ce cas précis est le
+premier travail du harness — et **le chemin Anthropic n'a jamais été exercé contre
+la vraie API**, ce qui en fait un préalable, pas une conclusion.
+
+### 14.7 LLM-juge : repoussé
 
 Un modèle qui note le plan généré face à la référence capte des choses que les distances ratent. Mais c'est du non-déterministe qui évalue du non-déterministe, il faut le valider lui-même, et il demande un modèle **plus gros** que celui testé — donc plus cher que ce qu'il évalue.
 

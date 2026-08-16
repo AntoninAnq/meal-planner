@@ -225,6 +225,10 @@ class ViolationOut(BaseModel):
 class MealPlanOut(BaseModel):
     id: uuid.UUID
     week_start: date
+    #: Stamped on every generation. It is what lets a client that stopped
+    #: waiting tell the plan it was already looking at from the one that has
+    #: just landed.
+    generated_at: datetime
     slots: list[PlanSlotOut]
     #: Present when the model never produced a plan inside the envelope. The
     #: plan is returned anyway, with what is wrong stated plainly.

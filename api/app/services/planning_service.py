@@ -11,7 +11,7 @@ import json
 import uuid
 from collections.abc import Sequence
 from dataclasses import dataclass
-from datetime import date, timedelta
+from datetime import UTC, date, datetime, timedelta
 
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
@@ -25,7 +25,7 @@ from app.db.models import (
     PlannedDishMember,
 )
 from app.domain.enums import ConstraintSeverity, DishSource, LifeStage, MealType
-from app.domain.planning import ProposedSlot, SlotSpec
+from app.domain.planning import ProposedSlot, SlotSpec, Violation
 from app.domain.prompt_context import MemberInput, build_prompt_context
 from app.llm.base import LLMClient
 from app.workflows.week_plan import PlanOutcome, PlanRequest, run_plan
@@ -202,6 +202,7 @@ def generate_plan(
         targets=slot_targets,
         proposal=outcome.proposal,
         alias_to_member=alias_to_member,
+        violations=outcome.violations,
         generation_input=json.dumps(
             {
                 "constraints": list(user_constraints),
@@ -265,6 +266,7 @@ def _persist(
     proposal: Sequence[ProposedSlot],
     alias_to_member: dict[str, uuid.UUID],
     generation_input: str,
+    violations: Sequence[Violation],
 ) -> MealPlan:
     plan = db.scalar(
         select(MealPlan).where(
@@ -277,10 +279,33 @@ def _persist(
         db.flush()
 
     plan.generation_input = generation_input
+    # Stamped on every generation, not only on the first. The column defaults to
+    # the row's creation time, which stops being true the moment a slot is
+    # regenerated — and a client that abandoned the wait has nothing else to
+    # tell "the plan I was already looking at" from "the one that just landed".
+    plan.generated_at = datetime.now(UTC)
 
     # Only the regenerated slots are replaced: a slot-scoped generation must not
     # wipe the six other days that suited the user.
     regenerated = {(target.day_of_week, target.meal_type) for target in targets}
+
+    # Same rule for the violations: those of the untouched slots still describe
+    # what is on the plate there, so only the regenerated ones are replaced.
+    kept = [
+        entry
+        for entry in (plan.violations or [])
+        if (entry.get("day_of_week"), entry.get("meal_type")) not in regenerated
+    ]
+    plan.violations = kept + [
+        {
+            "code": violation.code,
+            "detail": violation.detail,
+            "day_of_week": violation.day_of_week,
+            "meal_type": violation.meal_type,
+        }
+        for violation in violations
+    ]
+
     for dish in list(db.scalars(select(PlannedDish).where(PlannedDish.meal_plan_id == plan.id))):
         if (dish.day_of_week, dish.meal_type) in regenerated:
             db.delete(dish)

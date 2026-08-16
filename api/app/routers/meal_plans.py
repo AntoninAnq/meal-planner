@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import logging
 import uuid
-from collections.abc import Sequence
 from datetime import UTC, date, datetime
 from typing import Annotated
 
@@ -19,7 +18,6 @@ from app.auth.deps import CurrentHousehold
 from app.db.models import MealHistory, MealPlan, PlannedDish, PlannedDishMember
 from app.db.session import get_db
 from app.domain.enums import DishSource
-from app.domain.planning import Violation
 from app.llm.base import LLMClient, LLMError
 from app.llm.factory import get_llm_client
 from app.schemas import (
@@ -65,9 +63,14 @@ def _unavailable(exc: LLMError) -> HTTPException:
     return HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, LLM_UNAVAILABLE)
 
 
-def _serialise(
-    db: Session, plan: MealPlan, violations: Sequence[Violation] | None = None
-) -> MealPlanOut:
+def _serialise(db: Session, plan: MealPlan) -> MealPlanOut:
+    """Violations come from the plan row, not from an argument.
+
+    They used to travel only in the generation response — but the week view
+    loads through GET, so a reload dropped the one thing saying the plan was
+    incomplete. Reading them from storage makes the two paths agree by
+    construction rather than by discipline.
+    """
     dishes = list(
         db.scalars(
             select(PlannedDish)
@@ -112,16 +115,9 @@ def _serialise(
     return MealPlanOut(
         id=plan.id,
         week_start=plan.week_start,
+        generated_at=plan.generated_at,
         slots=list(slots.values()),
-        violations=[
-            ViolationOut(
-                code=violation.code,
-                detail=violation.detail,
-                day_of_week=violation.day_of_week,
-                meal_type=violation.meal_type,
-            )
-            for violation in violations or ()
-        ],
+        violations=[ViolationOut(**entry) for entry in plan.violations or ()],
     )
 
 
@@ -202,7 +198,7 @@ def create_plan(
 
     # A plan that never satisfied the envelope is returned WITH what is wrong.
     # Nothing here pretends a rejected plan passed.
-    return _serialise(db, plan, outcome.violations)
+    return _serialise(db, plan)
 
 
 @router.get("", response_model=MealPlanOut | None)
@@ -293,7 +289,7 @@ def regenerate_dish(
     except LLMError as exc:
         raise _unavailable(exc) from exc
 
-    return _serialise(db, plan, outcome.violations)
+    return _serialise(db, plan)
 
 
 @router.post("/{plan_id}/dishes/{dish_id}/rating", status_code=status.HTTP_204_NO_CONTENT)

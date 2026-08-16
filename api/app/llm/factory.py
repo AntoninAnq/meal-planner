@@ -21,6 +21,7 @@ def build_llm_client(settings: Settings) -> LLMClient:
             return OllamaClient(
                 base_url=settings.ollama_base_url,
                 model=settings.ollama_model,
+                timeout_seconds=settings.ollama_timeout_seconds,
             )
         case "anthropic":
             from app.llm.anthropic_client import AnthropicClient

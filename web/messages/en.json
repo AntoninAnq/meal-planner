@@ -3,25 +3,195 @@
     "title": "Meal Planner",
     "tagline": "Planning the week when not everyone eats the same thing"
   },
-  "home": {
-    "signedOutHeading": "Welcome",
-    "signedOutBody": "Sign in to plan your household's week.",
-    "signIn": "Sign in with Google",
-    "signedInHeading": "Your household",
-    "membersHeading": "Members",
-    "noMembers": "No members yet.",
-    "pendingTransitionsHeading": "Life-stage changes to confirm",
-    "pendingTransition": "{name} would move from {from} to {to}",
-    "confirm": "Confirm",
-    "signOut": "Sign out"
+  "signIn": {
+    "heading": "Plan the week, even when not everyone eats the same thing",
+    "body": "A baby, a fussy eater, an allergy: you end up cooking twice. Meal Planner suggests a week where everyone eats, without doubling the work.",
+    "button": "Sign in with Google",
+    "privacy": "We only ask for your email and name. No password is ever stored."
+  },
+  "common": {
+    "add": "Add",
+    "remove": "Remove",
+    "cancel": "Cancel",
+    "saving": "Saving…",
+    "genericError": "Something went wrong. Try again."
   },
   "lifeStage": {
     "baby": "Baby",
     "young_child": "Young child",
-    "teen_adult": "Teen / adult"
+    "teen_adult": "Teen / adult",
+    "hint": "Baby up to around 18 months, young child up to 11. You can change it at any time."
   },
   "mealType": {
     "lunch": "Lunch",
     "dinner": "Dinner"
+  },
+  "allergen": {
+    "gluten": "Gluten",
+    "crustaceans": "Crustaceans",
+    "eggs": "Eggs",
+    "fish": "Fish",
+    "peanuts": "Peanuts",
+    "soybeans": "Soybeans",
+    "milk": "Milk",
+    "nuts": "Tree nuts",
+    "celery": "Celery",
+    "mustard": "Mustard",
+    "sesame": "Sesame",
+    "sulphites": "Sulphites",
+    "lupin": "Lupin",
+    "molluscs": "Molluscs"
+  },
+  "allergenNotice": {
+    "heading": "Allergies are not filtered yet",
+    "body": "This version suggests meal ideas from plain titles, with no recipe database and no ingredient list. What you declare here is passed to the model as an instruction, but nothing verifies it. Read every dish before you cook."
+  },
+  "onboarding": {
+    "heading": "Welcome",
+    "intro": "Three questions, then on to the week. You can change everything afterwards.",
+    "membersHeading": "Who eats here?",
+    "membersHint": "A first name is enough. Add at least one person.",
+    "namePlaceholder": "First name",
+    "nameLabel": "First name",
+    "stageLabel": "Age group",
+    "noMembers": "Nobody yet.",
+    "removeMember": "Remove {name}",
+    "allergiesHeading": "Does anyone have an allergy?",
+    "allergiesLocked": "Add a person first: an allergy belongs to someone.",
+    "allergyNo": "Nobody here has an allergy",
+    "allergyYes": "Yes, let me specify",
+    "allergyMember": "Who",
+    "allergyCode": "Allergen",
+    "allergyList": "Declared allergies",
+    "allergyRow": "{name} — {allergen}",
+    "dislikesHeading": "What we don't like here",
+    "dislikesHint": "Optional, and for the whole household. Separate with commas. You can narrow it down to one person later.",
+    "dislikesPlaceholder": "spinach, courgettes…",
+    "dislikesLabel": "Disliked foods",
+    "finish": "Finish",
+    "needsMember": "Add at least one person before continuing."
+  },
+  "home": {
+    "signedInHeading": "Your household",
+    "membersHeading": "Members",
+    "noMembers": "No members yet.",
+    "pendingTransitionsHeading": "Stage changes to confirm",
+    "pendingTransition": "{name} would move from {from} to {to}",
+    "confirm": "Confirm",
+    "signOut": "Sign out",
+    "weekPending": "The week view comes next.",
+    "weekPendingBody": "Onboarding is done. The week grid and generation are the next screens being built."
+  },
+  "plan": {
+    "weekOf": "Week of {date}",
+    "previousWeek": "← Previous week",
+    "thisWeek": "This week",
+    "nextWeek": "Next week →",
+    "viewLabel": "View",
+    "view": {
+      "grid": "Grid",
+      "list": "List"
+    },
+    "today": "Today",
+    "emptySlot": "Nothing planned",
+    "noSlot": "—",
+    "untitled": "Untitled dish",
+    "variant": "For {name}: {variant}",
+    "slotIncomplete": "This meal could not be completed",
+    "violationsHeading": "{count, plural, one {One meal could not be completed} other {# meals could not be completed}}",
+    "violationsBody": "They are marked in the week. You can regenerate them or write the dish yourself.",
+    "generationLost": "The generation did not arrive. Try again.",
+    "noMembers": "Add at least one person before generating a week.",
+    "settings": "Settings"
+  },
+  "composer": {
+    "collapsed": "Anything to note for this week?",
+    "label": "Tell us what matters this week",
+    "placeholder": "We're barely home this week, Tuesday I get back late, there's chicken left over, and it's been a while since we had pulses.",
+    "read": "Continue",
+    "reading": "Reading",
+    "understood": "Understood:",
+    "understoodNothing": "Nothing specific picked up. You can generate as is.",
+    "dropConstraint": "Remove “{label}”",
+    "generate": "Generate the week"
+  },
+  "waiting": {
+    "srLabel": "Generating",
+    "announced": "Give it about {seconds} seconds.",
+    "playful": {
+      "0": "Leafing through the recipe book…",
+      "1": "Working out who eats what…",
+      "2": "Trying not to repeat last Tuesday…",
+      "3": "Looking for a dish everyone agrees on…",
+      "4": "Setting the table…"
+    },
+    "slow": "This is taking longer than usual.",
+    "stalled": "The plan never arrived.",
+    "stopWaiting": "Stop waiting",
+    "stillCooking": "Your week is still being prepared — it will show up here on its own."
+  },
+  "panel": {
+    "title": "{meal} slot",
+    "day": "{date}",
+    "close": "Close",
+    "empty": "Nothing planned for this meal.",
+    "titleLabel": "The dish",
+    "save": "Save",
+    "rate": "Did this one go down well?",
+    "liked": "Yes",
+    "disliked": "No",
+    "elseHeading": "Suggest something else",
+    "elseHint": "Say why: the reason becomes a constraint, it is not thrown away.",
+    "reasonLabel": "Why",
+    "reasonPlaceholder": "no fish on Tuesday, takes too long…",
+    "regenerate": "Suggest something else",
+    "generateSlot": "Generate this meal",
+    "guestsHeading": "Guests?",
+    "guestsHint": "They are never stored: they exist for this meal only. Their age group is what portions need.",
+    "guestRow": "{count} × {stage}",
+    "guestStage": "Age group",
+    "guestCount": "How many",
+    "guestsNoGuarantee": "For this meal nothing is guaranteed beyond what you declared. Ask your guests.",
+    "generateWithGuests": "Generate with guests"
+  },
+  "settings": {
+    "heading": "Settings",
+    "backToWeek": "← The week",
+    "save": "Save",
+    "saved": "Saved.",
+    "householdHeading": "Household",
+    "householdName": "Household name",
+    "membersHeading": "Members",
+    "newMember": "First name",
+    "stage": "Age group",
+    "stageOf": "{name}'s age group",
+    "constraintsHeading": "Allergies and dislikes",
+    "constraintsHint": "A dislike can apply to the whole household or to one person. An allergy always belongs to someone.",
+    "constraintRow": "{who} — {what} ({severity})",
+    "wholeHousehold": "Whole household",
+    "attachTo": "Narrow to a person",
+    "who": "Who",
+    "allergen": "Allergen",
+    "food": "Food",
+    "severity": {
+      "label": "Kind",
+      "aversion": "Dislikes",
+      "intolerance": "Intolerance",
+      "severe_allergy": "Severe allergy"
+    },
+    "slotsHeading": "Planned meals",
+    "slotsHint": "Tick the meals you want to see in the week. This is a household grid, not a per-person one.",
+    "day": {
+      "0": "Mon",
+      "1": "Tue",
+      "2": "Wed",
+      "3": "Thu",
+      "4": "Fri",
+      "5": "Sat",
+      "6": "Sun"
+    },
+    "otherHeading": "Other",
+    "snacks": "Also suggest an afternoon snack",
+    "snacksHint": "No effect in V0: the snack is a distinct object, planned for later."
   }
 }

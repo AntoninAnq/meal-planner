@@ -30,7 +30,9 @@ from sqlalchemy import (
     UniqueConstraint,
     Uuid,
     func,
+    text,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 from app.domain.enums import AllergenCode, ConstraintSeverity, DishSource, LifeStage, MealType
@@ -243,6 +245,13 @@ class MealPlan(Base):
     #: The free-text intent the user typed, kept for the eval harness and for
     #: reproducing a plan.
     generation_input: Mapped[str | None] = mapped_column(Text)
+    #: What the re-validation rejected, stored with the plan it describes. The
+    #: week view loads through GET, so violations that lived only in the POST
+    #: response vanished on the first reload — taking with them the one thing
+    #: that said this plan is incomplete.
+    violations: Mapped[list[dict[str, object]]] = mapped_column(
+        JSONB, default=list, server_default=text("'[]'::jsonb")
+    )
 
     dishes: Mapped[list[PlannedDish]] = relationship(back_populates="plan")
 
@@ -278,7 +287,14 @@ class PlannedDish(Base):
     )
 
     plan: Mapped[MealPlan] = relationship(back_populates="dishes")
-    eaters: Mapped[list[PlannedDishMember]] = relationship(back_populates="dish")
+    # `passive_deletes` hands the cascade to the database, which already has
+    # ON DELETE CASCADE. Without it the ORM tries to blank out
+    # `planned_dish_member.planned_dish_id` — half of that table's primary key —
+    # and raises. It only shows up when a slot that ALREADY had dishes is
+    # regenerated, which is exactly what the slot panel does.
+    eaters: Mapped[list[PlannedDishMember]] = relationship(
+        back_populates="dish", cascade="all, delete-orphan", passive_deletes=True
+    )
 
 
 class PlannedDishMember(Base):

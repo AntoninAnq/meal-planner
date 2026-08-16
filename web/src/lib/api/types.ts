@@ -122,6 +122,11 @@ export type Violation = {
 export type MealPlan = {
   id: string;
   week_start: string;
+  /** Stamped on every generation. It is what lets a client that stopped
+   * waiting tell the plan it was already looking at from the one that has just
+   * landed — the endpoint is synchronous and never learns the client left, so
+   * abandoning the wait does not abandon the generation. */
+  generated_at: string;
   slots: PlanSlot[];
   violations: Violation[];
 };

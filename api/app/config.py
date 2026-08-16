@@ -36,6 +36,11 @@ class Settings(BaseSettings):
     llm_max_attempts: int = 3
     ollama_base_url: str = "http://host.docker.internal:11434"
     ollama_model: str = "qwen3:8b"
+    #: A whole week on a local 8B is minutes, not seconds, and the prompt grows
+    #: as the household does. Written in the code it would be a technical value
+    #: in the wrong place (I8) — and the failure it causes reads as "the model
+    #: is unreachable", which sends you looking in entirely the wrong place.
+    ollama_timeout_seconds: float = 600.0
     anthropic_api_key: str = ""
     anthropic_model: str = "claude-haiku-4-5"
 

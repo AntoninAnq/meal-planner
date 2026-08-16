@@ -28,7 +28,7 @@ class OllamaClient(RetryingLLMClient):
         *,
         base_url: str,
         model: str,
-        timeout_seconds: float = 180.0,
+        timeout_seconds: float,
     ) -> None:
         self._base_url = base_url.rstrip("/")
         self._model = model
