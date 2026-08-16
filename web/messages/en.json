@@ -104,7 +104,8 @@
     "noMembers": "Add at least one person before generating a week.",
     "settings": "Settings",
     "planViolationHeading": "The plan lacks variety",
-    "planViolationBody": "The model suggested the same dish too often. Generate again, or replace the repeats yourself."
+    "planViolationBody": "The model suggested the same dish too often. Generate again, or replace the repeats yourself.",
+    "guests": "{count, plural, one {+1 guest} other {+# guests}}"
   },
   "composer": {
     "collapsed": "Anything to note for this week?",

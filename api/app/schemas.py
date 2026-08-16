@@ -201,10 +201,24 @@ class DishOut(BaseModel):
     derived_from_dish_id: uuid.UUID | None = None
 
 
+class SlotGuestsOut(BaseModel):
+    """An anonymous count, never an entity.
+
+    Guests are transitory — storing them as members would skew anti-repetition
+    and portions all year long. But a meal cooked for nine that displays as a
+    meal for three is misleading, so the count survives for the interface, and
+    for nothing else: no planning code reads it.
+    """
+
+    life_stage: LifeStage
+    count: int
+
+
 class PlanSlotOut(BaseModel):
     day_of_week: int
     meal_type: MealType
     dishes: list[DishOut]
+    guests: list[SlotGuestsOut] = Field(default_factory=list)
 
 
 class ViolationOut(BaseModel):

@@ -203,6 +203,7 @@ def generate_plan(
         proposal=outcome.proposal,
         alias_to_member=alias_to_member,
         violations=outcome.violations,
+        guests=guests,
         generation_input=json.dumps(
             {
                 "constraints": list(user_constraints),
@@ -267,6 +268,7 @@ def _persist(
     alias_to_member: dict[str, uuid.UUID],
     generation_input: str,
     violations: Sequence[Violation],
+    guests: Sequence[GuestGroup],
 ) -> MealPlan:
     plan = db.scalar(
         select(MealPlan).where(
@@ -296,6 +298,20 @@ def _persist(
         for entry in (plan.violations or [])
         if (entry.get("day_of_week"), entry.get("meal_type")) not in regenerated
     ]
+    # Guests are recorded per slot, and only for the slots just generated:
+    # regenerating Saturday must not claim the in-laws also came on Tuesday.
+    # Anonymous counts, read by nothing but the interface.
+    slot_guests = dict(plan.slot_guests or {})
+    for target in targets:
+        key = f"{target.day_of_week}-{target.meal_type}"
+        if guests:
+            slot_guests[key] = [
+                {"life_stage": group.life_stage, "count": group.count} for group in guests
+            ]
+        else:
+            slot_guests.pop(key, None)
+    plan.slot_guests = slot_guests
+
     plan.violations = kept + [
         {
             "code": violation.code,

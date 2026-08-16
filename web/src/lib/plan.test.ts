@@ -6,6 +6,7 @@ import {
   parseSlotKey,
   slotKey,
   slotsByKey,
+  slotsInViolation,
   splitViolations,
   violationsByKey,
 } from "@/lib/plan";
@@ -26,8 +27,8 @@ const PLAN: MealPlan = {
   week_start: "2026-08-10",
   generated_at: "2026-08-11T10:00:00Z",
   slots: [
-    { day_of_week: 0, meal_type: "dinner", dishes: [dish()] },
-    { day_of_week: 3, meal_type: "lunch", dishes: [dish({ id: "d2" })] },
+    { day_of_week: 0, meal_type: "dinner", dishes: [dish()], guests: [] },
+    { day_of_week: 3, meal_type: "lunch", dishes: [dish({ id: "d2" })], guests: [] },
   ],
   violations: [],
 };
@@ -120,5 +121,35 @@ describe("splitViolations", () => {
     ]);
     expect(slot.map((v) => v.code)).toEqual(["eater_not_served"]);
     expect(plan.map((v) => v.code)).toEqual(["degenerate_plan"]);
+  });
+});
+
+describe("slotsInViolation", () => {
+  it("counts meals, not violations", () => {
+    // Six unserved guests on one dinner are six violations and ONE meal.
+    // Announcing "six meals" sends the user hunting for five that are fine.
+    const guests: Violation[] = Array.from({ length: 6 }, (_, i) => ({
+      code: "eater_not_served",
+      detail: `g1_${i} eats nothing`,
+      day_of_week: 5,
+      meal_type: "dinner",
+    }));
+    expect(slotsInViolation(guests)).toBe(1);
+  });
+
+  it("counts each affected meal once", () => {
+    expect(
+      slotsInViolation([
+        { code: "a", detail: "", day_of_week: 5, meal_type: "dinner" },
+        { code: "b", detail: "", day_of_week: 5, meal_type: "lunch" },
+        { code: "c", detail: "", day_of_week: 2, meal_type: "dinner" },
+      ]),
+    ).toBe(3);
+  });
+
+  it("ignores plan-level violations, which point at no meal", () => {
+    expect(
+      slotsInViolation([{ code: "degenerate_plan", detail: "", day_of_week: null, meal_type: null }]),
+    ).toBe(0);
   });
 });

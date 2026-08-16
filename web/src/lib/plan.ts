@@ -52,6 +52,22 @@ export function splitViolations(violations: Violation[]): {
   };
 }
 
+/** How many MEALS are affected, not how many violations there are.
+ *
+ * One slot can carry several violations at once — six unserved guests on a
+ * single dinner produce six of them — and counting those would announce "six
+ * meals could not be completed" for one meal. The user then goes looking for
+ * five slots that are perfectly fine.
+ */
+export function slotsInViolation(violations: Violation[]): number {
+  const keys = new Set<string>();
+  for (const violation of violations) {
+    if (violation.day_of_week === null || violation.meal_type === null) continue;
+    keys.add(slotKey(violation.day_of_week, violation.meal_type));
+  }
+  return keys.size;
+}
+
 /**
  * Whether a slot needs the multi-dish presentation.
  *

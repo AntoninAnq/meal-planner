@@ -34,6 +34,7 @@ export async function SlotCard({
   const tMeal = await getTranslations("mealType");
 
   const dishes = slot?.dishes ?? [];
+  const guestCount = (slot?.guests ?? []).reduce((total, group) => total + group.count, 0);
   const diverges = hasDivergence(dishes);
   const broken = violations.length > 0;
 
@@ -48,8 +49,15 @@ export async function SlotCard({
         className,
       )}
     >
-      <p className="text-xs font-medium tracking-wide text-ink-faint uppercase">
+      <p className="flex items-center gap-1.5 text-xs font-medium tracking-wide text-ink-faint uppercase">
         {tMeal(mealType)}
+        {/* Guests are never stored as members, so without this a dinner cooked
+            for nine shows up as a dinner for three and nobody remembers why. */}
+        {guestCount > 0 && (
+          <span className="rounded-full bg-accent-soft px-1.5 py-0.5 text-[0.65rem] normal-case text-accent">
+            {t("guests", { count: guestCount })}
+          </span>
+        )}
       </p>
 
       {dishes.length === 0 ? (

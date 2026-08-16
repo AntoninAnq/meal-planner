@@ -104,7 +104,8 @@
     "noMembers": "Ajoutez au moins une personne avant de générer une semaine.",
     "settings": "Réglages",
     "planViolationHeading": "Le plan manque de variété",
-    "planViolationBody": "Le modèle a proposé trop souvent le même plat. Relancez la génération, ou remplacez les répétitions vous-même."
+    "planViolationBody": "Le modèle a proposé trop souvent le même plat. Relancez la génération, ou remplacez les répétitions vous-même.",
+    "guests": "{count, plural, one {+1 invité} other {+# invités}}"
   },
   "composer": {
     "collapsed": "Une précision pour cette semaine ?",

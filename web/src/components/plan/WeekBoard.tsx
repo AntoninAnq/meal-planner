@@ -12,7 +12,7 @@ import { apiGet, apiPost } from "@/lib/api/client";
 import { ApiError } from "@/lib/api/error";
 import type { MealPlan, Violation } from "@/lib/api/types";
 import { cx } from "@/lib/cx";
-import { splitViolations } from "@/lib/plan";
+import { slotsInViolation, splitViolations } from "@/lib/plan";
 import { viewCookie, type ViewMode, type WeekView } from "@/lib/week-view";
 
 const POLL_INTERVAL_MS = 5000;
@@ -165,7 +165,7 @@ export function WeekBoard({
           {slotViolations.length > 0 && (
             <>
               <p className="text-sm font-semibold text-danger">
-                {t("violationsHeading", { count: slotViolations.length })}
+                {t("violationsHeading", { count: slotsInViolation(slotViolations) })}
               </p>
               <p className="mt-1 text-sm text-ink">{t("violationsBody")}</p>
             </>

@@ -32,6 +32,7 @@ from app.schemas import (
     InterpretResponse,
     MealPlanOut,
     PlanSlotOut,
+    SlotGuestsOut,
     SlotScope,
     ViolationOut,
 )
@@ -94,7 +95,15 @@ def _serialise(db: Session, plan: MealPlan) -> MealPlanOut:
         key = (dish.day_of_week, dish.meal_type)
         slot = slots.get(key)
         if slot is None:
-            slot = PlanSlotOut(day_of_week=dish.day_of_week, meal_type=dish.meal_type, dishes=[])
+            slot = PlanSlotOut(
+                day_of_week=dish.day_of_week,
+                meal_type=dish.meal_type,
+                dishes=[],
+                guests=[
+                    SlotGuestsOut(**group)
+                    for group in (plan.slot_guests or {}).get(f"{key[0]}-{key[1]}", [])
+                ],
+            )
             slots[key] = slot
         slot.dishes.append(
             DishOut(

@@ -103,10 +103,19 @@ export type Dish = {
   eaters: DishEater[];
 };
 
+/** An anonymous count, never an entity. Guests stay transitory — storing them
+ * as members would skew anti-repetition and portions all year long — but a
+ * meal cooked for nine that displays as a meal for three is misleading. */
+export type SlotGuests = {
+  life_stage: LifeStage;
+  count: number;
+};
+
 export type PlanSlot = {
   day_of_week: number;
   meal_type: MealType;
   dishes: Dish[];
+  guests: SlotGuests[];
 };
 
 /** Present when the model never produced a plan inside the envelope. The plan

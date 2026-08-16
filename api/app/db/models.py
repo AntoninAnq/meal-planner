@@ -252,6 +252,13 @@ class MealPlan(Base):
     violations: Mapped[list[dict[str, object]]] = mapped_column(
         JSONB, default=list, server_default=text("'[]'::jsonb")
     )
+    #: `{"5-dinner": [{"life_stage": "teen_adult", "count": 6}]}` — an anonymous
+    #: count per slot, for display only. Guests still never become members, and
+    #: nothing in the planner reads this: it exists so a meal cooked for nine
+    #: does not silently show up as a meal for three.
+    slot_guests: Mapped[dict[str, list[dict[str, object]]]] = mapped_column(
+        JSONB, default=dict, server_default=text("'{}'::jsonb")
+    )
 
     dishes: Mapped[list[PlannedDish]] = relationship(back_populates="plan")
 

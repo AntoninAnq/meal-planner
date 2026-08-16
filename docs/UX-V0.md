@@ -144,7 +144,7 @@ Trois règles :
 
 | Point | Règle |
 |---|---|
-| Stockage | Aucun. Ils existent le temps d'un créneau. |
+| Stockage | **Un décompte anonyme par créneau**, et rien d'autre. Voir ci-dessous. |
 | Portions | Il faut leur **stade de vie** : « 4 personnes » ne dit pas si ce sont quatre adultes ou deux adultes et deux enfants de 5 ans. |
 | Allergies | Déclarables, et **excluent l'allergène du créneau pour tout le monde** — la règle de portée foyer du §4.6, appliquée à un repas. Rien n'est stocké. |
 | Goûts | Déclarables, signal souple, comme une aversion. |
@@ -152,6 +152,35 @@ Trois règles :
 Corollaire à assumer : pour ce créneau, le plan n'offre **aucune garantie**
 au-delà de ce qui a été déclaré. C'est vrai dans la vraie vie aussi — on demande à
 ses invités — mais l'interface ne doit pas laisser croire l'inverse.
+
+### Amendement : le créneau se souvient qu'il y avait du monde
+
+La règle « aucun stockage » produisait une interface trompeuse. Les invités ne
+devenant jamais des membres, **un repas cuisiné pour neuf s'affichait comme un
+repas pour trois**, sans rien qui rappelle pourquoi : on regarde samedi, on voit un
+plat pour le foyer, et on a oublié que c'était le dîner avec les beaux-parents.
+
+On conserve donc, par créneau, **un stade de vie et un nombre** :
+
+```
+meal_plan.slot_guests = {"5-dinner": [{"life_stage": "teen_adult", "count": 6}]}
+```
+
+Ce que cet amendement ne remet pas en cause :
+
+- **Aucune entité n'est créée.** Pas de `member`, rien d'identifiant, rien de
+  nominatif — un entier et une énumération.
+- **Rien dans la planification ne le lit.** Ni l'anti-répétition, ni les portions,
+  ni les propositions de transition de stade. C'est de l'affichage, exclusivement.
+  La raison d'être de la règle d'origine — des gens qui mangent là deux fois par an
+  ne doivent pas fausser les menus toute l'année — reste entièrement respectée.
+- **C'est porté par le créneau, pas par le plan.** L'information vivait dans
+  `generation_input`, qui est au niveau du plan : régénérer samedi la réécrivait
+  pour toute la semaine, donc elle était incapable de dire *quel* repas avait des
+  invités. Une génération limitée à un créneau ne touche que l'entrée de ce
+  créneau — même règle que les plats et les violations.
+
+L'interface affiche une pastille **« +6 invités »** sur la carte du créneau.
 
 ---
 
