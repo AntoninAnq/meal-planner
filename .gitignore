@@ -1,4 +1,6 @@
 .env
+# The real whitelist. The template is backend/sources.example.yaml.
+/sources.yaml
 *.pyc
 __pycache__/
 .venv/

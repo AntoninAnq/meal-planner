@@ -18,6 +18,15 @@ itsdangerous = "^2.2"
 httpx = "^0.28"
 pyjwt = { extras = ["crypto"], version = "^2.10" }
 jsonschema = "^4.25"
+# A DOM parser, and the reason there is no separate dependency group for the
+# catalogue. `extruct` was the plan — full microdata and RDFa graphs — but the
+# extractor needs one thing from it: the subtree of the Recipe itemscope, then
+# the `itemprop` elements inside it. That is ten lines over a CSS engine, and
+# `extruct` would drag in lxml and rdflib for the rest. Parsing HTML is not
+# "talking to the outside world", so this belongs here rather than in an image
+# the API does not use.
+selectolax = "^0.3"
+pyyaml = "^6.0"
 anthropic = "^0.75"
 langgraph = "^1.0"
 

@@ -1,0 +1,39 @@
+# The catalogue pipeline — a batch job, not a server.
+#
+# Same code tree as the API (it writes the tables the allergen filter reads, and
+# two definitions of those would drift), but a separate image and a separate
+# lifecycle: this is the only part of the system that makes outbound requests to
+# third-party websites, it exposes nothing, and it is started by hand.
+#
+# The dependency lists turned out identical — the extractor needs a DOM parser,
+# not a scraping stack (see the `selectolax` note in pyproject.toml). What
+# separates the two images is therefore the entrypoint and what may run, not
+# what is installed. That is still worth an image: `docker compose up` cannot
+# start this by accident, and nothing here can answer a request.
+#
+# It is never started by `docker compose up` — see the `catalog` service and its
+# `profiles` key. Runs are explicit:
+#
+#     docker compose run --rm catalog ingest --source <descriptor-key>
+#
+# Ports: none. Nothing ever connects TO this.
+
+FROM python:3.13-slim
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    POETRY_VIRTUALENVS_CREATE=false
+
+WORKDIR /app
+
+RUN pip install --no-cache-dir poetry==2.1.3
+
+COPY pyproject.toml poetry.lock ./
+RUN poetry install --no-root --no-interaction
+
+COPY . .
+
+# No default command that does anything. A batch job that touches other
+# people's sites must be asked for explicitly — never started by accident.
+ENTRYPOINT ["python", "-m", "app.catalog"]
+CMD ["--help"]

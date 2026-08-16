@@ -88,7 +88,7 @@ Le pipeline de collecte tourne dans **sa propre image**, sur un service que
 `docker compose up` ne démarre jamais :
 
 ```bash
-docker compose run --rm catalog ingest --source cuisine-libre
+docker compose run --rm catalog ingest --source <clé-du-descripteur>
 docker compose run --rm catalog resolve          # rejouable, idempotent
 docker compose run --rm catalog review           # les propositions I4, à confirmer
 ```

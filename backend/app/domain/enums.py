@@ -45,6 +45,32 @@ class DishSource(StrEnum):
     LLM_SUGGESTION = "llm_suggestion"
 
 
+class RecipeSourceType(StrEnum):
+    """Where a catalogue recipe comes from.
+
+    Invariant I7: there is deliberately no `llm_generated` member, and adding one
+    would be the whole invariant undone. Model suggestions live in the plan and
+    the history with `DishSource.LLM_SUGGESTION`, and never cross over here.
+    """
+
+    USER = "user"
+    SCRAPED = "scraped"
+    LICENSED_API = "licensed_api"
+
+
+class ProposalStatus(StrEnum):
+    """A proposal is never applied by itself (I4).
+
+    PENDING is the only state the machine may write. The other two record a
+    human decision, and both are final: a rejected match must not come back at
+    the next resolution pass, or the same question gets asked forever.
+    """
+
+    PENDING = "pending"
+    ACCEPTED = "accepted"
+    REJECTED = "rejected"
+
+
 class AllergenCode(StrEnum):
     """The 14 regulatory allergens (EU INCO 1169/2011).
 

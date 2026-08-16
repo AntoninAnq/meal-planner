@@ -72,6 +72,39 @@ services:
       sh -c "alembic upgrade head &&
              uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
 
+  # The catalogue pipeline (docs/ARCHITECTURE.md §7.5, §11.4).
+  #
+  # `profiles` is what keeps it OUT of `docker compose up`. This job reaches out
+  # to third-party websites; it runs when someone asks for it, never as a side
+  # effect of starting the stack:
+  #
+  #   docker compose run --rm catalog ingest --source <clé-du-descripteur>
+  #   docker compose run --rm catalog resolve
+  #   docker compose run --rm catalog review
+  #
+  # No `restart`, no port, no dependency from the user-facing path.
+  catalog:
+    profiles: ["catalog"]
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.catalog
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+      # The whitelist, read-only. It is NOT in the repository: this file is
+      # gitignored, and `backend/sources.example.yaml` is the template. See
+      # docs/ARCHITECTURE.md §11.5 for why.
+      - ./sources.yaml:/config/sources.yaml:ro
+      # The campaign cache. A named volume rather than a bind mount: it is not
+      # source, it must not reach the repository, and `docker compose down -v`
+      # is then all it takes to purge it (I9).
+      - catalog_cache:/var/cache/catalog
+
   web:
     build:
       context: ./web
@@ -100,3 +133,4 @@ volumes:
   postgres_data:
   caddy_data:
   caddy_config:
+  catalog_cache:

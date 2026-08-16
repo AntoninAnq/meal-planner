@@ -44,6 +44,19 @@ class Settings(BaseSettings):
     anthropic_api_key: str = ""
     anthropic_model: str = "claude-haiku-4-5"
 
+    # Catalogue
+    #: Path to the whitelist. It is deliberately NOT part of the source tree.
+    #:
+    #: Two reasons, and the second is the one that matters. First, I8: the same
+    #: pipeline must be able to run against a different list of sources without
+    #: a commit. Second, this repository is public, and the list names sites
+    #: whose authors were never asked. The mechanism and the collection policy
+    #: are published and auditable in full; who is fetched is deployment
+    #: configuration and stays out.
+    #:
+    #: `backend/sources.example.yaml` is the template to copy.
+    catalog_sources_path: str = "/config/sources.yaml"
+
     @property
     def oauth_redirect_uri(self) -> str:
         return f"{self.app_base_url.rstrip('/')}/api/auth/callback"

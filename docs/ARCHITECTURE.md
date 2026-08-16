@@ -282,7 +282,7 @@ Ollama, Postgres local, chemins de fichiers, URL de base, endpoints, secrets : *
 
 Pour tout contenu externe, on stocke **uniquement des métadonnées structurées** (ingrédients, quantités, temps, tags — des faits, non protégeables), déclarées par la source elle-même en `schema.org/Recipe`, et on **renvoie vers la source**. Jamais le texte ni la prose de l'auteur.
 
-> **Correction, mesurée en phase 1.** Ce paragraphe disait « extraites du JSON-LD `schema.org/Recipe` ». C'est faux sur la moitié des sources retenues (§11.5) : cuisine-libre publie un JSON-LD **invalide et sans ingrédients** — ceux-ci vivent en microdata — et chefnini utilise la propriété **dépréciée** `itemprop="ingredients"`. Le format n'est pas ce qui compte ; ce qui compte est que la donnée soit **déclarée par la source comme une métadonnée**, et non lue dans sa prose. JSON-LD, microdata et RDFa satisfont tous les trois cette condition.
+> **Correction, mesurée en phase 1.** Ce paragraphe disait « extraites du JSON-LD `schema.org/Recipe` ». C'est faux sur la moitié des sources retenues (§11.5) : une source publie un JSON-LD **invalide et sans ingrédients** — ceux-ci vivent en microdata — et une autre utilise la propriété **dépréciée** `itemprop="ingredients"`. Le format n'est pas ce qui compte ; ce qui compte est que la donnée soit **déclarée par la source comme une métadonnée**, et non lue dans sa prose. JSON-LD, microdata et RDFa satisfont tous les trois cette condition.
 
 Deux conséquences pratiques, qui sont des règles et pas des détails d'implémentation :
 
@@ -568,7 +568,7 @@ Trois colonnes ajoutées en phase 1, chacune parce que la mesure l'a imposée :
 | Colonne | Pourquoi |
 |---|---|
 | `recipe.source_code` | Le **site**, pas la page — `source_url` reste l'URL exacte vers laquelle on renvoie. C'est la seule façon de rejouer ou de retirer une source entière. Une chaîne qui correspond à la clé du descripteur (§11.5) et **non** une clé étrangère : une table de sources ferait doublon avec le descripteur et divergerait. |
-| `recipe.license` | cuisine-libre déclare une licence **par recette** (`CC0` sur l'échantillon). C'est la page qui le dit, c'est donc un fait. `NULL` = I9 s'applique strictement, ce qui est le cas de tous les blogs. |
+| `recipe.license` | Une des sources déclare une licence **par recette** (`CC0` sur l'échantillon). C'est la page qui le dit, c'est donc un fait. `NULL` = I9 s'applique strictement, ce qui est le cas de tous les blogs. |
 | `recipe_ingredient.is_section` | `'Pour la pâte sucrée :'` est balisé `recipeIngredient` et n'en est pas un. Le jeter perdrait l'ordre des lignes ; le résoudre serait une erreur. |
 
 > **`instructions_url` vaudra `source_url` partout.** Sur les cinq sources retenues, la recette et ses instructions sont la même page. La colonne est conservée — elle ne coûte rien et couvre le cas où ça diverge — mais autant savoir qu'elle sera toujours identique.
@@ -781,38 +781,43 @@ Ces règles ne sont pas des réglages de performance. Elles décrivent le compor
 |---|---|
 | **1 requête / 3 s par domaine** | Campagne complète ≈ 3 h sur les cinq sources. C'est une tâche de nuit qui ne se relance pas ; il n'y a rien à gagner à aller plus vite. |
 | **Aucune concurrence dans un domaine** | Le parallélisme est **entre** sites, jamais dedans. On n'ouvre jamais deux connexions simultanées chez quelqu'un. |
-| **Un `Crawl-delay` déclaré est un plancher** | cuisine-libre annonce 1 s ; on reste à 3. |
+| **Un `Crawl-delay` déclaré est un plancher** | Une source annonce 1 s ; on reste à 3. |
 | **`429` / `503` → recul exponentiel, puis arrêt du domaine** | Un site qui fatigue le dit avec un code HTTP. Le pipeline doit l'entendre, pas insister. |
 | **Requêtes conditionnelles en re-vérification** | `If-Modified-Since` / `ETag`. Un `304` ne transfère pas la page : la deuxième campagne ne coûte presque rien à personne. |
 | **Plafond de pages par campagne et par domaine** | Dans le descripteur. Un bug de boucle ne peut pas devenir un incident chez un tiers. |
 | **`User-Agent` identifiant, avec une URL de contact** | On dit qui on est. |
 
-> **Une protection anti-bot est un refus, et on l'accepte.** Papilles & Pupilles est derrière un challenge Cloudflare : le site est écarté, définitivement, sans tentative de contournement. C'est d'autant plus net qu'on a décidé de ne contacter personne — cette protection est alors le seul signal de consentement dont on dispose, et ce n'est pas celui qu'on va ignorer.
+> **Une protection anti-bot est un refus, et on l'accepte.** Une des sources testées est derrière un challenge Cloudflare : elle est écartée, définitivement, sans tentative de contournement. C'est d'autant plus net qu'on a décidé de ne contacter personne — cette protection est alors le seul signal de consentement dont on dispose, et ce n'est pas celui qu'on va ignorer.
 
 ### 11.5 Sources : ce qui a été testé, retenu et écarté
 
-**Cette section existe pour qu'on ne re-teste pas dans six mois ce qui a déjà été mesuré.** Toutes les valeurs ci-dessous viennent d'échantillons réels prélevés en août 2026, pas d'une estimation.
-
 Une source est décrite par un **descripteur déclaratif** (YAML) : sitemaps, filtres d'URL, langue, ordre d'extraction, correspondance sucré/salé, cadence, plafond de pages, licence par défaut. Aucun code par site — I8 s'applique ici comme ailleurs, une whitelist de domaines *est* une valeur de configuration. Un champ optionnel peut nommer une fonction d'adaptation, pour le jour où un site fait vraiment bande à part.
 
-| Source | Balisage | Volume mesuré | Statut |
-|---|---|---|---|
-| **cuisine-libre.org** | Microdata. JSON-LD présent mais **invalide** (virgule traînante) et **sans ingrédients** | 3 001 URLs, 73 % sont des recettes, ~2/3 salées → **~1 300 plats salés** | **Pilier.** `Crawl-delay: 1` déclaré, licence par recette (`CC0` sur l'échantillon) |
-| **undejeunerdesoleil.com** | JSON-LD `Recipe` complet | 3 714 URLs, 28 % de recettes, ~20 % salées → ~200 plats | Retenue |
-| **lacuisinedebernard.com** | JSON-LD `Recipe` complet | **bilingue — filtrer `/en/`** | Retenue |
-| **chefnini.com** | Microdata avec `itemprop="ingredients"`, forme **dépréciée** de schema.org. Pas de temps balisé | 1 201 URLs | Retenue |
-| **royalchill.com** | JSON-LD `Recipe` complet | 544 articles, 44 % de recettes, **8/8 sucrées** | Retenue **pour les goûters (§4.8) et les desserts d'invitation**, pas pour les dîners |
-| papillesetpupilles.fr | — | — | **Écartée : challenge Cloudflare** (§11.4) |
-| cestmafournee.com | aucun (Blogspot) | — | Écartée |
-| couteaux-et-tirebouchons.com | aucun sur 8 pages | 341 articles | Écartée |
-| audreycuisine.substack.com | aucun (Substack) | — | Écartée |
+> **La whitelist n'est pas dans le dépôt.** Elle est montée, à l'emplacement que désigne `CATALOG_SOURCES_PATH` ; `backend/sources.example.yaml` en est le modèle, sur des domaines fictifs.
+>
+> Deux raisons, et la seconde est celle qui compte. I8 d'abord : le même pipeline doit pouvoir viser une autre liste sans commit. Ensuite, **ce dépôt est public, et la liste nomme des sites dont les auteurs n'ont rien demandé** — d'autant qu'on a décidé de ne contacter personne. Le mécanisme et la politique de collecte sont publiés et vérifiables ligne à ligne ; les cibles sont de la configuration d'exploitation.
+>
+> Ce n'est pas dissimuler un comportement : tout ce que le pipeline fait est lisible ici. C'est ne pas publier un paramétrage.
+>
+> **Ce qu'on y perd, et il ne faut pas le minimiser.** Cette section servait à ne pas re-tester dans six mois ce qui a déjà été mesuré. Ce garde-fou ne protège désormais que celui qui détient la whitelist, pas un futur contributeur. Les mesures ci-dessous sont donc conservées, anonymisées — c'est ce qu'on peut sauver.
+
+**Neuf sources ont été testées en août 2026 ; cinq sont retenues.** Toutes les valeurs viennent d'échantillons réels, pas d'estimations.
+
+| Ce qui a été mesuré | |
+|---|---|
+| **Écartées, et pourquoi** | Une derrière un challenge Cloudflare — **un refus technique, qu'on accepte** (§11.4). Trois sans aucun balisage `Recipe` : un Blogspot, un Substack, et un blog dont huit pages tirées au sort n'en portaient pas. |
+| **La source pilier** | ~3 000 URLs dont 73 % sont des recettes, environ deux tiers salées → **~1 300 plats salés**, quatre fois la cible à elle seule. Déclare un `Crawl-delay`, et une **licence par recette** (`CC0` sur l'échantillon). |
+| **Les quatre autres** | Des blogs, ~5 500 URLs cumulées, mais un rendement bien plus faible : 28 % de recettes sur l'un, dont 20 % salées. |
+| **Le piège du ratio** | Un des blogs retenus est **entièrement sucré** — 8 recettes tirées au sort, 8 desserts. Gardé délibérément : il alimente le module goûter (§4.8) et le dessert d'un repas avec invités, pas les dîners sur lesquels la phase 1 est comptée. Un catalogue de tiramisus ne planifie aucune semaine. |
+| **Le rendement réel d'un sitemap** | 5 URLs sur 12 ne sont pas des recettes — ce sont des pages de tag ou d'ingrédient. Elles coûtent une requête chacune et aucun motif d'URL ne les distingue. |
 
 Ce que la mesure impose à l'extracteur :
 
-1. **Il n'existe pas d'extracteur unique.** Quatre sources retenues, quatre formes. L'ordre est toujours le même : JSON-LD **tolérant** (virgules traînantes comprises) → microdata `recipeIngredient` → microdata `ingredients` → sélecteur du descripteur. Un parseur JSON strict jetterait cuisine-libre en entier.
+1. **Il n'existe pas d'extracteur unique.** Cinq sources retenues, quatre formes de balisage : JSON-LD complet et propre ; JSON-LD **invalide** (virgule traînante) et de surcroît **sans ingrédients**, tout le contenu réel étant en microdata ; microdata `recipeIngredient` ; et microdata portant `ingredients`, la forme **dépréciée** de schema.org. L'ordre est toujours le même : JSON-LD **tolérant** → microdata `recipeIngredient` → microdata `ingredients` → sélecteur du descripteur. Un parseur JSON strict jetterait une source entière.
 2. **Il compte ce qu'il n'a pas su lire.** Une extraction qui échoue en silence produit un catalogue dont personne ne connaît les trous.
-3. **La taxonomie de `recipeCategory` est propre à chaque site** — `Dessert`/`Plat` chez les blogs WordPress, mais `Terrines`, `Woks`, `Gigots`, `Japon` chez cuisine-libre. Le classement sucré/salé est donc une correspondance **dans le descripteur**, jamais une règle globale.
-4. **Le découpage quantité / unité / nom est le composant à plus fort levier.** Mesuré sur 55 recettes : 8,2 lignes d'ingrédient par recette, et une queue de distribution dominée non par des ingrédients rares mais par du bruit de parsing — `c. à soupe d'huile d'olive` et `huile d'olive` sont le même ingrédient. **I4 interdit de rattraper au trigramme ce qui relève du parsing** : c'est exactement là que `farine de riz` trouve `farine de blé`.
+3. **La taxonomie de `recipeCategory` est propre à chaque site** — `Dessert`/`Plat` chez les blogs WordPress, mais une taxonomie maison à grain fin (`Terrines`, `Woks`, `Gigots`…) sur la source pilier. Le classement sucré/salé est donc une correspondance **dans le descripteur**, jamais une règle globale.
+4. **Tout est borné au sous-arbre `itemscope` de la recette.** Ces pages portent une colonne de recettes voisines, avec leurs durées et leurs notes. Une recherche à l'échelle de la page attribue à un plat le temps de cuisson de celui d'à côté — ce n'est pas une hypothèse : une première lecture a conclu « durée présente sur 7 recettes sur 7 » en lisant la barre latérale. Mesuré correctement, dans le bloc de la recette, c'est **81 % pour la préparation et 0 % pour la durée totale** — ce dernier champ existe dans le gabarit et n'est jamais rempli.
+5. **Le découpage quantité / unité / nom est le composant à plus fort levier.** Mesuré sur 55 recettes : 8,2 lignes d'ingrédient par recette, et une queue de distribution dominée non par des ingrédients rares mais par du bruit de parsing — `c. à soupe d'huile d'olive` et `huile d'olive` sont le même ingrédient. **I4 interdit de rattraper au trigramme ce qui relève du parsing** : c'est exactement là que `farine de riz` trouve `farine de blé`.
 
 ### 11.6 Deux familles d'agents distinctes
 

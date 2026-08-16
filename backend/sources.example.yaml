@@ -1,0 +1,96 @@
+# Modèle de whitelist. À copier, à remplir, et à NE PAS commiter.
+#
+#     cp backend/sources.example.yaml sources.yaml   # à la racine, ignoré par git
+#
+# Le fichier réel est monté dans le conteneur `catalog` à l'emplacement pointé
+# par `CATALOG_SOURCES_PATH`. Il n'est pas dans l'arbre des sources, pour deux
+# raisons :
+#
+#   * I8 — le même pipeline doit pouvoir viser une autre liste sans commit ;
+#   * ce dépôt est public, et la liste nomme des sites dont les auteurs n'ont
+#     rien demandé. Le mécanisme et la politique de collecte sont publiés et
+#     entièrement auditables ; les cibles, non.
+#
+# Les domaines ci-dessous sont fictifs. Ce fichier sert aussi de jeu d'essai au
+# chargeur et à l'extracteur (`tests/test_catalog_extraction.py`), ce qui
+# garantit qu'un modèle cassé fait échouer la CI.
+#
+# `request_interval_seconds` est un PLANCHER. Un `Crawl-delay` déclaré par un
+# site ne peut que le relever. Politique complète : docs/ARCHITECTURE.md §11.4.
+
+defaults:
+  request_interval_seconds: 3.0
+  max_pages_per_campaign: 4000
+  user_agent: "meal-planner/0.1 (+https://example.test/contact)"
+  language: fr
+
+sources:
+  # Le JSON-LD est invalide (virgule traînante) ET sans ingrédients : tout le
+  # contenu réel est en microdata, et les durées ne sont que dans le gabarit —
+  # d'où les sélecteurs. C'est la forme la plus exigeante rencontrée.
+  microdata-site:
+    enabled: true
+    base_url: https://microdata.exemple.test
+    sitemaps:
+      - https://microdata.exemple.test/sitemap.xml
+    exclude_url_patterns: []
+    selectors:
+      prep_minutes: ".duree_preparation"
+      cook_minutes: ".duree_cuisson"
+      total_minutes: ".duree_totale"
+    # Taxonomie maison, à grain fin : le classement sucré/salé ne peut pas être
+    # une règle globale, il appartient au descripteur (§11.5).
+    sweet_categories:
+      - Gâteaux
+      - Tartes
+      - Cookies
+      - Clafoutis
+      - Compotées
+      - Confitures
+      - Glaces
+      - Milkshakes
+      - Tiramisus et cheesecakes
+      - Galettes fourrées
+
+  # JSON-LD complet et régulier : ingrédients, durées, portions, catégorie.
+  json-ld-site:
+    enabled: true
+    base_url: https://jsonld.exemple.test
+    sitemaps:
+      - https://jsonld.exemple.test/post-sitemap1.xml
+      - https://jsonld.exemple.test/post-sitemap2.xml
+    selectors: {}
+    sweet_categories: [Dessert]
+
+  # Même chose, mais le site est bilingue et duplique chaque recette. Sans
+  # l'exclusion, le catalogue compte tout en double.
+  bilingual-site:
+    enabled: true
+    base_url: https://bilingue.exemple.test
+    sitemaps:
+      - https://bilingue.exemple.test/sitemap.xml
+    exclude_url_patterns:
+      - "/en/"
+    selectors: {}
+    sweet_categories: [Dessert]
+
+  # Microdata avec la propriété DÉPRÉCIÉE `ingredients` au lieu de
+  # `recipeIngredient`, et un JSON-LD qui ne décrit qu'un `BlogPosting` : il n'y
+  # a rien d'autre sur quoi se rabattre.
+  legacy-microdata-site:
+    enabled: true
+    base_url: https://legacy.exemple.test
+    sitemaps:
+      - https://legacy.exemple.test/sitemap_index.xml
+    selectors: {}
+    sweet_categories: [Dessert, Desserts]
+
+  # Un site entièrement sucré. Gardé délibérément : il alimente le module goûter
+  # (§4.8) et le dessert d'un repas avec invités, pas les dîners.
+  sweet-only-site:
+    enabled: true
+    base_url: https://sucre.exemple.test
+    sitemaps:
+      - https://sucre.exemple.test/post-sitemap1.xml
+    selectors: {}
+    sweet_categories: [Dessert]

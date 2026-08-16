@@ -1,12 +1,12 @@
-"""SQLAlchemy models — phase 0 scope.
+"""SQLAlchemy models.
 
-Covers households, access, members, constraints, slots, configuration, plans,
-history and snacks. The catalogue tables (recipes, ingredients, categories)
-arrive in phase 1.
+Households, access, members, constraints, slots, configuration, plans, history
+and snacks came with phase 0. The catalogue — recipes, ingredients, categories
+and the proposal queue — arrives with phase 1 (`docs/ARCHITECTURE.md` §8.2).
 
-`recipe_id` columns already exist on plan and history rows so the V0 write shape
-never changes, but carry no foreign key yet — the phase 1 migration adds the
-constraint once `recipe` exists.
+The `recipe_id` columns on plan and history rows existed from the start without
+a foreign key, so the V0 write shape never had to change; migration 0006 adds
+the constraints now that `recipe` exists.
 """
 
 from __future__ import annotations
@@ -35,7 +35,15 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
-from app.domain.enums import AllergenCode, ConstraintSeverity, DishSource, LifeStage, MealType
+from app.domain.enums import (
+    AllergenCode,
+    ConstraintSeverity,
+    DishSource,
+    LifeStage,
+    MealType,
+    ProposalStatus,
+    RecipeSourceType,
+)
 
 
 class Base(DeclarativeBase):
@@ -66,6 +74,8 @@ meal_type_enum = _pg_enum(MealType, "meal_type")
 severity_enum = _pg_enum(ConstraintSeverity, "constraint_severity")
 dish_source_enum = _pg_enum(DishSource, "dish_source")
 allergen_enum = _pg_enum(AllergenCode, "allergen_code")
+recipe_source_enum = _pg_enum(RecipeSourceType, "recipe_source_type")
+proposal_status_enum = _pg_enum(ProposalStatus, "proposal_status")
 
 
 class Household(Base):
@@ -281,8 +291,13 @@ class PlannedDish(Base):
     )
     day_of_week: Mapped[int] = mapped_column(SmallInteger)
     meal_type: Mapped[MealType] = mapped_column(meal_type_enum)
-    # FK added in phase 1. NULL throughout V0.
-    recipe_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    # RESTRICT, not SET NULL: `ck_planned_dish_identity` requires one of
+    # recipe_id / free_text_label, and a catalogue dish has no label — blanking
+    # the reference would leave a row that says nothing was planned. Retiring a
+    # source means deactivating its recipes, not deleting rows someone ate.
+    recipe_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("recipe.id", ondelete="RESTRICT")
+    )
     # Used by V0, where the model only proposes dish titles.
     free_text_label: Mapped[str | None] = mapped_column(String(200))
     source: Mapped[DishSource] = mapped_column(dish_source_enum)
@@ -349,8 +364,11 @@ class MealHistory(Base):
     )
     eaten_on: Mapped[date] = mapped_column(Date, index=True)
     meal_type: Mapped[MealType] = mapped_column(meal_type_enum)
-    # FK added in phase 1.
-    recipe_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    # History is a record. A recipe that someone actually ate cannot be made to
+    # disappear from it by a catalogue cleanup.
+    recipe_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("recipe.id", ondelete="RESTRICT")
+    )
     free_text_label: Mapped[str | None] = mapped_column(String(200))
     source: Mapped[DishSource] = mapped_column(dish_source_enum)
     rating: Mapped[int | None] = mapped_column(SmallInteger)
@@ -376,6 +394,247 @@ class SnackSuggestion(Base):
     )
     suggested_on: Mapped[date] = mapped_column(Date, index=True)
     label: Mapped[str] = mapped_column(String(200))
-    # FK added in phase 1.
-    recipe_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    recipe_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("recipe.id", ondelete="RESTRICT")
+    )
     source: Mapped[DishSource] = mapped_column(dish_source_enum)
+
+
+# ---------------------------------------------------------------------------
+# Catalogue — phase 1
+# ---------------------------------------------------------------------------
+
+
+class FoodCategory(Base):
+    """`legumes_secs`, `fish`, `red_meat`, `starch`, `green_vegetable`…
+
+    Feeds the rotation signal of §6.2: "23 days since legumes". A signal, never
+    a filter — the planner must be able to ignore it.
+    """
+
+    __tablename__ = "food_category"
+
+    id: Mapped[uuid.UUID] = _pk()
+    code: Mapped[str] = mapped_column(String(60), unique=True)
+    label: Mapped[str] = mapped_column(String(120))
+
+
+class Ingredient(Base):
+    """The referential the whole allergen filter rests on.
+
+    Seeded from `db/ingredients.yaml`, reviewed as a Git diff, never edited in
+    place through an interface: on the data the safety filter depends on,
+    knowing who decided what beats a form (§7.5).
+
+    `normalized_name` is what matching reads: lowercase, `unaccent`, singular,
+    collapsed whitespace. It is unique — two rows normalising the same way would
+    make resolution non-deterministic.
+    """
+
+    __tablename__ = "ingredient"
+
+    id: Mapped[uuid.UUID] = _pk()
+    canonical_name: Mapped[str] = mapped_column(String(160))
+    normalized_name: Mapped[str] = mapped_column(String(160), unique=True, index=True)
+
+    allergens: Mapped[list[IngredientAllergen]] = relationship(
+        cascade="all, delete-orphan", passive_deletes=True
+    )
+
+
+class IngredientAllergen(Base):
+    """What makes I2 possible at all.
+
+    "crème fraîche", "beurre demi-sel", "parmesan" and "béchamel" all contain
+    milk and none contains the substring `lait`. The filter reads THIS table,
+    never the text of a recipe.
+    """
+
+    __tablename__ = "ingredient_allergen"
+
+    ingredient_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("ingredient.id", ondelete="CASCADE"), primary_key=True
+    )
+    allergen_code: Mapped[AllergenCode] = mapped_column(allergen_enum, primary_key=True)
+
+
+class IngredientFoodCategory(Base):
+    __tablename__ = "ingredient_food_category"
+
+    ingredient_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("ingredient.id", ondelete="CASCADE"), primary_key=True
+    )
+    food_category_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("food_category.id", ondelete="CASCADE"), primary_key=True
+    )
+
+
+class Recipe(Base):
+    """A catalogue entry — structured metadata and a link, never the prose (I9).
+
+    `source_url` is unique because it IS the identity of a scraped recipe: it is
+    what makes a second campaign update rather than duplicate.
+    """
+
+    __tablename__ = "recipe"
+    __table_args__ = (
+        CheckConstraint(
+            "complexity IS NULL OR complexity BETWEEN 1 AND 3", name="ck_recipe_complexity"
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = _pk()
+    title: Mapped[str] = mapped_column(String(300))
+    source_type: Mapped[RecipeSourceType] = mapped_column(recipe_source_enum)
+    #: The site. `source_url` is the page. A string matching the key of the YAML
+    #: descriptor rather than a foreign key: a `catalog_source` table would
+    #: duplicate the descriptor, and the two would drift (§8.2).
+    source_code: Mapped[str | None] = mapped_column(String(60), index=True)
+    source_url: Mapped[str | None] = mapped_column(Text, unique=True)
+    #: Declared BY THE PAGE when it declares one — one source publishes a
+    #: licence per recipe. NULL means I9 applies strictly, which is the case of
+    #: every blog.
+    license: Mapped[str | None] = mapped_column(String(200))
+    #: Always equal to `source_url` on the five sources measured in §11.5. Kept
+    #: for the case where a site separates the two.
+    instructions_url: Mapped[str | None] = mapped_column(Text)
+
+    prep_minutes: Mapped[int | None] = mapped_column(SmallInteger)
+    cook_minutes: Mapped[int | None] = mapped_column(SmallInteger)
+    #: Derived by formula, never judged by a model (§6.4). NULL until the
+    #: formula is settled.
+    complexity: Mapped[int | None] = mapped_column(SmallInteger)
+    #: A count, not the steps. Counting is a fact; the text is the author's (I9).
+    step_count: Mapped[int | None] = mapped_column(SmallInteger)
+
+    servings: Mapped[int | None] = mapped_column(SmallInteger)
+    #: `recipeYield` verbatim. "20 tartelettes" and "4 personnes" are not the
+    #: same unit, and scaling portions (§4.4) against the first would be
+    #: nonsense. Keeping the raw string is what lets a human tell them apart
+    #: later instead of silently trusting a number.
+    servings_raw: Mapped[str | None] = mapped_column(String(120))
+
+    #: DERIVED (I3): true if and only if EVERY ingredient line resolves. Never
+    #: written by the collection pipeline — the resolution pass computes it.
+    #: A false here makes the recipe invisible to households with a severe
+    #: allergy, and visible to everyone else.
+    allergens_verified: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+
+    #: Blogs move and delete pages. Without periodic re-checking the index
+    #: drifts silently (§11.3).
+    last_checked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    ingredients: Mapped[list[RecipeIngredient]] = relationship(
+        cascade="all, delete-orphan", passive_deletes=True, order_by="RecipeIngredient.position"
+    )
+    allergens: Mapped[list[RecipeAllergen]] = relationship(
+        cascade="all, delete-orphan", passive_deletes=True
+    )
+
+
+class RecipeIngredient(Base):
+    """One line as the source wrote it, plus what we managed to make of it.
+
+    `raw_text` is ALWAYS kept, resolved or not: it is the only faithful record,
+    and the only thing a human can arbitrate against.
+    """
+
+    __tablename__ = "recipe_ingredient"
+    __table_args__ = (
+        # A section header is not an ingredient and must never resolve to one.
+        CheckConstraint(
+            "NOT (is_section AND ingredient_id IS NOT NULL)",
+            name="ck_recipe_ingredient_section_unresolved",
+        ),
+    )
+
+    recipe_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("recipe.id", ondelete="CASCADE"), primary_key=True
+    )
+    position: Mapped[int] = mapped_column(SmallInteger, primary_key=True)
+    raw_text: Mapped[str] = mapped_column(Text)
+    #: Splitting quantity / unit / name is the highest-leverage part of the
+    #: pipeline: `c. à soupe d'huile d'olive` and `huile d'olive` are the same
+    #: ingredient, and that is a PARSING problem. I4 forbids fixing it with
+    #: trigrams — that is exactly where `farine de riz` finds `farine de blé`.
+    quantity: Mapped[Decimal | None] = mapped_column(Numeric(10, 3))
+    unit: Mapped[str | None] = mapped_column(String(40))
+    #: `'Pour la pâte sucrée :'` comes marked up as an ingredient and is not
+    #: one. Dropping it would lose the ordering; resolving it would be wrong.
+    is_section: Mapped[bool] = mapped_column(Boolean, default=False)
+    #: NULL = unresolved. Filled by the separate, replayable resolution pass —
+    #: a recipe ingested when the referential held 50 entries must gain its
+    #: resolutions when it holds 350, without re-scraping (§7.5).
+    ingredient_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("ingredient.id", ondelete="RESTRICT"), index=True
+    )
+
+
+class RecipeAllergen(Base):
+    """Derived from the resolved ingredients, never from the text (I2, I3)."""
+
+    __tablename__ = "recipe_allergen"
+
+    recipe_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("recipe.id", ondelete="CASCADE"), primary_key=True
+    )
+    allergen_code: Mapped[AllergenCode] = mapped_column(allergen_enum, primary_key=True)
+
+
+class RecipeSuitableStage(Base):
+    """Which life stages a recipe suits, as SERVED to them (§4.3).
+
+    Defaults to `{young_child, teen_adult}` (§4.5) across the whole scraped
+    catalogue, since phase 1 makes no model call. `baby` is never reachable from
+    scraping — an assumed limit of the wedge, not a bug.
+    """
+
+    __tablename__ = "recipe_suitable_stage"
+
+    recipe_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("recipe.id", ondelete="CASCADE"), primary_key=True
+    )
+    life_stage: Mapped[LifeStage] = mapped_column(life_stage_enum, primary_key=True)
+
+
+class RecipeFoodCategory(Base):
+    __tablename__ = "recipe_food_category"
+
+    recipe_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("recipe.id", ondelete="CASCADE"), primary_key=True
+    )
+    food_category_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("food_category.id", ondelete="CASCADE"), primary_key=True
+    )
+
+
+class IngredientMatchProposal(Base):
+    """An approximate match, waiting for a human (I4).
+
+    Keyed by the NORMALISED STRING, not by the ingredient line: one decision
+    then resolves every line carrying that text, across every recipe and every
+    future campaign. Deciding the same `échalotte` forty times is how a review
+    queue stops being reviewed.
+
+    A rejection is as durable as an acceptance — otherwise the next resolution
+    pass asks the same question again, forever.
+    """
+
+    __tablename__ = "ingredient_match_proposal"
+
+    id: Mapped[uuid.UUID] = _pk()
+    normalized_text: Mapped[str] = mapped_column(String(160), unique=True, index=True)
+    ingredient_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("ingredient.id", ondelete="CASCADE")
+    )
+    #: Trigram similarity. Recorded to be read back, never to auto-apply above
+    #: some threshold: substitute ingredients are named after the food they
+    #: replace, so high similarity signals allergenic OPPOSITION as often as
+    #: equivalence (I4).
+    similarity: Mapped[Decimal] = mapped_column(Numeric(4, 3))
+    status: Mapped[ProposalStatus] = mapped_column(
+        proposal_status_enum, default=ProposalStatus.PENDING, index=True
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
