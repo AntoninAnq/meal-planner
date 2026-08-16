@@ -16,6 +16,10 @@ on:
 jobs:
   api:
     runs-on: ubuntu-latest
+    env:
+      # Same as the Dockerfile: no virtualenv, everything lands in the 3.13
+      # interpreter set up below.
+      POETRY_VIRTUALENVS_CREATE: "false"
     defaults:
       run:
         working-directory: api
@@ -26,9 +30,15 @@ jobs:
         with:
           python-version: "3.13"
 
-      # Pinned to the version the Dockerfile installs, so a lock file written
-      # in the container resolves identically here.
-      - run: pipx install poetry==2.1.3
+      # `pip install`, not `pipx`: pipx gives Poetry its own interpreter — the
+      # runner's default, 3.12 — and Poetry then resolves the project against
+      # THAT one, failing with "Current Python version (3.12.3) is not allowed
+      # by the project (^3.13)" even though 3.13 was just installed above.
+      # Installing it into the interpreter we actually want removes the choice.
+      #
+      # Version pinned to the one the Dockerfile installs, so a lock file
+      # written in the container resolves identically here.
+      - run: pip install poetry==2.1.3
 
       - run: poetry install --no-root --no-interaction
 
