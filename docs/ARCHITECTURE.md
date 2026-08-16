@@ -280,7 +280,14 @@ Ollama, Postgres local, chemins de fichiers, URL de base, endpoints, secrets : *
 
 ### I9 — Republication interdite
 
-Pour tout contenu externe, on stocke **uniquement des métadonnées structurées** (ingrédients, quantités, temps, tags — des faits, non protégeables), extraites du JSON-LD `schema.org/Recipe`, et on **renvoie vers la source**. Jamais le texte ni la prose de l'auteur.
+Pour tout contenu externe, on stocke **uniquement des métadonnées structurées** (ingrédients, quantités, temps, tags — des faits, non protégeables), déclarées par la source elle-même en `schema.org/Recipe`, et on **renvoie vers la source**. Jamais le texte ni la prose de l'auteur.
+
+> **Correction, mesurée en phase 1.** Ce paragraphe disait « extraites du JSON-LD `schema.org/Recipe` ». C'est faux sur la moitié des sources retenues (§11.5) : cuisine-libre publie un JSON-LD **invalide et sans ingrédients** — ceux-ci vivent en microdata — et chefnini utilise la propriété **dépréciée** `itemprop="ingredients"`. Le format n'est pas ce qui compte ; ce qui compte est que la donnée soit **déclarée par la source comme une métadonnée**, et non lue dans sa prose. JSON-LD, microdata et RDFa satisfont tous les trois cette condition.
+
+Deux conséquences pratiques, qui sont des règles et pas des détails d'implémentation :
+
+- **Les instructions sont lues et jamais stockées.** On peut en compter les étapes — un entier n'est pas une œuvre — mais aucun de leurs mots n'entre en base.
+- **Le cache HTTP d'une campagne est un artefact de campagne.** Hors dépôt, purgé à la fin. Archiver le HTML brut en base pour « rejouer l'extraction plus tard » serait une copie durable et complète de contenus de tiers ; le fait que ce soit commode est exactement l'argument qui fait franchir cette ligne.
 
 ---
 
@@ -348,7 +355,13 @@ Format du signal passé au prompt : `legumineuses: 23 jours · poisson: 4 jours 
 | **Cœur — arbitrage** | Choix parmi les candidats pré-filtrés, en lisant les signaux. | V1 |
 | **Cœur du wedge — déclinaison** | « Comment je sers ce curry au petit de 2 ans ? » → texture, ce qu'on retire, à quel moment on prélève sa part. **Ce n'est pas de la génération de recette, c'est de l'adaptation d'une recette existante.** | V1 |
 | **Aval — négociation** | « Non, pas de poisson mardi » → réparation locale du plan sans tout recalculer. Plus l'explication d'un choix. | V1 |
-| **Hors ligne — enrichissement** | JSON-LD incomplet, proposition de tags et de `suitable_stages`, classification. **Toujours en proposition, jamais en écriture directe.** | Phase 1 |
+| **Hors ligne — enrichissement** | Métadonnées incomplètes, proposition de tags et de `suitable_stages`, classification. **Toujours en proposition, jamais en écriture directe.** | ~~Phase 1~~ → **après la phase 1** (§10.1) |
+
+> **Pourquoi l'enrichissement descend d'une phase.** En construisant la phase 1, deux des trois champs se sont révélés déterministes : `complexity` se calcule (temps de préparation et de cuisson déclarés, nombre d'ingrédients, nombre d'étapes) et `recipe_food_category` se dérive des catégories des ingrédients résolus. Restait `suitable_stages`, où un modèle aurait une vraie valeur — signaler qu'un curry très relevé ne convient pas à un enfant de deux ans. Décision prise : on le repousse.
+>
+> **Ce que ça coûte, et qui doit rester visible :** `suitable_stages` vaut le défaut `{young_child, teen_adult}` du §4.5 sur tout le catalogue scrapé. Le planificateur pourra donc proposer un plat très relevé à un jeune enfant. C'est un défaut de **qualité**, pas de sécurité — les allergènes restent couverts par I2 et I3 — mais il survit à la V1, alors que la mention allergène de la V0 disparaît. L'interface doit le dire tant que ce n'est pas corrigé.
+>
+> La forme, le jour où on le fait : un graphe borné dont la sortie est un jeu d'**exceptions au défaut**, pas une classification complète. Faire relire 2 000 recettes est irréaliste ; faire remonter les 5-10 % qui posent problème est une heure de travail.
 
 ### 6.5 Le LLM émet des identifiants, jamais de la prose
 
@@ -464,6 +477,17 @@ Le pré-filtre ne se contente pas de filtrer : il **classe et tronque** à ~15-2
 | **Aucune chaîne en dur** | Ni français ni anglais dans un composant : clés `next-intl` ou texte reçu en props. | Le §12.1 l'impose déjà pour l'affichage ; l'appliquer aux composants **sans exception** évite d'avoir à les fouiller le jour de la traduction anglaise. |
 | **`"use client"` le plus bas possible** | Un composant d'affichage reste rendu côté serveur ; seul l'élément interactif bascule. | Sinon la décision « lectures serveur » se vide de son sens : un `"use client"` haut placé fait basculer tout l'arbre en dessous. |
 
+### 7.5 Décisions d'implémentation de la phase 1
+
+| Sujet | Décision | Justification |
+|---|---|---|
+| **Deux images, un arbre de code** | `Dockerfile` (api) et `Dockerfile.catalog`. Service Compose `catalog` en `profiles: ["catalog"]`, donc **jamais lancé par un `up`** : `docker compose run --rm catalog …` | Les usages n'ont rien de commun — l'un sert des requêtes, l'autre tourne en batch et **émet du trafic vers Internet, ce que l'API ne fait jamais**. Mais le code partage les modèles SQLAlchemy et l'historique Alembic, et les dupliquer ferait diverger un jour les tables dont dépend le filtre allergène. Séparer les processus, pas les définitions. |
+| **La résolution est un passage séparé et rejouable** | À l'ingestion, uniquement le match **exact** après normalisation. Le reste attend un balayage idempotent des lignes à `ingredient_id IS NULL` | Forcé par le schéma, pas choisi : une recette ingérée quand le référentiel compte 50 entrées doit gagner ses résolutions le jour où il en compte 350, **sans re-scraper**. |
+| **Ordre : collecter d'abord, saisir le référentiel ensuite** | La campagne remplit `raw_text` ; la distribution mesurée dit quoi saisir, et dans quel ordre | `db/README.md` interdit au scraper de *créer* le référentiel, et cette règle tient — il ne produit qu'une liste de courses. Deviner 350 ingrédients avant d'avoir vu une recette, c'est saisir des entrées dont on ignore lesquelles servent. Conséquence assumée : pendant un temps, des recettes à zéro ingrédient résolu. Sans conséquence — rien ne lit le catalogue avant la phase 2, et I3 dégrade proprement. |
+| **Référentiel = fichier versionné** | `db/ingredients.yaml` + chargeur idempotent | La revue humaine devient une **revue de diff Git**. Le jour où quelqu'un ajoute `lait de coco` avec l'allergène `milk`, ça se voit, ça se discute et ça s'annule. Une table remplie par un écran d'admin ne garde trace de rien — sur les données dont dépend le filtre allergène, c'est le mauvais support. |
+| **Propositions = table + CLI de revue** | Matchs approchés `pg_trgm` (I4), et plus tard les propositions de modèle | Garde la phase 1 back pur, comme le §10.1 le prévoit. La revue est une tâche au clavier, en volume : un terminal y bat une page web. Et si un écran devient utile, il sera une deuxième vue sur la même table, pas une reprise. |
+| **Extensions Postgres** | `unaccent` et `pg_trgm` | Normalisation et similarité du matching d'ingrédients (I4). |
+
 ---
 
 ## 8. Modèle de données cible
@@ -508,8 +532,11 @@ household_settings(household_id, snacks_enabled, max_dishes_soft_limit, ...)
 
 ```sql
 recipe(id, title, source_url, source_type,      -- 'user'|'scraped'|'licensed_api'
+       source_code,                              -- clé du descripteur de source (§11.5)
+       license,                                  -- déclaré PAR LA PAGE quand il l'est
        prep_minutes, cook_minutes, complexity,
        servings, instructions_url,               -- jamais le texte des instructions (I9)
+       step_count,                               -- un entier, pas les étapes
        allergens_verified,                       -- DÉRIVÉ (I3)
        last_checked_at,                          -- re-vérification périodique des liens
        created_at)
@@ -521,6 +548,7 @@ recipe_allergen(recipe_id, allergen_code)        -- source du filtre dur (I2)
 recipe_ingredient(recipe_id, position,
                   quantity, unit,
                   raw_text,                      -- toujours conservé
+                  is_section,                    -- 'Pour la pâte sucrée :' n'est pas un ingrédient
                   ingredient_id)                 -- NULL = non résolu
 
 recipe_food_category(recipe_id, food_category_id)
@@ -534,6 +562,16 @@ food_category(id, code, label)
 ```
 
 **Codes allergènes (14, INCO)** : `gluten`, `crustaceans`, `eggs`, `fish`, `peanuts`, `soybeans`, `milk`, `nuts`, `celery`, `mustard`, `sesame`, `sulphites`, `lupin`, `molluscs`.
+
+Trois colonnes ajoutées en phase 1, chacune parce que la mesure l'a imposée :
+
+| Colonne | Pourquoi |
+|---|---|
+| `recipe.source_code` | Le **site**, pas la page — `source_url` reste l'URL exacte vers laquelle on renvoie. C'est la seule façon de rejouer ou de retirer une source entière. Une chaîne qui correspond à la clé du descripteur (§11.5) et **non** une clé étrangère : une table de sources ferait doublon avec le descripteur et divergerait. |
+| `recipe.license` | cuisine-libre déclare une licence **par recette** (`CC0` sur l'échantillon). C'est la page qui le dit, c'est donc un fait. `NULL` = I9 s'applique strictement, ce qui est le cas de tous les blogs. |
+| `recipe_ingredient.is_section` | `'Pour la pâte sucrée :'` est balisé `recipeIngredient` et n'en est pas un. Le jeter perdrait l'ordre des lignes ; le résoudre serait une erreur. |
+
+> **`instructions_url` vaudra `source_url` partout.** Sur les cinq sources retenues, la recette et ses instructions sont la même page. La colonne est conservée — elle ne coûte rien et couvre le cas où ça diverge — mais autant savoir qu'elle sera toujours identique.
 
 ### 8.3 Plans et historique
 
@@ -615,7 +653,7 @@ Le contrat détaillé et sa justification sont dans **`UX-V0.md` §13** — c'es
 |---|---|---|---|
 | **0 — Fondations** | Repo, Docker Compose (`db`/`api`/`llm`/`web`), config env, schéma DB initial, Alembic, auth, interface LLM à 3 implémentations | Squelette Next.js, i18n-ready | — |
 | **0-bis — V0** | Graphe agentic complet, **coutures bouchonnées**, historique | **Conception UX, puis les six écrans du `UX-V0.md` §14 dans l'ordre**, écrits contre le contrat d'API final | **En ligne, usage interne** |
-| **1 — Catalogue** | Scraper (blogs whitelistés, JSON-LD) + référentiel d'ingrédients + CRUD recettes utilisateur | — (back pur) | **300 recettes à ingrédients résolus** |
+| **1 — Catalogue** | Pipeline de collecte (sources whitelistées, §11.5) + référentiel d'ingrédients + CRUD recettes utilisateur. **Aucun appel de modèle** (§6.4) | — (back pur) | **300 recettes à `allergens_verified = true`** |
 | **2 — V1** | Workflow semaine réel : filtres durs, signaux, arbitrage, re-validation + harness d'éval | Branchement sur les vrais endpoints | **MVP testable sur le fondateur** |
 | **3** | Workflows goûter et invités (réutilisation des nœuds) | Extension | — |
 | **4** | Anti-gaspi + saisie manuelle du frigo, puis scan photo | Extension | — |
@@ -728,12 +766,55 @@ Le système stocke des **dates de naissance de mineurs** et des **allergies** (d
 | Source | Traitement |
 |---|---|
 | **Contenu utilisateur** | Cœur du catalogue. Les familles saisissent et gardent leurs propres recettes. Seule source possible pour le stade `baby`. |
-| **Blogs externes** | **Métadonnées structurées uniquement**, extraites du JSON-LD `schema.org/Recipe` (ingrédients, quantités, temps, tags — des faits). **Redirection vers la source.** Jamais de republication du texte ni de la prose (I9). |
+| **Blogs externes** | **Métadonnées structurées uniquement** (ingrédients, quantités, temps, tags — des faits), telles que la source les déclare. **Redirection vers la source.** Jamais de republication du texte ni de la prose (I9). |
 | **API sous licence** (Spoonacular, Edamam) | Complément éventuel. |
 
 **Re-vérification périodique** des liens et contenus du catalogue : les blogs changent ou suppriment des pages. Sans ce mécanisme, l'index dérive silencieusement. Colonne `recipe.last_checked_at`, tâche planifiée.
 
-### 11.4 Deux familles d'agents distinctes
+**On ne contacte pas les auteurs.** Décision assumée : la politique repose donc entièrement sur I9, et sur rien d'autre.
+
+### 11.4 Politique de collecte
+
+Ces règles ne sont pas des réglages de performance. Elles décrivent le comportement qu'on s'impose chez des tiers qui ne nous ont rien demandé.
+
+| Règle | |
+|---|---|
+| **1 requête / 3 s par domaine** | Campagne complète ≈ 3 h sur les cinq sources. C'est une tâche de nuit qui ne se relance pas ; il n'y a rien à gagner à aller plus vite. |
+| **Aucune concurrence dans un domaine** | Le parallélisme est **entre** sites, jamais dedans. On n'ouvre jamais deux connexions simultanées chez quelqu'un. |
+| **Un `Crawl-delay` déclaré est un plancher** | cuisine-libre annonce 1 s ; on reste à 3. |
+| **`429` / `503` → recul exponentiel, puis arrêt du domaine** | Un site qui fatigue le dit avec un code HTTP. Le pipeline doit l'entendre, pas insister. |
+| **Requêtes conditionnelles en re-vérification** | `If-Modified-Since` / `ETag`. Un `304` ne transfère pas la page : la deuxième campagne ne coûte presque rien à personne. |
+| **Plafond de pages par campagne et par domaine** | Dans le descripteur. Un bug de boucle ne peut pas devenir un incident chez un tiers. |
+| **`User-Agent` identifiant, avec une URL de contact** | On dit qui on est. |
+
+> **Une protection anti-bot est un refus, et on l'accepte.** Papilles & Pupilles est derrière un challenge Cloudflare : le site est écarté, définitivement, sans tentative de contournement. C'est d'autant plus net qu'on a décidé de ne contacter personne — cette protection est alors le seul signal de consentement dont on dispose, et ce n'est pas celui qu'on va ignorer.
+
+### 11.5 Sources : ce qui a été testé, retenu et écarté
+
+**Cette section existe pour qu'on ne re-teste pas dans six mois ce qui a déjà été mesuré.** Toutes les valeurs ci-dessous viennent d'échantillons réels prélevés en août 2026, pas d'une estimation.
+
+Une source est décrite par un **descripteur déclaratif** (YAML) : sitemaps, filtres d'URL, langue, ordre d'extraction, correspondance sucré/salé, cadence, plafond de pages, licence par défaut. Aucun code par site — I8 s'applique ici comme ailleurs, une whitelist de domaines *est* une valeur de configuration. Un champ optionnel peut nommer une fonction d'adaptation, pour le jour où un site fait vraiment bande à part.
+
+| Source | Balisage | Volume mesuré | Statut |
+|---|---|---|---|
+| **cuisine-libre.org** | Microdata. JSON-LD présent mais **invalide** (virgule traînante) et **sans ingrédients** | 3 001 URLs, 73 % sont des recettes, ~2/3 salées → **~1 300 plats salés** | **Pilier.** `Crawl-delay: 1` déclaré, licence par recette (`CC0` sur l'échantillon) |
+| **undejeunerdesoleil.com** | JSON-LD `Recipe` complet | 3 714 URLs, 28 % de recettes, ~20 % salées → ~200 plats | Retenue |
+| **lacuisinedebernard.com** | JSON-LD `Recipe` complet | **bilingue — filtrer `/en/`** | Retenue |
+| **chefnini.com** | Microdata avec `itemprop="ingredients"`, forme **dépréciée** de schema.org. Pas de temps balisé | 1 201 URLs | Retenue |
+| **royalchill.com** | JSON-LD `Recipe` complet | 544 articles, 44 % de recettes, **8/8 sucrées** | Retenue **pour les goûters (§4.8) et les desserts d'invitation**, pas pour les dîners |
+| papillesetpupilles.fr | — | — | **Écartée : challenge Cloudflare** (§11.4) |
+| cestmafournee.com | aucun (Blogspot) | — | Écartée |
+| couteaux-et-tirebouchons.com | aucun sur 8 pages | 341 articles | Écartée |
+| audreycuisine.substack.com | aucun (Substack) | — | Écartée |
+
+Ce que la mesure impose à l'extracteur :
+
+1. **Il n'existe pas d'extracteur unique.** Quatre sources retenues, quatre formes. L'ordre est toujours le même : JSON-LD **tolérant** (virgules traînantes comprises) → microdata `recipeIngredient` → microdata `ingredients` → sélecteur du descripteur. Un parseur JSON strict jetterait cuisine-libre en entier.
+2. **Il compte ce qu'il n'a pas su lire.** Une extraction qui échoue en silence produit un catalogue dont personne ne connaît les trous.
+3. **La taxonomie de `recipeCategory` est propre à chaque site** — `Dessert`/`Plat` chez les blogs WordPress, mais `Terrines`, `Woks`, `Gigots`, `Japon` chez cuisine-libre. Le classement sucré/salé est donc une correspondance **dans le descripteur**, jamais une règle globale.
+4. **Le découpage quantité / unité / nom est le composant à plus fort levier.** Mesuré sur 55 recettes : 8,2 lignes d'ingrédient par recette, et une queue de distribution dominée non par des ingrédients rares mais par du bruit de parsing — `c. à soupe d'huile d'olive` et `huile d'olive` sont le même ingrédient. **I4 interdit de rattraper au trigramme ce qui relève du parsing** : c'est exactement là que `farine de riz` trouve `farine de blé`.
+
+### 11.6 Deux familles d'agents distinctes
 
 1. **Workflows en ligne** (à la demande utilisateur) — graphes LangGraph, lisent un index **déjà construit**, ne scrapent **jamais** en direct.
 2. **Pipeline d'alimentation du catalogue** — **tâche d'arrière-plan planifiée** (cron), découvre/extrait/classe depuis des blogs whitelistés, indépendante du trafic utilisateur.
@@ -757,11 +838,18 @@ meal-planner/
 ├── .env.example
 ├── docs/
 │   └── ARCHITECTURE.md          ← ce document
-├── backend/                      FastAPI + LangGraph
-│   ├── domain/                   entités, règles, invariants — sans I/O
-│   ├── infrastructure/           SQL, clients LLM, scraper
-│   ├── workflows/                graphes LangGraph
-│   ├── routers/                  façade HTTP
+├── backend/                      tout le Python — PAS seulement l'API
+│   ├── Dockerfile                image `api`
+│   ├── Dockerfile.catalog        image `catalog` : httpx, extruct, selectolax
+│   ├── app/
+│   │   ├── domain/               entités, règles, invariants — sans I/O
+│   │   ├── db/                   modèles SQLAlchemy, session
+│   │   ├── llm/                  l'interface unique et ses trois implémentations
+│   │   ├── auth/                 OAuth Google, cookie de session, foyer courant
+│   │   ├── services/             orchestration, transactions
+│   │   ├── workflows/            graphes LangGraph
+│   │   ├── routers/              façade HTTP
+│   │   └── catalog/              collecte, extraction, résolution (phase 1)
 │   ├── migrations/               Alembic
 │   └── tests/
 ├── web/                          Next.js
@@ -776,9 +864,14 @@ meal-planner/
 │       │   ├── api/client.ts     écritures depuis le navigateur
 │       │   └── api/error.ts      `ApiError`, partagé par les deux
 │       └── styles/globals.css    le bloc @theme, seul endroit des jetons
-├── db/                           init, seed du référentiel d'ingrédients
+├── db/
+│   └── ingredients.yaml          le référentiel, versionné (§11.5)
 └── eval/                         fixtures figées + script d'évaluation
 ```
+
+> **Le dossier s'appelle `backend/`, pas `api/`.** Il a porté ce dernier nom tant qu'il ne contenait que la façade HTTP ; celle-ci est désormais un sous-dossier sur huit. Le service Docker, le hostname `api:8000` et la route `/api` gardent le nom `api` — eux désignent bien l'API.
+>
+> **`app/catalog/` n'importe que `app/db/models.py` et `app/config.py`.** Et rien dans `routers/`, `services/` ou `workflows/` n'importe `app/catalog`. Dépendance à sens unique, vérifiée par un test qui parcourt les imports — même principe que `components/ui/` ↛ `lib/api` côté web. C'est ce qui rend l'extraction du pipeline vers son propre projet mécanique le jour où elle sera justifiée, et ce qui évite entre-temps de dupliquer la définition de `recipe_allergen` : deux définitions des tables dont dépend le filtre allergène, c'est la garantie qu'un jour l'une des deux dérive.
 
 **La bibliothèque de composants a deux étages, et une seule règle les tient :
 `components/ui/` n'importe jamais `lib/api`.** Dépendance unidirectionnelle,
@@ -800,6 +893,7 @@ cassent le découpage. On importe le chemin complet.
 - Le module `domain/` ne connaît ni SQL, ni HTTP, ni LLM : ce sont des fonctions pures, testables sans base.
 - Toute écriture en base passe par une migration Alembic, jamais par un script ad hoc.
 - `components/ui/` n'importe jamais `lib/api` — la règle est vérifiée en CI.
+- `app/catalog/` n'importe que `app/db/models.py` et `app/config.py`, et rien de l'API n'importe `app/catalog` — la règle est vérifiée en CI (§12.2).
 - Toute logique dérivée du front vit dans `lib/` sous forme de **fonction pure**, jamais dans un composant : elle survit aux refontes visuelles, et c'est ce qui la rend testable (§13.4).
 
 ---
@@ -830,6 +924,10 @@ Les tests vérifient que le validateur **rejette et rejoue**.
 
 **Aucun appel LLM réel.** C'est lent, coûteux, instable, et ça ne teste rien de reproductible.
 
+**Aucun accès réseau.** Le pipeline de collecte se teste sur du **HTML figé et commité** : une page par forme rencontrée — JSON-LD propre, JSON-LD invalide et sans ingrédients, microdata `recipeIngredient`, microdata `ingredients` dépréciée, page qui n'est pas une recette. Ces fixtures sont ce qui rend l'extracteur testable du tout, et elles ont une seconde vertu : elles gèlent les cas réels qui ont motivé chaque branche du parseur. Un site qui change son balisage ne casse alors pas la CI — il casse la campagne, ce qui est le bon endroit.
+
+> **Les fixtures sont expurgées avant d'être commitées.** Le texte des instructions est remplacé par un marqueur, en conservant les éléments qui le portent — le parseur ne lit jamais ce texte, il en compte les étapes, donc aucune branche n'est perdue. Committer les pages telles quelles ferait du dépôt une copie de ce que I9 interdit précisément de recopier ; la règle ne s'annule pas parce que c'est « pour les tests ».
+
 ### 13.3 Le Fake est un citoyen de première classe
 
 L'implémentation factice est la **troisième implémentation** de l'interface LLM (§7.1), au même titre qu'Ollama et l'API cloud. Une interface avec trois implémentations réelles ne fuit pas.
@@ -856,9 +954,9 @@ changer trois fois, la fonction reste.
 
 ### 13.5 L'intégration continue
 
-GitHub Actions, sur chaque poussée : `ruff` et `pytest` côté API, `tsc --noEmit`,
-`next lint` et `vitest` côté web, plus la vérification de la règle d'import du
-§12.3.
+GitHub Actions, sur chaque poussée : `ruff` et `pytest` côté `backend/`,
+`tsc --noEmit`, `eslint` et `vitest` côté web, plus la vérification des **deux**
+règles d'import du §12.3 — `components/ui/` ↛ `lib/api`, et l'API ↛ `app/catalog`.
 
 **Pas de déploiement automatique.** Il suppose des décisions non prises — où, comment
 les secrets circulent, ce qui déclenche `alembic upgrade head`, ce qui se passe s'il
