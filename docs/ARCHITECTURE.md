@@ -757,7 +757,7 @@ meal-planner/
 ├── .env.example
 ├── docs/
 │   └── ARCHITECTURE.md          ← ce document
-├── api/                          FastAPI + LangGraph
+├── backend/                      FastAPI + LangGraph
 │   ├── domain/                   entités, règles, invariants — sans I/O
 │   ├── infrastructure/           SQL, clients LLM, scraper
 │   ├── workflows/                graphes LangGraph

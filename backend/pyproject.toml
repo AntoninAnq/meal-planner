@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "meal-planner-api"
+name = "meal-planner-backend"
 version = "0.1.0"
 description = "Meal planning for households where not everyone eats the same thing"
 authors = ["Antonin"]

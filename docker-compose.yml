@@ -48,7 +48,7 @@ services:
 
   api:
     build:
-      context: ./api
+      context: ./backend
     env_file: .env
     environment:
       # Built from the SAME interpolated variables the `db` service uses, so the
@@ -67,7 +67,7 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
-      - ./api:/app
+      - ./backend:/app
     command: >
       sh -c "alembic upgrade head &&
              uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"

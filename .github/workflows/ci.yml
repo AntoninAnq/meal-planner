@@ -14,7 +14,7 @@ on:
   pull_request:
 
 jobs:
-  api:
+  backend:
     runs-on: ubuntu-latest
     env:
       # Same as the Dockerfile: no virtualenv, everything lands in the 3.13
@@ -22,7 +22,7 @@ jobs:
       POETRY_VIRTUALENVS_CREATE: "false"
     defaults:
       run:
-        working-directory: api
+        working-directory: backend
     steps:
       - uses: actions/checkout@v5
 

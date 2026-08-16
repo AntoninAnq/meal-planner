@@ -1,6 +1,6 @@
 # Base de données
 
-Le schéma est géré **exclusivement par Alembic** (`api/migrations/`). Aucune
+Le schéma est géré **exclusivement par Alembic** (`backend/migrations/`). Aucune
 écriture de structure ne passe par un script ad hoc : les phases 1 et 2
 modifieront le schéma, et une base créée à la main devient impossible à faire
 évoluer une fois qu'elle contient de l'historique de repas réel.

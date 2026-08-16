@@ -41,7 +41,7 @@ La CI ne contient que deux couches, et **aucun appel LLM réel** — c'est lent,
 coûteux, instable, et ça ne teste rien de reproductible.
 
 ```bash
-cd api
+cd backend
 poetry install
 poetry run pytest
 ```
@@ -63,7 +63,7 @@ meal-planner/
 ├── docker-compose.yml     db / api / llm (hôte) / web + proxy
 ├── Caddyfile              origine unique : / → Next.js, /api → FastAPI
 ├── docs/ARCHITECTURE.md   ← la colonne vertébrale
-├── api/
+├── backend/
 │   ├── app/domain/        entités et règles pures — ni SQL, ni HTTP, ni LLM
 │   ├── app/llm/           l'interface unique et ses trois implémentations
 │   ├── app/auth/          OAuth Google, cookie de session, foyer courant
