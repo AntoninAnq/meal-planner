@@ -50,6 +50,7 @@ class FakeLLMClient(RetryingLLMClient):
         context: str,
         schema: dict[str, Any],
         attempt: int,
+        temperature: float | None = None,
     ) -> RawCompletion:
         self.calls.append(
             {
@@ -57,6 +58,7 @@ class FakeLLMClient(RetryingLLMClient):
                 "context": context,
                 "schema": schema,
                 "attempt": attempt,
+                "temperature": temperature,
             }
         )
 

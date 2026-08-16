@@ -5,8 +5,16 @@ Fake (tests). An interface with three real implementations does not leak; with
 one it stays theoretical until the day you swap and discover everything that
 escaped through it.
 
-Deliberately absent: `temperature` (removed on recent models, and determinism is
-not steered there), `effort` (rejected by Haiku 4.5), `stream` (the LLM emits
+`temperature` was deliberately absent until measurement forced it back in. The
+envelope loop rejects a plan and asks again — but at temperature 0 the same
+prompt returns the same output, byte for byte, so attempts 2 and 3 were
+provably wasted (~29 s each, measured on qwen3:8b). Asking again only means
+something if something changed.
+
+It stays optional: `None` leaves the provider default in place, which is what
+every caller but the repair loop wants.
+
+Deliberately absent: `effort` (rejected by Haiku 4.5), `stream` (the LLM emits
 identifiers, there is nothing to stream).
 """
 
@@ -63,6 +71,7 @@ class LLMClient(Protocol):
         context: str,
         schema: dict[str, Any],
         max_attempts: int = 3,
+        temperature: float | None = None,
     ) -> StructuredResult: ...
 
 
@@ -92,8 +101,13 @@ class RetryingLLMClient(ABC):
         context: str,
         schema: dict[str, Any],
         attempt: int,
+        temperature: float | None,
     ) -> RawCompletion:
-        """One provider call. Attempt index is 1-based, for repair prompting."""
+        """One provider call. Attempt index is 1-based, for repair prompting.
+
+        `temperature` is None when the caller has no opinion, which leaves the
+        provider default in place.
+        """
 
     def complete_structured(
         self,
@@ -102,6 +116,7 @@ class RetryingLLMClient(ABC):
         context: str,
         schema: dict[str, Any],
         max_attempts: int = 3,
+        temperature: float | None = None,
     ) -> StructuredResult:
         if max_attempts < 1:
             raise ValueError("max_attempts must be >= 1")
@@ -118,6 +133,7 @@ class RetryingLLMClient(ABC):
                 context=context,
                 schema=schema,
                 attempt=attempt,
+                temperature=temperature,
             )
             input_tokens += completion.input_tokens
             output_tokens += completion.output_tokens

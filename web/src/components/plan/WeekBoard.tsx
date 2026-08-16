@@ -12,6 +12,7 @@ import { apiGet, apiPost } from "@/lib/api/client";
 import { ApiError } from "@/lib/api/error";
 import type { MealPlan, Violation } from "@/lib/api/types";
 import { cx } from "@/lib/cx";
+import { splitViolations } from "@/lib/plan";
 import { viewCookie, type ViewMode, type WeekView } from "@/lib/week-view";
 
 const POLL_INTERVAL_MS = 5000;
@@ -57,6 +58,7 @@ export function WeekBoard({
   const abort = useRef<AbortController | null>(null);
 
   const busy = startedAt !== null;
+  const { slot: slotViolations, plan: planViolations } = splitViolations(violations);
 
   function chooseView(next: WeekView) {
     setView(next);
@@ -156,10 +158,26 @@ export function WeekBoard({
 
       {violations.length > 0 && !busy && (
         <div role="alert" className="rounded-card border border-danger/30 bg-danger-soft px-4 py-3">
-          <p className="text-sm font-semibold text-danger">
-            {t("violationsHeading", { count: violations.length })}
-          </p>
-          <p className="mt-1 text-sm text-ink">{t("violationsBody")}</p>
+          {/* Two different failures, two different sentences. A plan-level
+              violation points at no meal, so counting it as "a meal could not
+              be completed" would send the user hunting for a slot that is
+              perfectly fine. */}
+          {slotViolations.length > 0 && (
+            <>
+              <p className="text-sm font-semibold text-danger">
+                {t("violationsHeading", { count: slotViolations.length })}
+              </p>
+              <p className="mt-1 text-sm text-ink">{t("violationsBody")}</p>
+            </>
+          )}
+          {planViolations.length > 0 && (
+            <>
+              <p className={cx("text-sm font-semibold text-danger", slotViolations.length > 0 && "mt-3")}>
+                {t("planViolationHeading")}
+              </p>
+              <p className="mt-1 text-sm text-ink">{t("planViolationBody")}</p>
+            </>
+          )}
         </div>
       )}
 

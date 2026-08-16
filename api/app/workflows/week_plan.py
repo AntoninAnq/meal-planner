@@ -46,6 +46,18 @@ from app.workflows.prompts import ARBITRATION_INSTRUCTIONS, build_context
 #: never pretend a rejected plan passed.
 MAX_ENVELOPE_ATTEMPTS = 3
 
+#: One temperature per envelope attempt. The first is deterministic — the best
+#: shot deserves the model's most likely answer. The retries are not: at
+#: temperature 0 the same prompt returns the same output byte for byte, so
+#: rejecting a plan and asking again in exactly the same terms is 29 seconds
+#: (measured) spent to obtain the identical plan. Asking again only means
+#: something if something changed.
+#:
+#: Kept moderate on purpose: the output is schema-constrained, and pushing the
+#: temperature high trades one failure mode (a repetitive plan) for another
+#: (an invalid one, caught by the shape loop, paid for twice).
+RETRY_TEMPERATURES = (0.0, 0.7, 1.0)
+
 
 class CataloguePort(Protocol):
     """The pre-filter's data source. Stubbed in V0, SQL from V1 on."""
@@ -170,10 +182,12 @@ def build_graph(llm: LLMClient, catalogue: CataloguePort) -> Any:
         if violations:
             context = f"{context}\n\n{repair_hint(violations)}"
 
+        index = min(attempt, len(RETRY_TEMPERATURES)) - 1
         result = llm.complete_structured(
             instructions=ARBITRATION_INSTRUCTIONS,
             context=context,
             schema=plan_output_schema(with_catalogue=request.with_catalogue),
+            temperature=RETRY_TEMPERATURES[index],
         )
 
         return {

@@ -39,6 +39,19 @@ export function violationsByKey(violations: Violation[]): Map<SlotKey | "", Viol
   return map;
 }
 
+/** Violations about the plan as a whole carry no slot — there is no single
+ * meal to point at — so they need their own sentence rather than being
+ * counted as meals that could not be completed. */
+export function splitViolations(violations: Violation[]): {
+  slot: Violation[];
+  plan: Violation[];
+} {
+  return {
+    slot: violations.filter((v) => v.day_of_week !== null && v.meal_type !== null),
+    plan: violations.filter((v) => v.day_of_week === null || v.meal_type === null),
+  };
+}
+
 /**
  * Whether a slot needs the multi-dish presentation.
  *

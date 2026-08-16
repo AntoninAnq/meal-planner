@@ -11,6 +11,7 @@ import pytest
 
 from app.domain.enums import MealType
 from app.domain.planning import (
+    DEGENERATE_PLAN,
     DISH_OUTSIDE_CANDIDATES,
     DISH_WITHOUT_EATER,
     DISH_WITHOUT_IDENTITY,
@@ -228,12 +229,17 @@ def test_repair_hint_mentions_every_violation() -> None:
         assert violation.code in hint
 
 
-def test_every_violation_carries_the_slot_it_is_about() -> None:
+#: Violations about the plan as a whole rather than about one meal. They
+#: legitimately carry no slot — there is no single meal to point at.
+PLAN_LEVEL = {DEGENERATE_PLAN}
+
+
+def test_every_slot_violation_carries_the_slot_it_is_about() -> None:
     """Without this, an interface can only say "something is wrong somewhere".
 
-    The only useful reaction to a violation is per slot — regenerate that one,
-    or write the dish yourself — so a message that cannot point at a meal is
-    less useful than silence.
+    The only useful reaction to a slot violation is per slot — regenerate that
+    one, or write the dish yourself — so a message that cannot point at a meal
+    is less useful than silence.
     """
     proposal = [
         slot(0, dish("m1", "m9")),  # unknown eater, m2/m3 unserved
@@ -243,6 +249,8 @@ def test_every_violation_carries_the_slot_it_is_about() -> None:
 
     assert violations
     for violation in violations:
+        if violation.code in PLAN_LEVEL:
+            continue
         assert violation.day_of_week is not None, violation
         assert violation.meal_type is not None, violation
 
@@ -253,3 +261,91 @@ def test_every_violation_carries_the_slot_it_is_about() -> None:
 
     invented = [v for v in violations if v.code == UNKNOWN_SLOT]
     assert [(v.day_of_week, v.meal_type) for v in invented] == [(5, MealType.DINNER)]
+
+
+# --- Degenerate plans --------------------------------------------------------
+
+WEEK = [SlotSpec(day, MealType.DINNER, ("m1", "m2", "m3")) for day in range(7)]
+
+
+def week(*labels: str) -> list[ProposedSlot]:
+    return [slot(day, dish("m1", "m2", "m3", label=label)) for day, label in enumerate(labels)]
+
+
+def test_the_same_dish_every_night_does_not_pass() -> None:
+    """The repair loop exists for this: the deterministic side catches what the
+    model gets wrong, however explicit the instruction was."""
+    proposal = week(*(["Poulet rôti aux légumes"] * 7))
+    violations = validate_proposal(proposal, WEEK)
+
+    assert DEGENERATE_PLAN in codes(violations)
+
+
+def test_repetition_is_matched_on_the_title_not_its_spelling() -> None:
+    proposal = week(
+        "Poulet rôti aux légumes",
+        "  poulet   RÔTI aux légumes ",
+        "Poulet rôti aux légumes",
+        "Poulet rôti aux légumes",
+        "Poulet rôti aux légumes",
+        "Poulet rôti aux légumes",
+        "Poulet rôti aux légumes",
+    )
+    assert DEGENERATE_PLAN in codes(validate_proposal(proposal, WEEK))
+
+
+def test_a_varied_week_passes() -> None:
+    proposal = week(
+        "Poulet aux olives",
+        "Gratin de courgettes",
+        "Saumon grillé",
+        "Chili sin carne",
+        "Tarte aux poireaux",
+        "Boeuf aux carottes",
+        "Risotto aux champignons",
+    )
+    assert validate_proposal(proposal, WEEK) == []
+
+
+def test_leftovers_are_allowed_because_they_are_a_feature() -> None:
+    """"There's chicken left over" is one of the product's own examples: a plan
+    may repeat itself, it may not collapse to a single meal."""
+    proposal = week(
+        "Poulet rôti",
+        "Poulet rôti",
+        "Poulet rôti",
+        "Gratin de courgettes",
+        "Saumon grillé",
+        "Chili sin carne",
+        "Tarte aux poireaux",
+    )
+    assert validate_proposal(proposal, WEEK) == []
+
+
+def test_a_dish_filling_most_of_the_week_does_not_pass() -> None:
+    proposal = week(
+        "Poulet rôti",
+        "Poulet rôti",
+        "Poulet rôti",
+        "Poulet rôti",
+        "Poulet rôti",
+        "Gratin de courgettes",
+        "Saumon grillé",
+    )
+    assert DEGENERATE_PLAN in codes(validate_proposal(proposal, WEEK))
+
+
+def test_a_single_slot_generation_is_never_degenerate() -> None:
+    """Regenerating one slot has nothing to be repetitive about, and must not
+    be rejected for producing exactly one dish."""
+    one = [SlotSpec(3, MealType.DINNER, ("m1", "m2", "m3"))]
+    proposal = [slot(3, dish("m1", "m2", "m3", label="Poulet rôti"))]
+    assert validate_proposal(proposal, one) == []
+
+
+def test_the_repair_hint_tells_the_model_what_to_do_about_it() -> None:
+    violations = validate_proposal(week(*(["Poulet rôti"] * 7)), WEEK)
+    hint = repair_hint(violations)
+
+    assert DEGENERATE_PLAN in hint
+    assert "different dish for each slot" in hint

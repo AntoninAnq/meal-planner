@@ -1,7 +1,14 @@
 import { describe, expect, it } from "vitest";
 
 import type { Dish, MealPlan, Violation } from "@/lib/api/types";
-import { hasDivergence, parseSlotKey, slotKey, slotsByKey, violationsByKey } from "@/lib/plan";
+import {
+  hasDivergence,
+  parseSlotKey,
+  slotKey,
+  slotsByKey,
+  splitViolations,
+  violationsByKey,
+} from "@/lib/plan";
 
 function dish(overrides: Partial<Dish> = {}): Dish {
   return {
@@ -100,5 +107,18 @@ describe("violationsByKey", () => {
   it("keeps a slot-less violation countable instead of dropping it", () => {
     const map = violationsByKey([{ code: "odd", detail: "…", day_of_week: null, meal_type: null }]);
     expect(map.get("")).toHaveLength(1);
+  });
+});
+
+describe("splitViolations", () => {
+  it("keeps the two failures apart", () => {
+    // A plan-level violation points at no meal: counting it as "a meal could
+    // not be completed" would send the user hunting for a slot that is fine.
+    const { slot, plan } = splitViolations([
+      { code: "eater_not_served", detail: "…", day_of_week: 3, meal_type: "dinner" },
+      { code: "degenerate_plan", detail: "…", day_of_week: null, meal_type: null },
+    ]);
+    expect(slot.map((v) => v.code)).toEqual(["eater_not_served"]);
+    expect(plan.map((v) => v.code)).toEqual(["degenerate_plan"]);
   });
 });

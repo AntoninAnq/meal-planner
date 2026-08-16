@@ -974,9 +974,39 @@ l'acceptait, trois plats pour trois mangeurs restant sous la limite.
 
 **Ce qui résiste : la non-répétition.** Neuf créneaux, le même plat neuf fois,
 malgré une règle explicite et non ambiguë. C'est le plafond du 8B sur cette tâche,
-pas un trou de prompt. La comparaison avec Haiku 4.5 sur ce cas précis est le
-premier travail du harness — et **le chemin Anthropic n'a jamais été exercé contre
-la vraie API**, ce qui en fait un préalable, pas une conclusion.
+pas un trou de prompt.
+
+**Conséquence : la non-répétition sort du prompt et entre dans l'enveloppe**
+(`degenerate_plan`). Un plan qui s'effondre sur un seul plat ne passe plus la
+re-validation et la boucle rejoue — c'est précisément ce pour quoi elle existe.
+
+> **Ce n'est pas une contradiction avec le §6.3.** Ce que le §6.3 protège, c'est la
+> *rotation* — « varier les catégories », « manger des légumineuses » — qui relève
+> du goût et resterait insupportable en règle dure. Émettre neuf fois la même
+> chaîne de caractères n'est pas une question de goût : c'est une **sortie
+> dégénérée**, plus proche de `too_many_dishes` que d'un signal. La borne reste
+> lâche — un plat peut occuper jusqu'à la moitié des créneaux — parce que
+> réutiliser un plat est une fonctionnalité réelle : *« il reste du poulet »* est
+> un exemple du produit lui-même.
+
+**Ce que le 8B fait alors, mesuré :**
+
+```
+tentatives  3        appels LLM 3
+  1071 in / 1073 out   36,8 s
+  1116 in /  828 out   28,6 s
+  1116 in /  828 out   28,6 s
+violations finales : ['degenerate_plan']
+```
+
+Les tentatives 2 et 3 sont **identiques au token près**. À entrée constante et
+température nulle, rejouer le même prompt redonne la même sortie : la troisième
+tentative est 28 secondes garanties perdues. La boucle a raison de refuser le plan ;
+elle a tort de le redemander à l'identique.
+
+La comparaison avec Haiku 4.5 sur ce cas précis est le premier travail du harness —
+et **le chemin Anthropic n'a jamais été exercé contre la vraie API**, ce qui en fait
+un préalable, pas une conclusion.
 
 ### 14.7 LLM-juge : repoussé
 

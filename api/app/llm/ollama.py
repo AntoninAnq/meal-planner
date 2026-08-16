@@ -41,16 +41,19 @@ class OllamaClient(RetryingLLMClient):
         context: str,
         schema: dict[str, Any],
         attempt: int,
+        temperature: float | None = None,
     ) -> RawCompletion:
         system = instructions if attempt == 1 else instructions + _REPAIR_HINT
 
-        payload = {
+        payload: dict[str, Any] = {
             "model": self._model,
             "system": system,
             "prompt": context,
             "format": schema,
             "stream": False,
         }
+        if temperature is not None:
+            payload["options"] = {"temperature": temperature}
 
         try:
             response = httpx.post(

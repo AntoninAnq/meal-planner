@@ -102,7 +102,9 @@
     "violationsBody": "Ils sont signalés dans la semaine. Vous pouvez les régénérer ou écrire le plat vous-même.",
     "generationLost": "La génération n'a pas abouti. Relancez-la.",
     "noMembers": "Ajoutez au moins une personne avant de générer une semaine.",
-    "settings": "Réglages"
+    "settings": "Réglages",
+    "planViolationHeading": "Le plan manque de variété",
+    "planViolationBody": "Le modèle a proposé trop souvent le même plat. Relancez la génération, ou remplacez les répétitions vous-même."
   },
   "composer": {
     "collapsed": "Une précision pour cette semaine ?",

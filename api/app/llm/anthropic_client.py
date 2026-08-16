@@ -41,6 +41,7 @@ class AnthropicClient(RetryingLLMClient):
         context: str,
         schema: dict[str, Any],
         attempt: int,
+        temperature: float | None = None,
     ) -> RawCompletion:
         system = instructions if attempt == 1 else instructions + _REPAIR_HINT
 
@@ -54,6 +55,9 @@ class AnthropicClient(RetryingLLMClient):
                 system=system,
                 messages=[{"role": "user", "content": context}],
                 output_config={"format": {"type": "json_schema", "schema": schema}},
+                # Only sent when the caller asked for one, so the default path
+                # never depends on this parameter still being accepted.
+                **({"temperature": temperature} if temperature is not None else {}),
             )
         except anthropic.RateLimitError as exc:
             raise LLMUnavailableError(f"anthropic rate limited: {exc}") from exc

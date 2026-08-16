@@ -102,7 +102,9 @@
     "violationsBody": "They are marked in the week. You can regenerate them or write the dish yourself.",
     "generationLost": "The generation did not arrive. Try again.",
     "noMembers": "Add at least one person before generating a week.",
-    "settings": "Settings"
+    "settings": "Settings",
+    "planViolationHeading": "The plan lacks variety",
+    "planViolationBody": "The model suggested the same dish too often. Generate again, or replace the repeats yourself."
   },
   "composer": {
     "collapsed": "Anything to note for this week?",

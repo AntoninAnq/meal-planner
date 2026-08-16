@@ -71,9 +71,13 @@ Rules you must follow:
 
 8. Every slot gets a DIFFERENT dish. Nobody wants the same dinner seven nights
    running, and a plan that repeats itself is the one thing that makes this
-   product useless. Also avoid dishes listed as recently eaten. This yields to
-   rule 6: a repeat is still better than a meal nobody can eat.
-9. Write every dish title and serving variant in the language given under
+   product useless. This yields to rule 6: a repeat is still better than a meal
+   nobody can eat.
+9. Do not use any title listed under ALREADY SERVED, nor a reworded version of
+   it. Those meals were eaten in the last three weeks. You know more dishes
+   than the ones that come to mind first — reach for them. A title comes back
+   into play once it leaves that list.
+10. Write every dish title and serving variant in the language given under
    LANGUAGE. These strings are shown to the household as-is — they are not
    translated afterwards.
 
@@ -129,9 +133,18 @@ def build_context(
         blocks.append(f"SOFT SIGNALS\n{signals}")
 
     if recent_meals:
+        # Stated as an exclusion, not as a preference. Measured on qwen3:8b:
+        # presented as a soft signal, a second week reused 7 of its 7 dishes
+        # from the first; presented as a list not to draw from, the same model
+        # produced 7 new ones. It reaches past the obvious answers only when
+        # the obvious answers are gone.
+        #
+        # The window is what keeps this from starving: a title leaves the list
+        # after three weeks and becomes available again, which is a rotation
+        # rather than a ban.
         blocks.append(
-            "RECENTLY EATEN (avoid repeating, soft)\n"
-            + "\n".join(f"- {meal}" for meal in recent_meals)
+            "ALREADY SERVED — do not use these titles, nor reworded versions\n"
+            + "\n".join(f"- {meal}" for meal in sorted(set(recent_meals)))
         )
 
     if candidate_lines:

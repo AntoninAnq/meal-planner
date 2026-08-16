@@ -94,6 +94,7 @@ EATER_SERVED_TWICE = "eater_served_twice"
 TOO_MANY_DISHES = "too_many_dishes"
 DISH_OUTSIDE_CANDIDATES = "dish_outside_candidates"
 VARIANT_FOR_NON_EATER = "variant_for_non_eater"
+DEGENERATE_PLAN = "degenerate_plan"
 
 
 def validate_proposal(
@@ -122,7 +123,61 @@ def validate_proposal(
             continue  # already reported as UNKNOWN_SLOT
         _check_slot(slot, expected, allowed_recipe_ids, violations)
 
+    _check_not_degenerate(proposal, violations)
+
     return violations
+
+
+def _dish_identity(dish: ProposedDish) -> str:
+    return dish.recipe_id or " ".join((dish.label or "").lower().split())
+
+
+def _check_not_degenerate(
+    proposal: Sequence[ProposedSlot], violations: list[Violation]
+) -> None:
+    """A week that is the same meal over and over is not a plan.
+
+    This is NOT the rotation signal, which stays soft and stays in the prompt:
+    "eat pulses", "vary the categories" are matters of taste, and forcing them
+    would fight a household with a narrow catalogue. Emitting one dish for
+    every slot is something else — a degenerate output, closer to
+    TOO_MANY_DISHES than to a preference — and the repair loop exists precisely
+    so the deterministic side catches what the model gets wrong.
+
+    The bound is deliberately loose. Reusing a dish is a real feature: "there's
+    chicken left over" is one of the product's own examples, so a plan may
+    repeat itself — it may not collapse to a single meal.
+    """
+    slots = [slot for slot in proposal if slot.dishes]
+    if len(slots) < 2:
+        # A slot-scoped generation has nothing to be repetitive about.
+        return
+
+    per_slot = [{_dish_identity(dish) for dish in slot.dishes} for slot in slots]
+    counts = Counter(identity for names in per_slot for identity in names)
+
+    if len(counts) == 1:
+        violations.append(
+            Violation(
+                DEGENERATE_PLAN,
+                f"every slot serves the same dish ({next(iter(counts))!r}); "
+                "produce a different dish for each slot",
+            )
+        )
+        return
+
+    # Half the week is already generous for leftovers, and leaves the model no
+    # room to answer "one dish, repeated" in a slightly less obvious way.
+    limit = max(2, len(slots) // 2)
+    for identity, count in sorted(counts.items()):
+        if count > limit:
+            violations.append(
+                Violation(
+                    DEGENERATE_PLAN,
+                    f"{identity!r} fills {count} of the {len(slots)} slots, "
+                    f"at most {limit} allowed; vary the other ones",
+                )
+            )
 
 
 def _check_slot_coverage(

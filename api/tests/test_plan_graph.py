@@ -173,3 +173,36 @@ def test_an_unknown_language_code_is_passed_through() -> None:
     run_plan(_request(language="es"), llm=llm)
 
     assert "LANGUAGE\nes" in llm.calls[0]["context"]
+
+
+def test_a_retry_does_not_ask_the_same_question_again() -> None:
+    """Rejecting a plan and asking again in identical terms is time spent to
+    obtain the identical plan.
+
+    At temperature 0 the same prompt returns the same output byte for byte —
+    measured on qwen3:8b, where attempts 2 and 3 came back with the same 828
+    output tokens and the same violations. The first shot stays deterministic;
+    the retries must differ.
+    """
+    broken = _plan(_slot(0, _dish("m1")), _slot(1, _dish("m1", "m2")))
+    llm = FakeLLMClient([broken, broken, GOOD])
+
+    run_plan(_request(), llm=llm)
+
+    temperatures = [call["temperature"] for call in llm.calls]
+    assert temperatures[0] == 0.0, "the best shot deserves the most likely answer"
+    assert len(set(temperatures)) == len(temperatures), f"identical retries: {temperatures}"
+    assert all(t is not None and 0.0 <= t <= 1.0 for t in temperatures)
+
+
+def test_the_repair_hint_changes_between_attempts_too() -> None:
+    """Temperature is not the only thing that must move: the model is also told
+    what it got wrong, which is the part that can actually steer it."""
+    broken = _plan(_slot(0, _dish("m1")), _slot(1, _dish("m1", "m2")))
+    llm = FakeLLMClient([broken, GOOD])
+
+    run_plan(_request(), llm=llm)
+
+    assert len(llm.calls) == 2
+    assert "rejected" in llm.calls[1]["context"]
+    assert "rejected" not in llm.calls[0]["context"]
