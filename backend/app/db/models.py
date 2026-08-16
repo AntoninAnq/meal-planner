@@ -513,6 +513,14 @@ class Recipe(Base):
     #: nonsense. Keeping the raw string is what lets a human tell them apart
     #: later instead of silently trusting a number.
     servings_raw: Mapped[str | None] = mapped_column(String(120))
+    #: `recipeCategory` in the source's own words — `Dessert` on one site,
+    #: `Terrines` or `Woks` on another. Mapping those onto `food_category` is a
+    #: separate job with its own per-source table; keeping the raw strings is
+    #: what makes it possible to do it later instead of fetching every page a
+    #: second time.
+    source_categories: Mapped[list[str]] = mapped_column(
+        JSONB, nullable=False, server_default=text("'[]'")
+    )
 
     #: DERIVED (I3): true if and only if EVERY ingredient line resolves. Never
     #: written by the collection pipeline — the resolution pass computes it.

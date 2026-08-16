@@ -42,6 +42,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="extract and report, write nothing",
     )
 
+    ingest.add_argument(
+        "--purge-cache",
+        action="store_true",
+        help="empty the campaign cache first. It is not an archive (I9).",
+    )
+
     resolve = sub.add_parser("resolve", help="match unresolved ingredient lines (idempotent)")
     resolve.add_argument(
         "--report",
@@ -55,8 +61,69 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _ingest(args) -> int:
+    from app.catalog.descriptors import DescriptorError, load_sources
+    from app.catalog.fetching import HttpxTransport, PoliteFetcher, ResponseCache
+    from app.catalog.ingest import cache_directory, run_campaign
+    from app.config import get_settings
+    from app.db.session import get_session_factory
+
+    settings = get_settings()
+    try:
+        sources = load_sources()
+    except DescriptorError as exc:
+        print(exc, file=sys.stderr)
+        return 2
+
+    source = sources.get(args.source)
+    if source is None:
+        print(
+            f"unknown source {args.source!r}. Known: {', '.join(sorted(sources))}",
+            file=sys.stderr,
+        )
+        return 2
+    if not source.enabled:
+        print(f"source {source.code!r} is disabled in the whitelist", file=sys.stderr)
+        return 2
+
+    cache = ResponseCache(
+        cache_directory(settings.catalog_cache_dir), settings.catalog_cache_ttl_seconds
+    )
+    if args.purge_cache:
+        print(f"cache purgé : {cache.purge()} entrées")
+
+    transport = HttpxTransport()
+    fetcher = PoliteFetcher(
+        source=source,
+        transport=transport,
+        cache=cache,
+        timeout=settings.catalog_request_timeout_seconds,
+    )
+
+    # Announced before the first request, because the pace is the thing someone
+    # reading this output wants to be able to object to.
+    print(
+        f"campagne {source.code} · {source.request_interval_seconds}s entre requêtes, "
+        f"une à la fois, plafond {source.max_pages_per_campaign} pages"
+        + (" · DRY RUN, rien ne sera écrit" if args.dry_run else "")
+    )
+
+    try:
+        with get_session_factory()() as db:
+            report = run_campaign(
+                db, source=source, fetcher=fetcher, limit=args.limit, dry_run=args.dry_run
+            )
+    finally:
+        transport.close()
+
+    print(report.render())
+    return 1 if report.abandoned else 0
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
+    if args.command == "ingest":
+        return _ingest(args)
     print(f"`{args.command}` is not implemented yet.", file=sys.stderr)
     return 1
 

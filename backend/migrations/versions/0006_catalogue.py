@@ -120,6 +120,13 @@ def upgrade() -> None:
         sa.Column("step_count", sa.SmallInteger()),
         sa.Column("servings", sa.SmallInteger()),
         sa.Column("servings_raw", sa.String(120)),
+        # `recipeCategory` in the source's own words. The taxonomies do not
+        # agree between sources, so mapping them to `food_category` is a later,
+        # separate job — and without keeping the raw strings it could only be
+        # done by fetching every page again.
+        sa.Column(
+            "source_categories", postgresql.JSONB(), nullable=False, server_default=sa.text("'[]'")
+        ),
         sa.Column(
             "allergens_verified", sa.Boolean(), nullable=False, server_default=sa.text("false")
         ),

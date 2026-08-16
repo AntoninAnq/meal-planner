@@ -56,6 +56,13 @@ class Settings(BaseSettings):
     #:
     #: `backend/sources.example.yaml` is the template to copy.
     catalog_sources_path: str = "/config/sources.yaml"
+    #: Campaign cache. A named Docker volume, so it never reaches the repository
+    #: and `docker compose down -v` purges it. It exists so that re-running a
+    #: campaign does not mean asking a stranger's server for the same page
+    #: again — not to archive anyone's pages (I9).
+    catalog_cache_dir: str = "/var/cache/catalog"
+    catalog_cache_ttl_seconds: float = 24 * 3600
+    catalog_request_timeout_seconds: float = 30.0
 
     @property
     def oauth_redirect_uri(self) -> str:

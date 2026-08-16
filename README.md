@@ -88,10 +88,22 @@ Le pipeline de collecte tourne dans **sa propre image**, sur un service que
 `docker compose up` ne démarre jamais :
 
 ```bash
-docker compose run --rm catalog ingest --source <clé-du-descripteur>
+cp backend/sources.example.yaml sources.yaml     # la whitelist, ignorée par git
+
+docker compose run --rm catalog ingest --source <clé> --limit 60 --dry-run
+docker compose run --rm catalog ingest --source <clé>
 docker compose run --rm catalog resolve          # rejouable, idempotent
 docker compose run --rm catalog review           # les propositions I4, à confirmer
 ```
+
+La whitelist **n'est pas dans le dépôt** (`docs/ARCHITECTURE.md` §11.5) : elle
+est montée depuis `./sources.yaml`, et son absence est une erreur explicite,
+jamais un repli silencieux sur le modèle.
+
+Une campagne annonce son allure avant la première requête, et son rapport dit ce
+qu'elle n'a **pas** su faire — pages illisibles, JSON-LD réparé, champs absents,
+plafond atteint. Le cache de campagne vit dans un volume Docker : `docker compose
+down -v` le purge, et `--purge-cache` aussi.
 
 Il va chercher du contenu chez des tiers qui ne nous ont rien demandé. La
 politique qu'on s'impose — cadence, absence de concurrence par domaine, arrêt sur

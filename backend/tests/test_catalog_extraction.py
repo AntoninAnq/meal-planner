@@ -131,6 +131,24 @@ def test_the_licence_is_taken_from_the_page_that_declares_it() -> None:
     assert silent.license is None
 
 
+def test_html_entities_are_decoded_out_of_the_json_ld() -> None:
+    """One source double-encodes inside its JSON-LD.
+
+    `"name": "B&#233;chamel"` is valid JSON whose value is mojibake, and nothing
+    else in the chain would fix it: JSON has no reason to decode HTML, and the
+    DOM parser never sees these because they sit inside a `<script>`. Caught in
+    the database, after a real campaign wrote `Po&#234;l&#233;es` as a category.
+    """
+    recipe, _ = run("json_ld_complete", "json-ld-site")
+
+    assert recipe is not None
+    everything = " ".join(
+        [recipe.title, *(recipe.categories), *(line.raw_text for line in recipe.ingredients)]
+    )
+    assert "&#" not in everything
+    assert "&amp;" not in everything
+
+
 def test_steps_are_counted_never_stored() -> None:
     """A count is a fact; the steps are the author's (I9)."""
     recipe, _ = run("json_ld_invalid_microdata_ingredients", "microdata-site")

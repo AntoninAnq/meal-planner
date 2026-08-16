@@ -487,6 +487,8 @@ Le pré-filtre ne se contente pas de filtrer : il **classe et tronque** à ~15-2
 | **Référentiel = fichier versionné** | `db/ingredients.yaml` + chargeur idempotent | La revue humaine devient une **revue de diff Git**. Le jour où quelqu'un ajoute `lait de coco` avec l'allergène `milk`, ça se voit, ça se discute et ça s'annule. Une table remplie par un écran d'admin ne garde trace de rien — sur les données dont dépend le filtre allergène, c'est le mauvais support. |
 | **Propositions = table + CLI de revue** | Matchs approchés `pg_trgm` (I4), et plus tard les propositions de modèle | Garde la phase 1 back pur, comme le §10.1 le prévoit. La revue est une tâche au clavier, en volume : un terminal y bat une page web. Et si un écran devient utile, il sera une deuxième vue sur la même table, pas une reprise. |
 | **Extensions Postgres** | `unaccent` et `pg_trgm` | Normalisation et similarité du matching d'ingrédients (I4). |
+| **Le transport est une interface, avec une implémentation réelle et une factice** | `Transport`, `HttpxTransport`, `FakeTransport` — plus une horloge et un `sleep` injectés | Même raisonnement que pour le client LLM (§7.1, §13.3). Sans la factice, aucune des règles du §11.4 n'est jamais exercée avant le jour où elle compte, et le chemin de recul sur `429` est celui qui sera faux. Les tests d'allure vérifient qu'on attend le bon nombre de secondes **sans attendre une seule seconde**. |
+| **L'ingestion n'écrit jamais `allergens_verified` ni `recipe_allergen`** | Elles sont calculées par la passe de résolution, à partir des seuls ingrédients résolus | I2 et I3. Un pipeline de collecte qui les renseignerait déclarerait une propriété de sécurité qu'il n'a aucun moyen de connaître. |
 
 ---
 
@@ -785,6 +787,7 @@ Ces règles ne sont pas des réglages de performance. Elles décrivent le compor
 | **`429` / `503` → recul exponentiel, puis arrêt du domaine** | Un site qui fatigue le dit avec un code HTTP. Le pipeline doit l'entendre, pas insister. |
 | **Requêtes conditionnelles en re-vérification** | `If-Modified-Since` / `ETag`. Un `304` ne transfère pas la page : la deuxième campagne ne coûte presque rien à personne. |
 | **Plafond de pages par campagne et par domaine** | Dans le descripteur. Un bug de boucle ne peut pas devenir un incident chez un tiers. |
+| **Un plafond atteint est annoncé, et prend un échantillon réparti** | Une campagne tronquée qui se lit comme une campagne complète produit un catalogue à qui il manque un tiers d'une source sans que personne le sache. Et la troncature ne prend **pas la tête du sitemap** : les sitemaps ne sont pas mélangés — sur une source mesurée, la première douzaine d'entrées sont toutes des pages de tag, et une coupe par la tête ramène cent URLs sans une seule recette. Comme les premières campagnes servent à mesurer la distribution des chaînes d'ingrédients, un sous-ensemble biaisé est pire qu'un petit. |
 | **`User-Agent` identifiant, avec une URL de contact** | On dit qui on est. |
 
 > **Une protection anti-bot est un refus, et on l'accepte.** Une des sources testées est derrière un challenge Cloudflare : elle est écartée, définitivement, sans tentative de contournement. C'est d'autant plus net qu'on a décidé de ne contacter personne — cette protection est alors le seul signal de consentement dont on dispose, et ce n'est pas celui qu'on va ignorer.

@@ -28,6 +28,7 @@ quietly builds a catalogue whose holes nobody knows about.
 
 from __future__ import annotations
 
+import html
 import json
 import re
 import unicodedata
@@ -101,12 +102,21 @@ class ExtractionReport:
 
 
 def _clean(text: str | None) -> str:
+    """Whitespace, unicode form, and HTML entities.
+
+    The entities are not paranoia: one source double-encodes inside its JSON-LD,
+    so `"name": "B&#233;chamel"` arrives as valid JSON whose value is mojibake.
+    JSON has no reason to decode HTML, and a DOM parser never sees these because
+    they are inside a `<script>`. Unescaping is idempotent on text that came
+    through the DOM path, where selectolax has already done it.
+    """
     if not text:
         return ""
-    return re.sub(r"\s+", " ", unicodedata.normalize("NFC", text).replace("\xa0", " ")).strip()
+    unescaped = html.unescape(unicodedata.normalize("NFC", text))
+    return re.sub(r"\s+", " ", unescaped.replace("\xa0", " ")).strip()
 
 
-def read_json_ld(html: str, report: ExtractionReport) -> list[Any]:
+def read_json_ld(document: str, report: ExtractionReport) -> list[Any]:
     """Parse every JSON-LD block, repairing what can be repaired.
 
     A strict parser throws away a whole source, for a trailing comma.
@@ -114,7 +124,7 @@ def read_json_ld(html: str, report: ExtractionReport) -> list[Any]:
     something worse tomorrow.
     """
     documents: list[Any] = []
-    for raw in _JSON_LD.findall(html):
+    for raw in _JSON_LD.findall(document):
         report.json_ld_blocks += 1
         payload = raw.strip()
         try:
@@ -187,7 +197,7 @@ def _as_tuple(value: Any) -> tuple[str, ...]:
     if value is None:
         return ()
     if isinstance(value, str):
-        return tuple(part.strip() for part in value.split(",") if part.strip())
+        return tuple(_clean(part) for part in value.split(",") if _clean(part))
     if isinstance(value, list):
         return tuple(_clean(str(item)) for item in value if _clean(str(item)))
     return ()
@@ -234,11 +244,13 @@ def _count_steps(node: Node | None, recipe: dict[str, Any] | None) -> int | None
     return None
 
 
-def extract(html: str, *, url: str, source: Source) -> tuple[ParsedRecipe | None, ExtractionReport]:
+def extract(
+    document: str, *, url: str, source: Source
+) -> tuple[ParsedRecipe | None, ExtractionReport]:
     report = ExtractionReport(url=url)
-    tree = HTMLParser(html)
+    tree = HTMLParser(document)
 
-    documents = read_json_ld(html, report)
+    documents = read_json_ld(document, report)
     recipe = find_recipe_node(documents)
     node = _recipe_subtree(tree)
 
