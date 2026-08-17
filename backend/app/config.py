@@ -82,6 +82,10 @@ class Settings(BaseSettings):
     #: and `docker compose down -v` purges it. It exists so that re-running a
     #: campaign does not mean asking a stranger's server for the same page
     #: again — not to archive anyone's pages (I9).
+    #: The ingredient referential, mounted from `db/` in the repository. It is
+    #: versioned and reviewed as a Git diff — see db/README.md for why that
+    #: matters on the data the allergen filter rests on.
+    catalog_referential_path: str = "/db/ingredients.yaml"
     catalog_cache_dir: str = "/var/cache/catalog"
     catalog_cache_ttl_seconds: float = 24 * 3600
     catalog_request_timeout_seconds: float = 30.0

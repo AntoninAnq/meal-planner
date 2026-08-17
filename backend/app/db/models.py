@@ -437,9 +437,42 @@ class Ingredient(Base):
     canonical_name: Mapped[str] = mapped_column(String(160))
     normalized_name: Mapped[str] = mapped_column(String(160), unique=True, index=True)
 
+    #: NULL means PROPOSED, and that is not a formality. A machine may propose
+    #: this row, never decide it (I1) — so the resolution pass counts only
+    #: confirmed ingredients when deriving `allergens_verified` (I3). A file of
+    #: proposals nobody re-reads would satisfy the invariant on paper and break
+    #: it in substance; this makes the reading load-bearing.
+    confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True)
+
     allergens: Mapped[list[IngredientAllergen]] = relationship(
         cascade="all, delete-orphan", passive_deletes=True
     )
+    aliases: Mapped[list[IngredientAlias]] = relationship(
+        cascade="all, delete-orphan", passive_deletes=True
+    )
+
+    @property
+    def is_confirmed(self) -> bool:
+        return self.confirmed_at is not None
+
+
+class IngredientAlias(Base):
+    """The other spellings of one food.
+
+    `sucre`, `sucre en poudre` and `sucre glace` are one ingredient written three
+    ways. Measured on the real catalogue: reaching 300 verified recipes needs
+    ~500 distinct strings recognised, which is about 300 actual foods. Without
+    this table, the referential grows a duplicate of itself and every allergen
+    mapping has to be entered — and kept right — several times.
+    """
+
+    __tablename__ = "ingredient_alias"
+
+    id: Mapped[uuid.UUID] = _pk()
+    ingredient_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("ingredient.id", ondelete="CASCADE"), index=True
+    )
+    normalized_name: Mapped[str] = mapped_column(String(160), unique=True, index=True)
 
 
 class IngredientAllergen(Base):

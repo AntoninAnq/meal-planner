@@ -6,6 +6,8 @@ removes a guarantee the safety layer rests on.
 
 from __future__ import annotations
 
+import pytest
+
 from app.db.models import Recipe, RecipeIngredient
 from app.domain.enums import ProposalStatus, RecipeSourceType
 
@@ -59,3 +61,69 @@ def test_a_section_header_can_never_resolve_to_an_ingredient() -> None:
     """`'Pour la pâte sucrée :'` arrives marked up as an ingredient."""
     names = {constraint.name for constraint in RecipeIngredient.__table__.constraints}
     assert "ck_recipe_ingredient_section_unresolved" in names
+
+
+# ---------------------------------------------------------------------------
+# The referential file — validated without a database
+# ---------------------------------------------------------------------------
+
+
+def test_two_entries_cannot_claim_the_same_spelling() -> None:
+    """Refused outright, not resolved by precedence.
+
+    Two rows claiming `creme` would make resolution depend on which one a query
+    reached first — and on the data the allergen filter reads, a coin toss is
+    not a behaviour worth having.
+    """
+    from app.catalog.referential import ReferentialError, _validate
+
+    document = {
+        "ingredients": [
+            {"name": "Crème liquide", "aliases": ["creme"], "allergens": [], "categories": []},
+            {"name": "Crème fraîche", "aliases": ["creme"], "allergens": [], "categories": []},
+        ]
+    }
+    with pytest.raises(ReferentialError, match="claimed by both"):
+        _validate(document, set())
+
+
+def test_an_unknown_allergen_code_is_refused() -> None:
+    """A typo in this field is a filter that silently protects nobody (I2)."""
+    from app.catalog.referential import ReferentialError, _validate
+
+    document = {
+        "ingredients": [
+            {"name": "Lait", "aliases": [], "allergens": ["dairy"], "categories": []},
+        ]
+    }
+    # `dairy` is not an INCO code — `milk` is. Exactly the kind of near-miss
+    # that reads correctly and filters nothing.
+    with pytest.raises(ReferentialError, match="unknown allergen"):
+        _validate(document, set())
+
+
+def test_the_shipped_referential_is_loadable_and_coherent() -> None:
+    """The real file, checked on every build.
+
+    It is a proposal written by a machine (I1), so the one thing a test can do
+    is make sure it is not silently malformed: every allergen a real code, every
+    category declared, no spelling claimed twice.
+    """
+    import pathlib
+
+    import yaml
+
+    from app.catalog.referential import _validate
+
+    path = pathlib.Path(__file__).resolve().parents[2] / "db" / "ingredients.yaml"
+    document = yaml.safe_load(path.read_text(encoding="utf-8"))
+    codes = {entry["code"] for entry in document["food_categories"]}
+
+    spellings = _validate(document, codes)
+
+    assert len(document["ingredients"]) > 200
+    assert len(spellings) > 500
+    # Roughly two in five carry an allergen. A file where that collapsed would
+    # mean someone emptied the field, and the filter would pass everything.
+    with_allergens = sum(1 for e in document["ingredients"] if e["allergens"])
+    assert with_allergens > 80

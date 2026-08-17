@@ -69,6 +69,9 @@ services:
       - "host.docker.internal:host-gateway"
     volumes:
       - ./backend:/app
+      # Le référentiel : les tests de l'API valident le fichier livré, et le
+      # même chemin `/db` vaut en CI, où le dépôt est simplement à côté.
+      - ./db:/db:ro
     command: >
       sh -c "alembic upgrade head &&
              uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
@@ -101,6 +104,11 @@ services:
       # gitignored, and `backend/sources.example.yaml` is the template. See
       # docs/ARCHITECTURE.md §11.5 for why.
       - ./sources.yaml:/config/sources.yaml:ro
+      # Le référentiel d'ingrédients, versionné dans le dépôt (db/README.md).
+      # Contrairement à la whitelist, il A sa place dans le dépôt : c'est la
+      # donnée dont dépend le filtre allergène, et sa revue est une revue de
+      # diff Git.
+      - ./db:/db:ro
       # The campaign cache. A named volume rather than a bind mount: it is not
       # source, it must not reach the repository, and `docker compose down -v`
       # is then all it takes to purge it (I9).

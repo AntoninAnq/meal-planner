@@ -55,15 +55,25 @@ def build_parser() -> argparse.ArgumentParser:
         "archive of anyone's pages (I9).",
     )
 
+    load = sub.add_parser("load-referential", help="load db/ingredients.yaml (idempotent)")
+    load.add_argument("--path", help="override the referential file")
+
     resolve = sub.add_parser("resolve", help="match unresolved ingredient lines (idempotent)")
     resolve.add_argument(
         "--report",
         action="store_true",
-        help="only print the distribution of unresolved raw_text, most frequent first — "
-        "this is what says which referential entries to write next",
+        help="change nothing; print what one more referential entry would unlock, "
+        "ranked by RECIPES COMPLETED rather than by raw frequency",
     )
+    resolve.add_argument("--top", type=int, default=40, help="how many candidates to list")
 
-    sub.add_parser("review", help="decide the approximate matches waiting (I4)")
+    review = sub.add_parser("review", help="confirm the proposed referential entries (I1, I3)")
+    review.add_argument(
+        "--bulk-safe",
+        action="store_true",
+        help="confirm in one go every entry declaring NO allergen, then ask about "
+        "the rest one by one",
+    )
 
     return parser
 
@@ -136,12 +146,50 @@ def _ingest(args) -> int:
     return 1 if report.abandoned else 0
 
 
+def _load_referential(args) -> int:
+    from pathlib import Path
+
+    from app.catalog.referential import ReferentialError, load_referential
+    from app.db.session import get_session_factory
+
+    with get_session_factory()() as db:
+        try:
+            report = load_referential(db, Path(args.path) if args.path else None)
+        except ReferentialError as exc:
+            print(f"référentiel refusé : {exc}", file=sys.stderr)
+            return 2
+    print(report.render())
+    return 0
+
+
+def _resolve(args) -> int:
+    from app.catalog.resolution import resolve
+    from app.db.session import get_session_factory
+
+    with get_session_factory()() as db:
+        report = resolve(db, report_only=args.report, top=args.top)
+    print(report.render())
+    return 0
+
+
+def _review(args) -> int:
+    from app.catalog.review import run_review
+    from app.db.session import get_session_factory
+
+    with get_session_factory()() as db:
+        run_review(db, bulk_safe=args.bulk_safe)
+    return 0
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
-    if args.command == "ingest":
-        return _ingest(args)
-    print(f"`{args.command}` is not implemented yet.", file=sys.stderr)
-    return 1
+    handlers = {
+        "ingest": _ingest,
+        "load-referential": _load_referential,
+        "resolve": _resolve,
+        "review": _review,
+    }
+    return handlers[args.command](args)
 
 
 if __name__ == "__main__":

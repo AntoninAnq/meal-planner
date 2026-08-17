@@ -1,0 +1,1159 @@
+# Référentiel d'ingrédients — la donnée dont dépend le filtre allergène.
+#
+# ⚠️  CE FICHIER EST UNE PROPOSITION, PAS UNE VÉRITÉ.
+#
+# Il a été rédigé par un modèle, sur la distribution réelle des 28 802 lignes
+# d'ingrédient du catalogue. I1 l'autorise à proposer et lui interdit de
+# décider ; I2 et I3 font reposer le filtre allergène sur ces lignes.
+#
+# Le chargeur les insère donc avec `confirmed_at = NULL`, et la passe de
+# résolution **ne compte que les ingrédients confirmés** pour dériver
+# `allergens_verified`. Tant que tu n'as pas relu une entrée, les recettes qui
+# en dépendent restent invisibles aux foyers à allergie sévère. La relecture
+# n'est pas une politesse : c'est ce qui rend le catalogue utilisable.
+#
+#     docker compose run --rm catalog review
+#
+# ── Conventions ────────────────────────────────────────────────────────────
+#
+# `name`       nom canonique, affiché.
+# `aliases`    les écritures rencontrées dans le catalogue. Le chargeur les
+#              normalise (minuscules, sans accents, singulier), donc on peut
+#              les écrire naturellement.
+# `allergens`  parmi les 14 codes INCO. **Ce champ est le seul qui puisse
+#              blesser quelqu'un.**
+# `categories` sert au signal de rotation du §6.2, jamais à un filtre dur.
+#
+# ── Deux règles suivies en écrivant ────────────────────────────────────────
+#
+# 1. **Le doute penche vers l'allergène.** Une recette écartée à tort produit
+#    un menu terne ; une recette gardée à tort produit une urgence. `sauce
+#    soja` porte gluten ET soja parce que la version sans blé est l'exception.
+#
+# 2. **Une ligne composée n'est jamais aliasée vers un ingrédient qui masque
+#    un allergène.** `sel et poivre` peut rejoindre `sel` — aucun des deux ne
+#    porte d'allergène. `pâte feuilletée` ne rejoint pas `farine` : elle porte
+#    aussi du lait.
+
+food_categories:
+  - { code: cereal, label: Céréales et féculents }
+  - { code: legumes_secs, label: Légumes secs }
+  - { code: green_vegetable, label: Légumes verts }
+  - { code: root_vegetable, label: Légumes racines }
+  - { code: vegetable, label: Autres légumes }
+  - { code: fruit, label: Fruits }
+  - { code: red_meat, label: Viande rouge }
+  - { code: white_meat, label: Viande blanche }
+  - { code: charcuterie, label: Charcuterie }
+  - { code: fish, label: Poisson }
+  - { code: seafood, label: Fruits de mer }
+  - { code: egg, label: Œufs }
+  - { code: dairy, label: Produits laitiers }
+  - { code: cheese, label: Fromages }
+  - { code: nuts_seeds, label: Fruits à coque et graines }
+  - { code: fat_oil, label: Matières grasses }
+  - { code: sweetener, label: Sucres }
+  - { code: herb_spice, label: Herbes et épices }
+  - { code: condiment, label: Condiments et sauces }
+  - { code: alcohol, label: Alcools }
+  - { code: broth, label: Bouillons }
+  - { code: leavening, label: Levures et poudres }
+  - { code: other, label: Autres }
+
+ingredients:
+  # ── Base : sel, poivre, eau ───────────────────────────────────────────────
+  # Les lignes composées `sel et poivre` rejoignent `sel` : ni l'un ni l'autre
+  # ne porte d'allergène, donc le raccourci ne peut rien masquer (règle 2).
+  - name: Sel
+    aliases: [sel, sel fin, gros sel, sel marin, fleur de sel, sel et poivre, sel poivre,
+              sel et poivre du moulin, sel et poivre au moulin, rase de sel,
+              bonne pincee de sel, grosse pincee de sel]
+    allergens: []
+    categories: [condiment]
+  - name: Poivre
+    aliases: [poivre, poivre noir, poivre blanc, poivre du moulin, poivre au moulin,
+              poivre en grain, grain de poivre, grain de poivre noir, poivre noir moulu,
+              poivre noir au moulin, quelque grain de poivre, poivre de cayenne]
+    allergens: []
+    categories: [herb_spice]
+  - name: Eau
+    aliases: [eau, eau froide, eau tiede, eau chaude, eau bouillante, glacon]
+    allergens: []
+    categories: [other]
+
+  # ── Céréales et farines ───────────────────────────────────────────────────
+  # `farine` sans qualificatif est du blé en cuisine française : gluten.
+  # Les farines sans gluten sont des entrées distinctes, et c'est exactement le
+  # cas que I4 interdit de résoudre au trigramme (`farine de riz` ressemble à
+  # `farine de blé` et l'oppose).
+  - name: Farine de blé
+    aliases: [farine, farine t, farine de ble, farine de ble t, farine type, farine blanche,
+              farine tamisee, farine tout usage, farine ordinaire]
+    allergens: [gluten]
+    categories: [cereal]
+  - name: Farine de riz
+    aliases: [farine de riz]
+    allergens: []
+    categories: [cereal]
+  - name: Farine de maïs
+    aliases: [farine de mais]
+    allergens: []
+    categories: [cereal]
+  - name: Farine de châtaigne
+    aliases: [farine de chataigne]
+    allergens: []
+    categories: [cereal]
+  - name: Farine de sarrasin
+    aliases: [farine de sarrasin, sarrasin]
+    allergens: []
+    categories: [cereal]
+  - name: Farine de seigle
+    aliases: [farine de seigle]
+    allergens: [gluten]
+    categories: [cereal]
+  - name: Fécule de maïs
+    aliases: [maizena, fecule de mais, amidon de mais]
+    allergens: []
+    categories: [cereal]
+  - name: Fécule de pomme de terre
+    aliases: [fecule de pomme de terre]
+    allergens: []
+    categories: [cereal]
+  - name: Riz
+    aliases: [riz, riz rond]
+    allergens: []
+    categories: [cereal]
+  - name: Semoule
+    aliases: [semoule]
+    allergens: [gluten]
+    categories: [cereal]
+  - name: Polenta
+    aliases: [polenta]
+    allergens: []
+    categories: [cereal]
+  - name: Quinoa
+    aliases: [quinoa]
+    allergens: []
+    categories: [cereal]
+  # L'avoine est une céréale à gluten au sens INCO (avénine), même sans blé.
+  - name: Flocons d'avoine
+    aliases: [flocon d'avoine]
+    allergens: [gluten]
+    categories: [cereal]
+  - name: Chapelure
+    aliases: [chapelure]
+    allergens: [gluten]
+    categories: [cereal]
+  - name: Pain
+    aliases: [pain, pain rassis, mie de pain, pain de mie]
+    allergens: [gluten]
+    categories: [cereal]
+  - name: Pain d'épices
+    aliases: [pain d'epice]
+    allergens: [gluten]
+    categories: [cereal]
+  - name: Vermicelles de riz
+    aliases: [vermicelle de riz]
+    allergens: []
+    categories: [cereal]
+
+  # ── Pâtes et préparations toutes faites ───────────────────────────────────
+  # Elles portent le gluten de leur farine ET le lait de leur beurre : les
+  # aliaser vers `farine` masquerait le second (règle 2).
+  - name: Pâte feuilletée
+    aliases: [pate feuilletee]
+    allergens: [gluten, milk]
+    categories: [cereal]
+  - name: Pâte brisée
+    aliases: [pate brisee]
+    allergens: [gluten, milk]
+    categories: [cereal]
+  - name: Pâte sablée
+    aliases: [pate sablee]
+    allergens: [gluten, milk]
+    categories: [cereal]
+  - name: Pâte à pizza
+    aliases: [pate a pizza]
+    allergens: [gluten]
+    categories: [cereal]
+  - name: Feuille de brick
+    aliases: [brick]
+    allergens: [gluten]
+    categories: [cereal]
+  - name: Biscuit
+    aliases: [biscuit, biscuit a la cuillere]
+    allergens: [gluten, eggs]
+    categories: [cereal]
+  - name: Spéculoos
+    aliases: [speculoos]
+    allergens: [gluten]
+    categories: [cereal]
+  - name: Crème pâtissière
+    aliases: [creme patissiere]
+    allergens: [milk, eggs, gluten]
+    categories: [dairy]
+  # `pâte` seul est trop ambigu pour porter un allergène : pâte à tarte, pâtes
+  # alimentaires, pâte de fruits. Laissé sans allergène ET signalé — c'est
+  # typiquement une entrée à trancher à la relecture.
+  - name: Pâte (non qualifiée)
+    aliases: [pate]
+    allergens: [gluten]
+    categories: [cereal]
+
+  # ── Œufs ──────────────────────────────────────────────────────────────────
+  - name: Œuf
+    aliases: [oeuf, oeuf entier, oeuf battu, oeuf battus, gros oeuf, oeuf dur, oeuf frais,
+              oeuf extra frais, a oeuf]
+    allergens: [eggs]
+    categories: [egg]
+  - name: Jaune d'œuf
+    aliases: [jaune d'oeuf, jaune oeuf, jaune]
+    allergens: [eggs]
+    categories: [egg]
+  - name: Blanc d'œuf
+    aliases: [blanc d'oeuf, blanc oeuf]
+    allergens: [eggs]
+    categories: [egg]
+
+  # ── Produits laitiers ─────────────────────────────────────────────────────
+  - name: Lait
+    aliases: [lait, lait entier, lait demi ecreme, lait tiede, lait frais entier]
+    allergens: [milk]
+    categories: [dairy]
+  - name: Lait fermenté
+    aliases: [lait fermente, lait ribot]
+    allergens: [milk]
+    categories: [dairy]
+  - name: Lait concentré sucré
+    aliases: [lait concentre sucre]
+    allergens: [milk]
+    categories: [dairy]
+  - name: Beurre
+    aliases: [beurre, beurre doux, beurre mou, beurre fondu, beurre pommade, beurre ramolli,
+              beurre doux mou, beurre doux fondu, beurre frais, beurre froid,
+              noisette de beurre]
+    allergens: [milk]
+    categories: [fat_oil, dairy]
+  - name: Beurre demi-sel
+    aliases: [beurre demi sel, beurre sale, beurre demi sel fondu]
+    allergens: [milk]
+    categories: [fat_oil, dairy]
+  - name: Crème liquide
+    aliases: [creme liquide, creme liquide entiere, creme fleurette, creme fleurette entiere,
+              creme entiere, creme entiere liquide, creme liquide entiere bien froide,
+              creme legere, creme]
+    allergens: [milk]
+    categories: [dairy]
+  - name: Crème fraîche
+    aliases: [creme fraiche, creme fraiche liquide, creme fraiche epaisse, creme epaisse,
+              creme sure]
+    allergens: [milk]
+    categories: [dairy]
+  - name: Yaourt
+    aliases: [yaourt, yaourt nature, yaourt grec]
+    allergens: [milk]
+    categories: [dairy]
+  - name: Fromage blanc
+    aliases: [fromage blanc]
+    allergens: [milk]
+    categories: [dairy]
+  - name: Mascarpone
+    aliases: [mascarpone]
+    allergens: [milk]
+    categories: [cheese]
+  - name: Ricotta
+    aliases: [ricotta]
+    allergens: [milk]
+    categories: [cheese]
+  - name: Parmesan
+    aliases: [parmesan, parmesan rape, parmesan fraichement rape]
+    allergens: [milk]
+    categories: [cheese]
+  - name: Pecorino
+    aliases: [pecorino]
+    allergens: [milk]
+    categories: [cheese]
+  - name: Mozzarella
+    aliases: [mozzarella, boule de mozzarella]
+    allergens: [milk]
+    categories: [cheese]
+  - name: Burrata
+    aliases: [burrata]
+    allergens: [milk]
+    categories: [cheese]
+  - name: Feta
+    aliases: [feta]
+    allergens: [milk]
+    categories: [cheese]
+  - name: Gruyère
+    aliases: [gruyere, gruyere rape]
+    allergens: [milk]
+    categories: [cheese]
+  - name: Emmental
+    aliases: [emmental rape]
+    allergens: [milk]
+    categories: [cheese]
+  - name: Fromage râpé
+    aliases: [fromage rape, fromage]
+    allergens: [milk]
+    categories: [cheese]
+  - name: Chèvre frais
+    aliases: [chevre frais, fromage de chevre frais]
+    allergens: [milk]
+    categories: [cheese]
+  - name: Reblochon
+    aliases: [reblochon]
+    allergens: [milk]
+    categories: [cheese]
+  - name: Gorgonzola
+    aliases: [gorgonzola]
+    allergens: [milk]
+    categories: [cheese]
+  - name: Cream cheese
+    aliases: [cream cheese]
+    allergens: [milk]
+    categories: [cheese]
+  - name: Margarine
+    aliases: [margarine]
+    allergens: []
+    categories: [fat_oil]
+
+  # ── Boissons végétales ────────────────────────────────────────────────────
+  - name: Lait de coco
+    aliases: [lait de coco, creme de coco]
+    allergens: []
+    categories: [other]
+  - name: Lait de soja
+    aliases: [lait de soja, creme de soja]
+    allergens: [soybeans]
+    categories: [other]
+  - name: Lait d'amande
+    aliases: [lait d'amande]
+    allergens: [nuts]
+    categories: [other]
+
+  # ── Huiles et matières grasses ────────────────────────────────────────────
+  - name: Huile d'olive
+    aliases: [huile d'olive, huile d'olive vierge extra, huile d'olive extra vierge,
+              huile d'olive vierge, cuil a soupe d'huile d'olive]
+    allergens: []
+    categories: [fat_oil]
+  - name: Huile neutre
+    aliases: [huile, huile neutre, huile vegetale, huile de friture, huile pour friture,
+              huile de tournesol, huile de colza, huile de pepin de raisin]
+    allergens: []
+    categories: [fat_oil]
+  - name: Huile d'arachide
+    aliases: [huile d'arachide]
+    allergens: [peanuts]
+    categories: [fat_oil]
+  - name: Huile de sésame
+    aliases: [huile de sesame, huile de sesame grille]
+    allergens: [sesame]
+    categories: [fat_oil]
+  - name: Huile de noix
+    aliases: [huile de noix]
+    allergens: [nuts]
+    categories: [fat_oil]
+  - name: Saindoux
+    aliases: [saindoux]
+    allergens: []
+    categories: [fat_oil]
+  - name: Graisse de canard
+    aliases: [graisse de canard]
+    allergens: []
+    categories: [fat_oil]
+
+  # ── Légumes ───────────────────────────────────────────────────────────────
+  - name: Oignon
+    aliases: [oignon, gros oignon, petit oignon, oignon moyen, oignon emince, oignon hache,
+              oignon jaune, oignon blanc, oignon rouge, oignon nouveau, petit oignon nouveau,
+              oignon vert, ciboule, ciboule chinoise]
+    allergens: []
+    categories: [vegetable]
+  - name: Ail
+    aliases: [ail, gousse d'ail, petite gousse d'ail, petite gousse ail, a gousse d'ail,
+              tete d'ail, ail hachee, ail ecrasee, ail degermee, ail en poudre]
+    allergens: []
+    categories: [vegetable]
+  - name: Échalote
+    aliases: [echalote, petite echalote]
+    allergens: []
+    categories: [vegetable]
+  - name: Poireau
+    aliases: [poireau, blanc de poireau]
+    allergens: []
+    categories: [green_vegetable]
+  - name: Carotte
+    aliases: [carotte, belle carotte, petite carotte, carotte moyenne, carotte rapee]
+    allergens: []
+    categories: [root_vegetable]
+  - name: Pomme de terre
+    aliases: [pomme de terre, grosse pomme de terre, pomme de terre moyenne,
+              pomme de terre a chair ferme, pomme de terre farineuse, pomme de terre cuite]
+    allergens: []
+    categories: [root_vegetable]
+  - name: Patate douce
+    aliases: [patate douce]
+    allergens: []
+    categories: [root_vegetable]
+  - name: Navet
+    aliases: [navet]
+    allergens: []
+    categories: [root_vegetable]
+  - name: Panais
+    aliases: [panais]
+    allergens: []
+    categories: [root_vegetable]
+  - name: Topinambour
+    aliases: [topinambour]
+    allergens: []
+    categories: [root_vegetable]
+  - name: Betterave
+    aliases: [betterave, betterave crue]
+    allergens: []
+    categories: [root_vegetable]
+  - name: Radis
+    aliases: [radis]
+    allergens: []
+    categories: [vegetable]
+  # Le céleri est l'un des 14 allergènes INCO, branche comme rave.
+  - name: Céleri
+    aliases: [celeri, celeri rave]
+    allergens: [celery]
+    categories: [vegetable]
+  - name: Tomate
+    aliases: [tomate, grosse tomate, belle tomate, tomate fraiche, tomate mure,
+              tomate bien mure, tomate cerise, tomate pelee, petite boite de tomate pelee,
+              tomate concassee, tomate sechee]
+    allergens: []
+    categories: [vegetable]
+  - name: Concentré de tomate
+    aliases: [concentre de tomate, petite boite de concentre de tomate, coulis de tomate]
+    allergens: []
+    categories: [vegetable]
+  - name: Courgette
+    aliases: [courgette, petite courgette]
+    allergens: []
+    categories: [green_vegetable]
+  - name: Aubergine
+    aliases: [aubergine]
+    allergens: []
+    categories: [vegetable]
+  - name: Poivron
+    aliases: [poivron, poivron rouge, poivron vert, poivron jaune]
+    allergens: []
+    categories: [vegetable]
+  - name: Concombre
+    aliases: [concombre, petit concombre]
+    allergens: []
+    categories: [green_vegetable]
+  - name: Champignon
+    aliases: [champignon, champignon de paris, cepe]
+    allergens: []
+    categories: [vegetable]
+  - name: Épinard
+    aliases: [epinard, epinard frais]
+    allergens: []
+    categories: [green_vegetable]
+  - name: Brocoli
+    aliases: [brocoli]
+    allergens: []
+    categories: [green_vegetable]
+  - name: Chou-fleur
+    aliases: [chou fleur]
+    allergens: []
+    categories: [green_vegetable]
+  - name: Chou
+    aliases: [chou, chou blanc, chou rouge, choux de bruxelle]
+    allergens: []
+    categories: [green_vegetable]
+  - name: Haricot vert
+    aliases: [haricot vert]
+    allergens: []
+    categories: [green_vegetable]
+  - name: Petits pois
+    aliases: [petit pois]
+    allergens: []
+    categories: [green_vegetable]
+  - name: Asperge
+    aliases: [asperge, asperge verte]
+    allergens: []
+    categories: [green_vegetable]
+  - name: Fenouil
+    aliases: [fenouil, bulbe de fenouil]
+    allergens: [] 
+    categories: [green_vegetable]
+  - name: Endive
+    aliases: [endive]
+    allergens: []
+    categories: [green_vegetable]
+  - name: Blette
+    aliases: [blette]
+    allergens: []
+    categories: [green_vegetable]
+  - name: Salade
+    aliases: [salade verte, laitue, roquette, mache]
+    allergens: []
+    categories: [green_vegetable]
+  - name: Avocat
+    aliases: [avocat]
+    allergens: []
+    categories: [vegetable]
+  - name: Courge
+    aliases: [potimarron, potiron, courge butternut, courge spaghetti]
+    allergens: []
+    categories: [vegetable]
+  - name: Fève
+    aliases: [feve, feve fraiche]
+    allergens: []
+    categories: [legumes_secs]
+  - name: Pois chiche
+    aliases: [pois chiche, pois chiche cuit]
+    allergens: []
+    categories: [legumes_secs]
+  - name: Lentille
+    aliases: [lentille, lentille verte, lentille corail]
+    allergens: []
+    categories: [legumes_secs]
+  - name: Haricot rouge
+    aliases: [haricot rouge]
+    allergens: []
+    categories: [legumes_secs]
+
+  # ── Fruits ────────────────────────────────────────────────────────────────
+  - name: Citron
+    aliases: [citron, citron jaune, citron presse, citron bio, citron non traite,
+              jus de citron, jus citron, jus d'un citron, jus d' citron,
+              jus d'un demi citron, zeste d'un citron]
+    allergens: []
+    categories: [fruit]
+  - name: Citron vert
+    aliases: [citron vert, citron vert presse, jus de citron vert]
+    allergens: []
+    categories: [fruit]
+  - name: Citron confit
+    aliases: [citron confit]
+    allergens: []
+    categories: [fruit]
+  - name: Orange
+    aliases: [orange, orange bio, orange non traitee, jus d'orange, zeste d'une orange,
+              orange confite, ecorce d'orange confite]
+    allergens: []
+    categories: [fruit]
+  - name: Clémentine
+    aliases: [clementine]
+    allergens: []
+    categories: [fruit]
+  - name: Pomme
+    aliases: [pomme, petite pomme, jus de pomme]
+    allergens: []
+    categories: [fruit]
+  - name: Poire
+    aliases: [poire]
+    allergens: []
+    categories: [fruit]
+  - name: Banane
+    aliases: [banane, banane mure]
+    allergens: []
+    categories: [fruit]
+  - name: Fraise
+    aliases: [fraise]
+    allergens: []
+    categories: [fruit]
+  - name: Framboise
+    aliases: [framboise, framboise fraiche]
+    allergens: []
+    categories: [fruit]
+  - name: Myrtille
+    aliases: [myrtille]
+    allergens: []
+    categories: [fruit]
+  - name: Groseille
+    aliases: [groseille]
+    allergens: []
+    categories: [fruit]
+  - name: Cerise
+    aliases: [cerise]
+    allergens: []
+    categories: [fruit]
+  - name: Fruits rouges
+    aliases: [fruit rouge]
+    allergens: []
+    categories: [fruit]
+  - name: Abricot
+    aliases: [abricot]
+    allergens: []
+    categories: [fruit]
+  - name: Pêche
+    aliases: [peche]
+    allergens: []
+    categories: [fruit]
+  - name: Rhubarbe
+    aliases: [rhubarbe]
+    allergens: []
+    categories: [fruit]
+  - name: Figue
+    aliases: [figue]
+    allergens: []
+    categories: [fruit]
+  - name: Mangue
+    aliases: [mangue]
+    allergens: []
+    categories: [fruit]
+  - name: Ananas
+    aliases: [ananas]
+    allergens: []
+    categories: [fruit]
+  - name: Kiwi
+    aliases: [kiwis]
+    allergens: []
+    categories: [fruit]
+  - name: Melon
+    aliases: [melon]
+    allergens: []
+    categories: [fruit]
+  - name: Fruit de la passion
+    aliases: [fruit de la passion]
+    allergens: []
+    categories: [fruit]
+  - name: Grenade
+    aliases: [grenade]
+    allergens: []
+    categories: [fruit]
+  - name: Raisin
+    aliases: [raisin]
+    allergens: []
+    categories: [fruit]
+  - name: Noix de coco
+    aliases: [noix de coco, noix de coco rapee, coco, coco rapee]
+    allergens: []
+    categories: [fruit]
+  # Fruits secs : les sulfites sont la norme du séchage industriel, pas
+  # l'exception. Le doute penche vers l'allergène (règle 1).
+  - name: Raisin sec
+    aliases: [raisin sec]
+    allergens: [sulphites]
+    categories: [fruit]
+  - name: Abricot sec
+    aliases: [abricot sec]
+    allergens: [sulphites]
+    categories: [fruit]
+  - name: Figue séchée
+    aliases: [figue sechee]
+    allergens: [sulphites]
+    categories: [fruit]
+  - name: Pruneau
+    aliases: [pruneau]
+    allergens: [sulphites]
+    categories: [fruit]
+  - name: Datte
+    aliases: [datte]
+    allergens: []
+    categories: [fruit]
+  - name: Canneberge séchée
+    aliases: [canneberge sechee]
+    allergens: [sulphites]
+    categories: [fruit]
+  - name: Marron
+    aliases: [marron]
+    allergens: []
+    categories: [other]
+
+  # ── Fruits à coque et graines ─────────────────────────────────────────────
+  # `nuts` couvre les fruits à coque INCO ; l'arachide est un allergène SÉPARÉ
+  # (`peanuts`), et les confondre est une erreur classique.
+  - name: Amande
+    aliases: [amande, amande effilee, amande emondee, amande mondee, amande entiere,
+              quelque amande, poudre d'amande, amande en poudre, extrait d'amande amere]
+    allergens: [nuts]
+    categories: [nuts_seeds]
+  - name: Noisette
+    aliases: [noisette, poudre de noisette, noisette en poudre]
+    allergens: [nuts]
+    categories: [nuts_seeds]
+  - name: Noix
+    aliases: [noix, cerneau de noix, noix hachee]
+    allergens: [nuts]
+    categories: [nuts_seeds]
+  - name: Noix de pécan
+    aliases: [noix de pecan]
+    allergens: [nuts]
+    categories: [nuts_seeds]
+  - name: Noix de cajou
+    aliases: [noix de cajou]
+    allergens: [nuts]
+    categories: [nuts_seeds]
+  - name: Pistache
+    aliases: [pistache, pate de pistache]
+    allergens: [nuts]
+    categories: [nuts_seeds]
+  - name: Pignon de pin
+    aliases: [pignon de pin, pignon]
+    allergens: [nuts]
+    categories: [nuts_seeds]
+  - name: Praliné
+    aliases: [praline]
+    allergens: [nuts]
+    categories: [nuts_seeds]
+  - name: Cacahuète
+    aliases: [cacahuete grillee, cacahouete, beurre de cacahuete]
+    allergens: [peanuts]
+    categories: [nuts_seeds]
+  - name: Graine de sésame
+    aliases: [graine de sesame, graine sesame]
+    allergens: [sesame]
+    categories: [nuts_seeds]
+  - name: Tahini
+    aliases: [tahine]
+    allergens: [sesame]
+    categories: [condiment]
+  - name: Graine de tournesol
+    aliases: [graine de tournesol]
+    allergens: []
+    categories: [nuts_seeds]
+  - name: Graine de courge
+    aliases: [graine de courge]
+    allergens: []
+    categories: [nuts_seeds]
+  - name: Graine de pavot
+    aliases: [graine de pavot]
+    allergens: []
+    categories: [nuts_seeds]
+
+  # ── Viandes et charcuterie ────────────────────────────────────────────────
+  - name: Bœuf
+    aliases: [boeuf, boeuf hache, steak hache, viande hachee]
+    allergens: []
+    categories: [red_meat]
+  - name: Poulet
+    aliases: [poulet, blanc de poulet, cuisse de poulet]
+    allergens: []
+    categories: [white_meat]
+  - name: Magret de canard
+    aliases: [magret de canard]
+    allergens: []
+    categories: [white_meat]
+  - name: Lardon
+    aliases: [lardon, lardon fume, lard, lard fume, poitrine fumee, bacon]
+    allergens: []
+    categories: [charcuterie]
+  - name: Jambon
+    aliases: [jambon, jambon blanc, jambon cru]
+    allergens: []
+    categories: [charcuterie]
+  - name: Chorizo
+    aliases: [chorizo]
+    allergens: []
+    categories: [charcuterie]
+  - name: Saucisse
+    aliases: [saucisse, chair a saucisse]
+    allergens: []
+    categories: [charcuterie]
+
+  # ── Poissons et fruits de mer ─────────────────────────────────────────────
+  - name: Saumon
+    aliases: [saumon fume, pave de saumon]
+    allergens: [fish]
+    categories: [fish]
+  - name: Cabillaud
+    aliases: [cabillaud]
+    allergens: [fish]
+    categories: [fish]
+  - name: Thon
+    aliases: [thon]
+    allergens: [fish]
+    categories: [fish]
+  - name: Anchois
+    aliases: [anchois]
+    allergens: [fish]
+    categories: [fish]
+  - name: Crevette
+    aliases: [crevette]
+    allergens: [crustaceans]
+    categories: [seafood]
+  # Nuoc-mâm et sauce de poisson : poisson fermenté. Un foyer allergique au
+  # poisson doit les voir exclus, et rien dans leur nom ne contient « poisson ».
+  # C'est le contre-exemple de I2 : chercher la sous-chaîne ne protège de rien.
+  - name: Nuoc-mâm
+    aliases: [nuoc mam, sauce nuoc mam, sauce de poisson]
+    allergens: [fish]
+    categories: [condiment]
+  - name: Sauce d'huître
+    aliases: [sauce d'huitre]
+    allergens: [molluscs]
+    categories: [condiment]
+
+  # ── Sucres et sucrants ────────────────────────────────────────────────────
+  - name: Sucre
+    aliases: [sucre, sucre en poudre, sucre semoule, sucre blanc, sucre cristallise,
+              sucre de canne, g sucre]
+    allergens: []
+    categories: [sweetener]
+  - name: Sucre glace
+    aliases: [sucre glace]
+    allergens: []
+    categories: [sweetener]
+  - name: Cassonade
+    aliases: [cassonade, sucre cassonade, sucre roux, sucre brun]
+    allergens: []
+    categories: [sweetener]
+  - name: Vergeoise
+    aliases: [vergeoise, vergeoise brune, vergeoise blonde]
+    allergens: []
+    categories: [sweetener]
+  - name: Miel
+    aliases: [miel, miel liquide]
+    allergens: []
+    categories: [sweetener]
+  - name: Sirop d'érable
+    aliases: [sirop d'erable]
+    allergens: []
+    categories: [sweetener]
+  - name: Sirop d'agave
+    aliases: [sirop d'agave]
+    allergens: []
+    categories: [sweetener]
+  - name: Sirop de glucose
+    aliases: [sirop de glucose, sirop de sucre de canne]
+    allergens: []
+    categories: [sweetener]
+  - name: Confiture
+    aliases: [confiture d'abricot, confiture de framboise]
+    allergens: []
+    categories: [sweetener]
+  - name: Crème de marrons
+    aliases: [creme de marron]
+    allergens: []
+    categories: [sweetener]
+
+  # ── Chocolat, cacao, vanille ──────────────────────────────────────────────
+  # Le chocolat noir de couverture contient très souvent des traces de lait, et
+  # le chocolat au lait en contient par définition. Le doute penche vers
+  # l'allergène (règle 1).
+  - name: Chocolat noir
+    aliases: [chocolat noir, chocolat, chocolat noir a, chocolat noir a patisser]
+    allergens: [milk]
+    categories: [sweetener]
+  - name: Chocolat au lait
+    aliases: [chocolat au lait]
+    allergens: [milk]
+    categories: [sweetener]
+  - name: Chocolat blanc
+    aliases: [chocolat blanc]
+    allergens: [milk]
+    categories: [sweetener]
+  - name: Pépites de chocolat
+    aliases: [pepite de chocolat]
+    allergens: [milk]
+    categories: [sweetener]
+  - name: Cacao en poudre
+    aliases: [cacao, cacao en poudre, cacao en poudre non sucre, cacao non sucre, cacao amer]
+    allergens: []
+    categories: [sweetener]
+  - name: Beurre de cacao
+    aliases: [beurre de cacao]
+    allergens: []
+    categories: [fat_oil]
+  - name: Vanille
+    aliases: [vanille, vanille en poudre, poudre de vanille, vanille liquide,
+              extrait de vanille, extrait de vanille liquide, sucre vanille]
+    allergens: []
+    categories: [herb_spice]
+
+  # ── Levures et poudres ────────────────────────────────────────────────────
+  - name: Levure chimique
+    aliases: [levure chimique, poudre a lever]
+    allergens: []
+    categories: [leavening]
+  - name: Levure de boulanger
+    aliases: [levure, levure de boulanger, levure de boulanger deshydratee,
+              levure de boulangerie deshydratee, levure fraiche, levure fraiche de boulanger]
+    allergens: []
+    categories: [leavening]
+  - name: Bicarbonate de soude
+    aliases: [bicarbonate, bicarbonate de soude, bicarbonate de sodium, bicarbonate alimentaire]
+    allergens: []
+    categories: [leavening]
+  - name: Gélatine
+    aliases: [gelatine, feuille de gelatine]
+    allergens: []
+    categories: [other]
+  - name: Agar-agar
+    aliases: [agar agar]
+    allergens: []
+    categories: [other]
+  - name: Poudre à crème
+    aliases: [poudre a creme]
+    allergens: []
+    categories: [other]
+
+  # ── Herbes et épices ──────────────────────────────────────────────────────
+  - name: Persil
+    aliases: [persil, persil plat, persil hache, persil frais, persil frais hache,
+              persil plat hache, persil plat cisele, bouquet de persil, bouquet de persil plat,
+              quelque feuille persil]
+    allergens: []
+    categories: [herb_spice]
+  - name: Coriandre fraîche
+    aliases: [coriandre, coriandre fraiche, bouquet de coriandre, bouquet de coriandre fraiche]
+    allergens: []
+    categories: [herb_spice]
+  - name: Coriandre en poudre
+    aliases: [coriandre en poudre, graine de coriandre]
+    allergens: []
+    categories: [herb_spice]
+  - name: Basilic
+    aliases: [basilic, basilic frais, quelque feuille basilic, quelque feuille de basilic]
+    allergens: []
+    categories: [herb_spice]
+  - name: Ciboulette
+    aliases: [ciboulette, ciboulette ciselee, bouquet de ciboulette, quelque brin de ciboulette]
+    allergens: []
+    categories: [herb_spice]
+  - name: Menthe
+    aliases: [menthe, menthe fraiche, quelque feuille menthe]
+    allergens: []
+    categories: [herb_spice]
+  - name: Thym
+    aliases: [thym, thym frais, thym seche]
+    allergens: []
+    categories: [herb_spice]
+  - name: Romarin
+    aliases: [romarin]
+    allergens: []
+    categories: [herb_spice]
+  - name: Laurier
+    aliases: [laurier]
+    allergens: []
+    categories: [herb_spice]
+  - name: Sauge
+    aliases: [sauge, quelque feuille sauge]
+    allergens: []
+    categories: [herb_spice]
+  - name: Estragon
+    aliases: [estragon]
+    allergens: []
+    categories: [herb_spice]
+  - name: Aneth
+    aliases: [aneth]
+    allergens: []
+    categories: [herb_spice]
+  - name: Cerfeuil
+    aliases: [cerfeuil]
+    allergens: []
+    categories: [herb_spice]
+  - name: Origan
+    aliases: [origan, origan seche]
+    allergens: []
+    categories: [herb_spice]
+  - name: Herbes de Provence
+    aliases: [herbe de provence]
+    allergens: []
+    categories: [herb_spice]
+  # Le bouquet garni contient du céleri dans la plupart des mélanges du
+  # commerce, et le céleri est un allergène INCO (règle 1).
+  - name: Bouquet garni
+    aliases: [bouquet garni]
+    allergens: [celery]
+    categories: [herb_spice]
+  - name: Cannelle
+    aliases: [cannelle, cannelle en poudre, cannelle moulue, baton de cannelle]
+    allergens: []
+    categories: [herb_spice]
+  - name: Muscade
+    aliases: [muscade, noix de muscade, muscade rapee]
+    allergens: []
+    categories: [herb_spice]
+  - name: Clou de girofle
+    aliases: [clou de girofle, clous de girofle]
+    allergens: []
+    categories: [herb_spice]
+  - name: Cumin
+    aliases: [cumin, cumin en poudre, cumin moulu, graine de cumin]
+    allergens: []
+    categories: [herb_spice]
+  - name: Curcuma
+    aliases: [curcuma, curcuma en poudre]
+    allergens: []
+    categories: [herb_spice]
+  - name: Paprika
+    aliases: [paprika, paprika doux, paprika fume, paprika en poudre]
+    allergens: []
+    categories: [herb_spice]
+  - name: Curry
+    aliases: [curry, curry en poudre, poudre de curry]
+    allergens: []
+    categories: [herb_spice]
+  - name: Gingembre
+    aliases: [gingembre, gingembre frais, gingembre en poudre, gingembre moulu,
+              cm gingembre, petit morceau de gingembre]
+    allergens: []
+    categories: [herb_spice]
+  - name: Piment
+    aliases: [piment, piment oiseau, petit piment oiseau, piment rouge, piment vert,
+              piment en poudre, piment d'espelette]
+    allergens: []
+    categories: [herb_spice]
+  - name: Safran
+    aliases: [safran]
+    allergens: []
+    categories: [herb_spice]
+  - name: Cardamome
+    aliases: [cardamome]
+    allergens: []
+    categories: [herb_spice]
+  - name: Badiane
+    aliases: [etoile de badiane]
+    allergens: []
+    categories: [herb_spice]
+  - name: Graine de fenouil
+    aliases: [graine de fenouil]
+    allergens: []
+    categories: [herb_spice]
+  - name: Citronnelle
+    aliases: [citronnelle]
+    allergens: []
+    categories: [herb_spice]
+  - name: Ras el-hanout
+    aliases: [ras el hanout]
+    allergens: []
+    categories: [herb_spice]
+  - name: Za'atar
+    aliases: [zaatar]
+    allergens: [sesame]
+    categories: [herb_spice]
+  - name: Épices (non qualifiées)
+    aliases: [epice]
+    allergens: []
+    categories: [herb_spice]
+  - name: Eau de fleur d'oranger
+    aliases: [eau de fleur d'oranger]
+    allergens: []
+    categories: [herb_spice]
+  - name: Eau de rose
+    aliases: [eau de rose]
+    allergens: []
+    categories: [herb_spice]
+  - name: Café
+    aliases: [cafe]
+    allergens: []
+    categories: [other]
+
+  # ── Condiments et sauces ──────────────────────────────────────────────────
+  # La sauce soja classique est brassée avec du BLÉ. La version sans est le
+  # tamari, l'exception. Deux allergènes, et un seul se devine au nom.
+  - name: Sauce soja
+    aliases: [sauce soja, sauce de soja, sauce de soja claire]
+    allergens: [soybeans, gluten]
+    categories: [condiment]
+  - name: Sauce hoisin
+    aliases: [sauce hoisin]
+    allergens: [soybeans, gluten]
+    categories: [condiment]
+  - name: Moutarde
+    aliases: [moutarde, moutarde de dijon, moutarde a l'ancienne, moutarde forte,
+              graine de moutarde]
+    allergens: [mustard]
+    categories: [condiment]
+  - name: Mayonnaise
+    aliases: [mayonnaise]
+    allergens: [eggs, mustard]
+    categories: [condiment]
+  - name: Ketchup
+    aliases: [ketchup]
+    allergens: []
+    categories: [condiment]
+  - name: Harissa
+    aliases: [harissa]
+    allergens: []
+    categories: [condiment]
+  - name: Câpre
+    aliases: [capre]
+    allergens: [sulphites]
+    categories: [condiment]
+  - name: Cornichon
+    aliases: [cornichon]
+    allergens: [sulphites]
+    categories: [condiment]
+  - name: Olive
+    aliases: [olive, olive noire, olive verte denoyautee, olive noire denoyautee]
+    allergens: []
+    categories: [condiment]
+  # Les vinaigres de vin portent les sulfites de leur vin d'origine.
+  - name: Vinaigre de vin
+    aliases: [vinaigre, vinaigre de vin, vinaigre de vin rouge, vinaigre de vin blanc,
+              vinaigre blanc, vinaigre de xere]
+    allergens: [sulphites]
+    categories: [condiment]
+  - name: Vinaigre balsamique
+    aliases: [vinaigre balsamique]
+    allergens: [sulphites]
+    categories: [condiment]
+  - name: Vinaigre de cidre
+    aliases: [vinaigre de cidre]
+    allergens: [sulphites]
+    categories: [condiment]
+  - name: Vinaigre de riz
+    aliases: [vinaigre de riz]
+    allergens: []
+    categories: [condiment]
+  - name: Mirin
+    aliases: [mirin, vin chinois]
+    allergens: [sulphites]
+    categories: [condiment]
+
+  # ── Bouillons ─────────────────────────────────────────────────────────────
+  # Les bouillons cubes du commerce contiennent presque toujours du céleri, et
+  # souvent du gluten. C'est l'exemple canonique d'un allergène invisible dans
+  # le nom (I2).
+  - name: Bouillon de légumes
+    aliases: [bouillon de legume, bouillon]
+    allergens: [celery, gluten]
+    categories: [broth]
+  - name: Bouillon de volaille
+    aliases: [bouillon de volaille]
+    allergens: [celery, gluten]
+    categories: [broth]
+  - name: Bouillon de bœuf
+    aliases: [bouillon de boeuf]
+    allergens: [celery, gluten]
+    categories: [broth]
+
+  # ── Alcools ───────────────────────────────────────────────────────────────
+  - name: Vin blanc
+    aliases: [vin blanc, vin blanc sec, vin]
+    allergens: [sulphites]
+    categories: [alcohol]
+  - name: Vin rouge
+    aliases: [vin rouge]
+    allergens: [sulphites]
+    categories: [alcohol]
+  - name: Porto
+    aliases: [porto]
+    allergens: [sulphites]
+    categories: [alcohol]
+  - name: Rhum
+    aliases: [rhum, rhum ambre, rhum blanc]
+    allergens: []
+    categories: [alcohol]
+  - name: Cognac
+    aliases: [cognac, calvados]
+    allergens: [sulphites]
+    categories: [alcohol]
+  - name: Whisky
+    aliases: [whisky]
+    allergens: [gluten]
+    categories: [alcohol]
+  - name: Vodka
+    aliases: [vodka]
+    allergens: []
+    categories: [alcohol]
+  - name: Limoncello
+    aliases: [limoncello]
+    allergens: []
+    categories: [alcohol]
+  - name: Bière
+    aliases: [biere]
+    allergens: [gluten]
+    categories: [alcohol]
