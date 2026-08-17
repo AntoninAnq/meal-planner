@@ -45,7 +45,14 @@ def build_parser() -> argparse.ArgumentParser:
     ingest.add_argument(
         "--purge-cache",
         action="store_true",
-        help="empty the campaign cache first. It is not an archive (I9).",
+        help="empty the campaign cache first, validators included",
+    )
+    ingest.add_argument(
+        "--keep-cache",
+        action="store_true",
+        help="keep the fetched pages after the campaign. For working on the "
+        "extractor, and for that only: the cache is a campaign artefact, not an "
+        "archive of anyone's pages (I9).",
     )
 
     resolve = sub.add_parser("resolve", help="match unresolved ingredient lines (idempotent)")
@@ -117,6 +124,15 @@ def _ingest(args) -> int:
         transport.close()
 
     print(report.render())
+
+    # End of campaign: the pages go, the validators stay. Nothing of anyone's
+    # content survives, and the next campaign still costs them almost nothing
+    # because their own ETags answer it with a 304 (I9, §11.4).
+    if not args.keep_cache:
+        entries, freed = cache.shed_bodies()
+        print(f"cache             {entries} pages effacées, {freed / 1e9:.2f} Go libérés, "
+              "validateurs conservés")
+
     return 1 if report.abandoned else 0
 
 

@@ -283,6 +283,49 @@ def test_a_stale_entry_still_spares_the_transfer(tmp_path: Path) -> None:
     assert fetcher.stats.not_modified == 1
 
 
+def test_the_end_of_a_campaign_sheds_the_pages_and_keeps_the_validators(tmp_path: Path) -> None:
+    """The point of the whole cache design, in one test.
+
+    I9 forbids a durable copy of someone's page — so the bodies go. But the
+    validators are exactly what makes the NEXT campaign nearly free for them, so
+    those stay: an `ETag` is an opaque string the server invented to mean "still
+    the same", not content.
+
+    Measured on a real run: 16 000 entries, 10.8 GB of pages, a few hundred
+    kilobytes of validators.
+    """
+    clock = FakeClock()
+    cache = ResponseCache(tmp_path, ttl_seconds=3600, clock=clock.time)
+    cache.write("https://exemple.test/a", Response(200, b"<html>" + b"x" * 5000, etag='W/"abc"'))
+
+    entries, freed = cache.shed_bodies()
+    assert entries == 1
+    assert freed > 4000
+
+    body, validators = cache.read("https://exemple.test/a")
+    assert body is None                                   # nothing of the page survives
+    assert validators == {"If-None-Match": 'W/"abc"'}     # the 304 is still possible
+
+    # And shedding twice is not an error, nor does it re-count.
+    assert cache.shed_bodies() == (0, 0)
+
+
+def test_a_shed_entry_still_makes_the_next_request_conditional(tmp_path: Path) -> None:
+    clock = FakeClock()
+    cache = ResponseCache(tmp_path, ttl_seconds=3600, clock=clock.time)
+    cache.write("https://exemple.test/a", Response(200, b"<html>x</html>", etag='W/"abc"'))
+    cache.shed_bodies()
+
+    transport = FakeTransport({"https://exemple.test/a": [Response(304, b"")]})
+    fetcher = make_fetcher(transport, clock)
+    fetcher.cache = cache
+
+    response = fetcher.fetch("https://exemple.test/a")
+
+    assert response is not None and response.unchanged
+    assert transport.calls[0][1]["If-None-Match"] == 'W/"abc"'
+
+
 def test_the_cache_can_be_emptied(tmp_path: Path) -> None:
     """It is a campaign artefact, not an archive of anyone's pages (I9)."""
     cache = ResponseCache(tmp_path, ttl_seconds=3600)

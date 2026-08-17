@@ -1,6 +1,10 @@
 .env
 # The real whitelist. The template is backend/sources.example.yaml.
 /sources.yaml
+# Database dumps. They carry members, birth dates and allergies —
+# health data and minors' dates of birth (docs/ARCHITECTURE.md §11.2).
+*.sql
+*.sql.gz
 *.pyc
 __pycache__/
 .venv/

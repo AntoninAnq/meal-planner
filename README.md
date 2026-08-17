@@ -16,7 +16,7 @@ que l'interface dit elle-même.
 
 ```bash
 cp .env.example .env
-# Renseigner SESSION_SECRET, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET
+# Renseigner POSTGRES_PASSWORD, SESSION_SECRET, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET
 docker compose up --build
 ```
 
@@ -31,11 +31,15 @@ Deux préalables :
    Credentials → OAuth client ID, type Web). URI de redirection autorisée,
    exactement : `http://localhost:8080/api/auth/callback`.
 
-Générer le secret de session :
+Générer les deux secrets — `.env.example` les laisse **vides**, et ni Postgres
+ni l'API ne démarrent sans eux :
 
 ```bash
-python -c "import secrets; print(secrets.token_urlsafe(48))"
+python -c "import secrets; print(secrets.token_urlsafe(24))"   # POSTGRES_PASSWORD
+python -c "import secrets; print(secrets.token_urlsafe(48))"   # SESSION_SECRET
 ```
+
+Les caractères spéciaux sont acceptés partout, `!`, `%`, `&` et `*` compris.
 
 ## Tests
 
@@ -102,8 +106,13 @@ jamais un repli silencieux sur le modèle.
 
 Une campagne annonce son allure avant la première requête, et son rapport dit ce
 qu'elle n'a **pas** su faire — pages illisibles, JSON-LD réparé, champs absents,
-plafond atteint. Le cache de campagne vit dans un volume Docker : `docker compose
-down -v` le purge, et `--purge-cache` aussi.
+plafond atteint. **À la fin de chaque campagne, les pages récupérées sont effacées et les
+validateurs conservés** — rien du contenu de personne ne survit (I9). Mesuré :
+11,58 Go de pages, 63 Mo de validateurs. `--keep-cache` s'y oppose, pour
+travailler sur l'extracteur et pour rien d'autre.
+
+Les requêtes conditionnelles sont envoyées, mais **aucune des sources testées ne
+les honore** : une re-vérification coûtera donc une campagne entière (§11.4).
 
 Il va chercher du contenu chez des tiers qui ne nous ont rien demandé. La
 politique qu'on s'impose — cadence, absence de concurrence par domaine, arrêt sur

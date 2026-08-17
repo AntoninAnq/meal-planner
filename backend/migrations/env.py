@@ -14,7 +14,13 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 # The URL comes from the environment, never from alembic.ini (invariant I8).
-config.set_main_option("sqlalchemy.url", get_settings().database_url)
+#
+# `%` is doubled because Alembic keeps its options in a ConfigParser, which runs
+# ITS OWN `%(name)s` interpolation over every value it is handed. A URL-encoded
+# password — `%21`, `%25` — is then read as broken interpolation syntax and
+# raises before the first migration. Two escaping schemes meeting on the same
+# string, and the fix is to speak the second one where it applies.
+config.set_main_option("sqlalchemy.url", get_settings().sqlalchemy_url.replace("%", "%%"))
 
 target_metadata = Base.metadata
 

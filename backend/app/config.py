@@ -6,6 +6,7 @@ credential and tunable lives here and comes from the environment.
 
 from functools import lru_cache
 from typing import Literal
+from urllib.parse import quote
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -20,7 +21,28 @@ class Settings(BaseSettings):
     # Public entry point. Also the base for the OAuth redirect URI.
     app_base_url: str = "http://localhost:8080"
 
-    database_url: str
+    # The connection is assembled HERE, from the parts, rather than handed over
+    # as a ready-made URL by Compose. Two independent reasons, both learned the
+    # hard way:
+    #
+    #   * A password is a byte string; a URL is a parsed grammar. `%` starts an
+    #     escape, `@` ends the userinfo, `/` ends the authority. Quoting it is
+    #     this layer's job, and it is done below.
+    #   * Compose INTERPOLATION mangles values containing YAML indicator
+    #     characters — `!`, `%`, `&`, `*`. A password made of exactly those came
+    #     through `${...}` altered, while the same variable delivered by
+    #     `env_file` arrived byte-exact. So the secret never travels through an
+    #     interpolated field: it reaches the process untouched, as
+    #     POSTGRES_PASSWORD, and the URL is built after that.
+    #
+    # DATABASE_URL is still honoured when set, for a hosted database that hands
+    # out one connection string and no parts.
+    database_url: str = ""
+    postgres_user: str = ""
+    postgres_password: str = ""
+    postgres_db: str = ""
+    postgres_host: str = "db"
+    postgres_port: int = 5432
 
     # Session cookie
     session_secret: str
@@ -63,6 +85,23 @@ class Settings(BaseSettings):
     catalog_cache_dir: str = "/var/cache/catalog"
     catalog_cache_ttl_seconds: float = 24 * 3600
     catalog_request_timeout_seconds: float = 30.0
+
+    @property
+    def sqlalchemy_url(self) -> str:
+        """`DATABASE_URL` if one was given, otherwise built from the parts."""
+        if self.database_url:
+            return self.database_url
+        if not (self.postgres_user and self.postgres_db):
+            raise RuntimeError(
+                "no database configured: set DATABASE_URL, or POSTGRES_USER / "
+                "POSTGRES_PASSWORD / POSTGRES_DB"
+            )
+        user = quote(self.postgres_user, safe="")
+        password = quote(self.postgres_password, safe="")
+        return (
+            f"postgresql+psycopg://{user}:{password}"
+            f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
+        )
 
     @property
     def oauth_redirect_uri(self) -> str:
