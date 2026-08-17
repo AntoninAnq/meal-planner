@@ -41,6 +41,10 @@ UNITS = (
     # match `c. a s` inside `c. à soupe` and leave a stray `oupe` as the name.
     r"|c\.?\s*[àa]\.?\s*(?:soupe|caf[ée])|c\.?\s*(?:soupe|caf[ée])"
     r"|c\.?\s*[àa]\.?\s*[sc]\.?|cs\b|cc\b"
+    # A bare `cuillerée`, with no `à café` after it. Last among the spoon
+    # forms so the compound ones win, and worth its own branch: it left
+    # `cuilleree levure chimique` as an ingredient name of its own.
+    r"|cuill[eè]r[ée]?e?s?"
     r"|pinc[ée]es?|poign[ée]es?|gousses?|branches?|feuilles?|tranches?"
     r"|sachets?|bo[îi]tes?|bocaux?|bocal|verres?|bols?|tasses?"
     r"|bottes?|brins?|tiges?|filets?|morceaux?|pieds?|paquets?|barquettes?"
@@ -70,7 +74,9 @@ _QUANTITY = re.compile(
 _UNIT = re.compile(rf"^\s*(?P<unit>{UNITS})\b\.?", re.I)
 #: `de`, `du`, `des`, `de la`, `d'` — with word boundaries, or `de lait` loses
 #: its middle and becomes `it`.
-_ARTICLE = re.compile(r"^\s*(?:de\s+la\b|de\s+l'|d'|de\b|du\b|des\b|le\b|la\b|les\b)\s*", re.I)
+_ARTICLE = re.compile(
+    r"^\s*(?:de\s+la\b|de\s+l'|d'|d\s+|de\b|du\b|des\b|le\b|la\b|les\b)\s*", re.I
+)
 #: Trailing preparation notes: `oignon, émincé` and `beurre (mou)`.
 #: The lookarounds are load-bearing: without them `1,5 l de bouillon` loses
 #: everything after the decimal comma and becomes the quantity `1` with no name.
@@ -80,6 +86,14 @@ _TRAILING_NOTE = re.compile(r"\s*(?<!\d)[,;](?!\d).*$")
 _QUALIFIER = re.compile(
     r"\b(?:facultatifs?|optionnels?|au go[ûu]t|selon\s+(?:le\s+)?go[ûu]t|"
     r"[àa]\s+volont[ée]|bien\s+m[ûu]rs?)\b.*$",
+    re.I,
+)
+#: Adjectives that describe the MEASURE, not the food: `1 cuiller à café
+#: bombée de levure`. Left in place they became part of the ingredient name —
+#: `bombee de levure chimique` — and each such variant is a referential entry
+#: someone would otherwise have to write by hand.
+_MEASURE_QUALIFIER = re.compile(
+    r"^\s*(?:bomb[ée]es?|rases?|pleines?|g[ée]n[ée]reuses?|bonnes?|petites?|grosses?)\b",
     re.I,
 )
 #: Removed as a WORD, never used as a truncation point. `environ` hedges the
@@ -218,6 +232,15 @@ def parse_line(raw: str) -> ParsedLine:
 
     quantity, text = _read_quantity(text)
 
+    # A measure qualifier is consumed ONLY when a unit follows it. Stripping
+    # `petit` unconditionally would turn `petits pois` into `pois` — a
+    # different food — while `2 grosses cuillerées` really is about the spoon.
+    # The adjective belongs to whichever noun comes next, and only the unit
+    # case is safe.
+    qualifier = _MEASURE_QUALIFIER.match(text)
+    if qualifier and _UNIT.match(text[qualifier.end():]):
+        text = text[qualifier.end():]
+
     unit = None
     unit_match = _UNIT.match(text)
     if unit_match:
@@ -225,6 +248,7 @@ def parse_line(raw: str) -> ParsedLine:
         text = text[unit_match.end():]
         # `2 c. à soupe d'huile` — a second quantity sometimes follows the unit
         # in `1 boîte de 400 g de tomates`.
+        text = _MEASURE_QUALIFIER.sub(" ", text)
         extra, text = _read_quantity(_ARTICLE.sub(" ", text))
         if extra is not None:
             second_unit = _UNIT.match(text)

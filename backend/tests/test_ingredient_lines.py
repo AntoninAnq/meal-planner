@@ -175,3 +175,24 @@ def test_a_real_ingredient_is_not_taken_for_a_heading(raw: str) -> None:
 )
 def test_hedges_and_false_units_found_in_the_resolution_report(raw: str, expected: str) -> None:
     assert parse_line(raw).normalized == expected
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        # A bare `cuillerée`, with no `à café` after it.
+        ("1,5 cuillerée levure chimique", "levure chimique"),
+        # An adjective describing the MEASURE, before or after the unit.
+        ("1 cuiller à café bombée de levure chimique", "levure chimique"),
+        ("2 grosses cuillerées de miel", "miel"),
+        ("1 grosse pincée de sel", "sel"),
+        # But the same adjective on a FOOD must survive: `petits pois` is not
+        # `pois`, and conflating them would put the wrong thing in a plate.
+        # The qualifier is consumed only when a unit follows it.
+        ("petits pois", "petit pois"),
+        ("2 petits oignons", "petit oignon"),
+        ("une grosse tomate", "grosse tomate"),
+    ],
+)
+def test_measure_qualifiers_are_stripped_only_before_a_unit(raw: str, expected: str) -> None:
+    assert parse_line(raw).normalized == expected
