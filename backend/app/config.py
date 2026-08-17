@@ -86,6 +86,11 @@ class Settings(BaseSettings):
     #: versioned and reviewed as a Git diff — see db/README.md for why that
     #: matters on the data the allergen filter rests on.
     catalog_referential_path: str = "/db/ingredients.yaml"
+    #: Human approvals of that referential. A separate file because
+    #: `ingredients.yaml` is hand-annotated and this one is machine-written —
+    #: and versioned, because the confirmations are the one part of the
+    #: pipeline no machine can reproduce.
+    catalog_confirmations_path: str = "/db/confirmations.yaml"
     catalog_cache_dir: str = "/var/cache/catalog"
     catalog_cache_ttl_seconds: float = 24 * 3600
     catalog_request_timeout_seconds: float = 30.0

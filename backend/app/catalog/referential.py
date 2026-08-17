@@ -13,12 +13,14 @@ the whole reason the referential is a file rather than a form (§7.5).
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import datetime
 from pathlib import Path
 
 import yaml
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.catalog.confirmations import approves, load_confirmations
 from app.catalog.ingredient_lines import normalise
 from app.db.models import (
     FoodCategory,
@@ -53,6 +55,7 @@ class LoadReport:
     ingredients_updated: int = 0
     aliases: int = 0
     with_allergens: int = 0
+    reconfirmed: int = 0
     unconfirmed: int = 0
     warnings: list[str] = field(default_factory=list)
 
@@ -63,6 +66,7 @@ class LoadReport:
             f"{self.ingredients_updated} mis à jour",
             f"alias             {self.aliases}",
             f"portant allergène {self.with_allergens}",
+            f"confirmations restaurées depuis le fichier  {self.reconfirmed}",
             f"À CONFIRMER       {self.unconfirmed} — tant qu'ils ne le sont pas, "
             "les recettes qui en dépendent restent non vérifiées (I3)",
         ]
@@ -107,6 +111,7 @@ def _validate(document: dict, known_categories: set[str]) -> dict[str, str]:
 def load_referential(db: Session, path: Path | None = None) -> LoadReport:
     path = path or referential_file()
     document = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    approvals = load_confirmations()
     report = LoadReport()
 
     categories: dict[str, FoodCategory] = {}
@@ -137,6 +142,26 @@ def load_referential(db: Session, path: Path | None = None) -> LoadReport:
             ingredient.canonical_name = canonical
             report.ingredients_updated += 1
         db.flush()
+
+        # A confirmation applies to what was READ, not to a name. The approval
+        # file records the allergen set as it stood when a human looked at it,
+        # so correcting `sauce soja` from `[soybeans]` to `[gluten, soybeans]`
+        # cannot inherit the approval given for the shorter list. Declarative
+        # rather than stateful, which means it survives a database that was
+        # restored or rebuilt (I1, I3).
+        approval = approvals.get(canonical)
+        declared = list(entry.get("allergens") or [])
+        if approves(approval, declared):
+            if ingredient.confirmed_at is None:
+                ingredient.confirmed_at = datetime.fromisoformat(approval["at"])
+                report.reconfirmed += 1
+        else:
+            if approval is not None:
+                report.warnings.append(
+                    f"{canonical} : approuvé pour {approval.get('allergens')}, "
+                    f"déclaré {sorted(declared)} — confirmation non appliquée"
+                )
+            ingredient.confirmed_at = None
 
         # Replaced wholesale rather than merged: the file is the source of
         # truth, so removing an allergen from it must remove it from the

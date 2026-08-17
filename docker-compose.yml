@@ -107,8 +107,8 @@ services:
       # Le référentiel d'ingrédients, versionné dans le dépôt (db/README.md).
       # Contrairement à la whitelist, il A sa place dans le dépôt : c'est la
       # donnée dont dépend le filtre allergène, et sa revue est une revue de
-      # diff Git.
-      - ./db:/db:ro
+      # diff Git. En écriture, parce que `review` y consigne les confirmations.
+      - ./db:/db
       # The campaign cache. A named volume rather than a bind mount: it is not
       # source, it must not reach the repository, and `docker compose down -v`
       # is then all it takes to purge it (I9).

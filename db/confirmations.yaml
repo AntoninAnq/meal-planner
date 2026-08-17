@@ -1,0 +1,865 @@
+# Confirmations humaines du référentiel — écrit par `catalog review`.
+#
+# NE PAS ÉDITER À LA MAIN. Pour retirer une confirmation, supprime son bloc ;
+# pour en ajouter une, passe par la CLI, qui est l'endroit où on la lit.
+#
+# `allergens` est la liste TELLE QU'ELLE A ÉTÉ APPROUVÉE. Si `ingredients.yaml`
+# en déclare une autre, la confirmation ne s'applique plus et l'entrée retourne
+# dans la file (I1, I3) — une approbation porte sur une valeur, pas sur un nom.
+
+confirmations:
+- name: Abricot
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Abricot sec
+  allergens:
+  - sulphites
+  at: '2026-08-17T14:08:19+00:00'
+- name: Agar-agar
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Ail
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Amande
+  allergens:
+  - nuts
+  at: '2026-08-17T14:06:08+00:00'
+- name: Ananas
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Anchois
+  allergens:
+  - fish
+  at: '2026-08-17T14:07:29+00:00'
+- name: Aneth
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Asperge
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Aubergine
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Avocat
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Badiane
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Banane
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Basilic
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Betterave
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Beurre
+  allergens:
+  - milk
+  at: '2026-08-17T14:06:00+00:00'
+- name: Beurre de cacao
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Beurre demi-sel
+  allergens:
+  - milk
+  at: '2026-08-17T14:06:13+00:00'
+- name: Bicarbonate de soude
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Biscuit
+  allergens:
+  - eggs
+  - gluten
+  at: '2026-08-17T14:05:28+00:00'
+- name: Bière
+  allergens:
+  - gluten
+  at: '2026-08-17T14:07:42+00:00'
+- name: Blanc d'œuf
+  allergens:
+  - eggs
+  at: '2026-08-17T14:06:23+00:00'
+- name: Blette
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Bouillon de bœuf
+  allergens:
+  - celery
+  - gluten
+  at: '2026-08-17T14:05:30+00:00'
+- name: Bouillon de légumes
+  allergens:
+  - celery
+  - gluten
+  at: '2026-08-17T14:04:56+00:00'
+- name: Bouillon de volaille
+  allergens:
+  - celery
+  - gluten
+  at: '2026-08-17T14:05:23+00:00'
+- name: Bouquet garni
+  allergens:
+  - celery
+  at: '2026-08-17T14:06:54+00:00'
+- name: Brocoli
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Burrata
+  allergens:
+  - milk
+  at: '2026-08-17T14:08:16+00:00'
+- name: Bœuf
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Cabillaud
+  allergens:
+  - fish
+  at: '2026-08-17T14:08:20+00:00'
+- name: Cacahuète
+  allergens:
+  - peanuts
+  at: '2026-08-17T14:06:59+00:00'
+- name: Cacao en poudre
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Café
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Canneberge séchée
+  allergens:
+  - sulphites
+  at: '2026-08-17T14:08:05+00:00'
+- name: Cannelle
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Cardamome
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Carotte
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Cassonade
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Cerfeuil
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Cerise
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Champignon
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Chapelure
+  allergens:
+  - gluten
+  at: '2026-08-17T14:06:38+00:00'
+- name: Chocolat au lait
+  allergens:
+  - milk
+  at: '2026-08-17T14:06:43+00:00'
+- name: Chocolat blanc
+  allergens:
+  - milk
+  at: '2026-08-17T14:06:49+00:00'
+- name: Chocolat noir
+  allergens:
+  - milk
+  at: '2026-08-17T14:06:11+00:00'
+- name: Chorizo
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Chou
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Chou-fleur
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Chèvre frais
+  allergens:
+  - milk
+  at: '2026-08-17T14:07:05+00:00'
+- name: Ciboulette
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Citron
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Citron confit
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Citron vert
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Citronnelle
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Clou de girofle
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Clémentine
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Cognac
+  allergens:
+  - sulphites
+  at: '2026-08-17T14:07:23+00:00'
+- name: Concentré de tomate
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Concombre
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Confiture
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Coriandre en poudre
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Coriandre fraîche
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Cornichon
+  allergens:
+  - sulphites
+  at: '2026-08-17T14:07:37+00:00'
+- name: Courge
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Courgette
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Cream cheese
+  allergens:
+  - milk
+  at: '2026-08-17T14:07:27+00:00'
+- name: Crevette
+  allergens:
+  - crustaceans
+  at: '2026-08-17T14:08:06+00:00'
+- name: Crème de marrons
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Crème fraîche
+  allergens:
+  - milk
+  at: '2026-08-17T14:06:09+00:00'
+- name: Crème liquide
+  allergens:
+  - milk
+  at: '2026-08-17T14:06:05+00:00'
+- name: Crème pâtissière
+  allergens:
+  - eggs
+  - gluten
+  - milk
+  at: '2026-08-17T14:04:38+00:00'
+- name: Cumin
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Curcuma
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Curry
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Câpre
+  allergens:
+  - sulphites
+  at: '2026-08-17T14:07:09+00:00'
+- name: Céleri
+  allergens:
+  - celery
+  at: '2026-08-17T14:06:30+00:00'
+- name: Datte
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Eau
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Eau de fleur d'oranger
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Eau de rose
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Emmental
+  allergens:
+  - milk
+  at: '2026-08-17T14:07:38+00:00'
+- name: Endive
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Estragon
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Farine de blé
+  allergens:
+  - gluten
+  at: '2026-08-17T14:06:02+00:00'
+- name: Farine de châtaigne
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Farine de maïs
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Farine de riz
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Farine de sarrasin
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Farine de seigle
+  allergens:
+  - gluten
+  at: '2026-08-17T14:08:14+00:00'
+- name: Fenouil
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Feta
+  allergens:
+  - milk
+  at: '2026-08-17T14:06:56+00:00'
+- name: Feuille de brick
+  allergens:
+  - gluten
+  at: '2026-08-17T14:07:24+00:00'
+- name: Figue
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Figue séchée
+  allergens:
+  - sulphites
+  at: '2026-08-17T14:08:10+00:00'
+- name: Flocons d'avoine
+  allergens:
+  - gluten
+  at: '2026-08-17T14:06:50+00:00'
+- name: Fraise
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Framboise
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Fromage blanc
+  allergens:
+  - milk
+  at: '2026-08-17T14:07:14+00:00'
+- name: Fromage râpé
+  allergens:
+  - milk
+  at: '2026-08-17T14:06:36+00:00'
+- name: Fruit de la passion
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Fruits rouges
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Fève
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Fécule de maïs
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Fécule de pomme de terre
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Gingembre
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Gorgonzola
+  allergens:
+  - milk
+  at: '2026-08-17T14:08:17+00:00'
+- name: Graine de courge
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Graine de fenouil
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Graine de pavot
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Graine de sésame
+  allergens:
+  - sesame
+  at: '2026-08-17T14:07:00+00:00'
+- name: Graine de tournesol
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Graisse de canard
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Grenade
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Groseille
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Gruyère
+  allergens:
+  - milk
+  at: '2026-08-17T14:06:57+00:00'
+- name: Gélatine
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Haricot rouge
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Haricot vert
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Harissa
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Herbes de Provence
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Huile d'arachide
+  allergens:
+  - peanuts
+  at: '2026-08-17T14:07:28+00:00'
+- name: Huile d'olive
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Huile de noix
+  allergens:
+  - nuts
+  at: '2026-08-17T14:07:22+00:00'
+- name: Huile de sésame
+  allergens:
+  - sesame
+  at: '2026-08-17T14:06:51+00:00'
+- name: Huile neutre
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Jambon
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Jaune d'œuf
+  allergens:
+  - eggs
+  at: '2026-08-17T14:06:06+00:00'
+- name: Ketchup
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Kiwi
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Lait
+  allergens:
+  - milk
+  at: '2026-08-17T14:06:04+00:00'
+- name: Lait concentré sucré
+  allergens:
+  - milk
+  at: '2026-08-17T14:07:13+00:00'
+- name: Lait d'amande
+  allergens:
+  - nuts
+  at: '2026-08-17T14:08:18+00:00'
+- name: Lait de coco
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Lait de soja
+  allergens:
+  - soybeans
+  at: '2026-08-17T14:07:20+00:00'
+- name: Lait fermenté
+  allergens:
+  - milk
+  at: '2026-08-17T14:07:18+00:00'
+- name: Lardon
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Laurier
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Lentille
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Levure chimique
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Levure de boulanger
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Limoncello
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Magret de canard
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Mangue
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Margarine
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Marron
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Mascarpone
+  allergens:
+  - milk
+  at: '2026-08-17T14:06:34+00:00'
+- name: Mayonnaise
+  allergens:
+  - eggs
+  - mustard
+  at: '2026-08-17T14:05:25+00:00'
+- name: Melon
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Menthe
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Miel
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Mirin
+  allergens:
+  - sulphites
+  at: '2026-08-17T14:07:16+00:00'
+- name: Moutarde
+  allergens:
+  - mustard
+  at: '2026-08-17T14:06:32+00:00'
+- name: Mozzarella
+  allergens:
+  - milk
+  at: '2026-08-17T14:06:55+00:00'
+- name: Muscade
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Myrtille
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Navet
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Noisette
+  allergens:
+  - nuts
+  at: '2026-08-17T14:06:31+00:00'
+- name: Noix
+  allergens:
+  - nuts
+  at: '2026-08-17T14:06:24+00:00'
+- name: Noix de cajou
+  allergens:
+  - nuts
+  at: '2026-08-17T14:07:34+00:00'
+- name: Noix de coco
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Noix de pécan
+  allergens:
+  - nuts
+  at: '2026-08-17T14:06:58+00:00'
+- name: Nuoc-mâm
+  allergens:
+  - fish
+  at: '2026-08-17T14:07:03+00:00'
+- name: Oignon
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Olive
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Orange
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Origan
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Pain
+  allergens:
+  - gluten
+  at: '2026-08-17T14:06:40+00:00'
+- name: Pain d'épices
+  allergens:
+  - gluten
+  at: '2026-08-17T14:07:45+00:00'
+- name: Panais
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Paprika
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Parmesan
+  allergens:
+  - milk
+  at: '2026-08-17T14:06:12+00:00'
+- name: Patate douce
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Pecorino
+  allergens:
+  - milk
+  at: '2026-08-17T14:07:30+00:00'
+- name: Persil
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Petits pois
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Pignon de pin
+  allergens:
+  - nuts
+  at: '2026-08-17T14:06:42+00:00'
+- name: Piment
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Pistache
+  allergens:
+  - nuts
+  at: '2026-08-17T14:07:02+00:00'
+- name: Poire
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Poireau
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Pois chiche
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Poivre
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Poivron
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Polenta
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Pomme
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Pomme de terre
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Porto
+  allergens:
+  - sulphites
+  at: '2026-08-17T14:07:32+00:00'
+- name: Poudre à crème
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Poulet
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Praliné
+  allergens:
+  - nuts
+  at: '2026-08-17T14:08:11+00:00'
+- name: Pruneau
+  allergens:
+  - sulphites
+  at: '2026-08-17T14:07:31+00:00'
+- name: Pâte (non qualifiée)
+  allergens:
+  - gluten
+  at: '2026-08-17T14:07:10+00:00'
+- name: Pâte brisée
+  allergens:
+  - gluten
+  - milk
+  at: '2026-08-17T14:05:27+00:00'
+- name: Pâte feuilletée
+  allergens:
+  - gluten
+  - milk
+  at: '2026-08-17T14:04:59+00:00'
+- name: Pâte sablée
+  allergens:
+  - gluten
+  - milk
+  at: '2026-08-17T14:05:31+00:00'
+- name: Pâte à pizza
+  allergens:
+  - gluten
+  at: '2026-08-17T14:08:15+00:00'
+- name: Pépites de chocolat
+  allergens:
+  - milk
+  at: '2026-08-17T14:07:11+00:00'
+- name: Pêche
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Quinoa
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Radis
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Raisin
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Raisin sec
+  allergens:
+  - sulphites
+  at: '2026-08-17T14:06:29+00:00'
+- name: Ras el-hanout
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Reblochon
+  allergens:
+  - milk
+  at: '2026-08-17T14:08:09+00:00'
+- name: Rhubarbe
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Rhum
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Ricotta
+  allergens:
+  - milk
+  at: '2026-08-17T14:06:47+00:00'
+- name: Riz
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Romarin
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Safran
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Saindoux
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Salade
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Sauce d'huître
+  allergens:
+  - molluscs
+  at: '2026-08-17T14:08:07+00:00'
+- name: Sauce hoisin
+  allergens:
+  - gluten
+  - soybeans
+  at: '2026-08-17T14:05:50+00:00'
+- name: Sauce soja
+  allergens:
+  - gluten
+  - soybeans
+  at: '2026-08-17T14:04:54+00:00'
+- name: Saucisse
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Sauge
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Saumon
+  allergens:
+  - fish
+  at: '2026-08-17T14:07:06+00:00'
+- name: Sel
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Semoule
+  allergens:
+  - gluten
+  at: '2026-08-17T14:07:43+00:00'
+- name: Sirop d'agave
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Sirop d'érable
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Sirop de glucose
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Spéculoos
+  allergens:
+  - gluten
+  at: '2026-08-17T14:07:46+00:00'
+- name: Sucre
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Sucre glace
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Tahini
+  allergens:
+  - sesame
+  at: '2026-08-17T14:07:36+00:00'
+- name: Thon
+  allergens:
+  - fish
+  at: '2026-08-17T14:08:21+00:00'
+- name: Thym
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Tomate
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Topinambour
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Vanille
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Vergeoise
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Vermicelles de riz
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Vin blanc
+  allergens:
+  - sulphites
+  at: '2026-08-17T14:06:27+00:00'
+- name: Vin rouge
+  allergens:
+  - sulphites
+  at: '2026-08-17T14:07:07+00:00'
+- name: Vinaigre balsamique
+  allergens:
+  - sulphites
+  at: '2026-08-17T14:06:45+00:00'
+- name: Vinaigre de cidre
+  allergens:
+  - sulphites
+  at: '2026-08-17T14:07:01+00:00'
+- name: Vinaigre de riz
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Vinaigre de vin
+  allergens:
+  - sulphites
+  at: '2026-08-17T14:06:21+00:00'
+- name: Vodka
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Whisky
+  allergens:
+  - gluten
+  at: '2026-08-17T14:08:12+00:00'
+- name: Yaourt
+  allergens:
+  - milk
+  at: '2026-08-17T14:06:33+00:00'
+- name: Za'atar
+  allergens:
+  - sesame
+  at: '2026-08-17T14:07:40+00:00'
+- name: Échalote
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Épices (non qualifiées)
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Épinard
+  allergens: []
+  at: '2026-08-17T14:03:59+00:00'
+- name: Œuf
+  allergens:
+  - eggs
+  at: '2026-08-17T14:05:56+00:00'

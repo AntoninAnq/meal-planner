@@ -21,6 +21,7 @@ from datetime import UTC, datetime
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.catalog.confirmations import load_confirmations, record, save_confirmations
 from app.db.models import (
     FoodCategory,
     Ingredient,
@@ -73,8 +74,17 @@ def pending(db: Session) -> list[tuple[Ingredient, list[str], list[str], int]]:
     return rows
 
 
-def confirm(db: Session, ingredient: Ingredient) -> None:
+def confirm(db: Session, ingredient: Ingredient, allergens: list[str],
+            records: dict[str, dict]) -> None:
+    """Written to the database AND to the versioned file.
+
+    The database alone would put an hour of human judgement — the one part of
+    this pipeline no machine can reproduce — inside a Docker volume, where a
+    single `down -v` ends it. The file records WHAT was approved, so a later
+    correction to the referential cannot inherit the approval.
+    """
     ingredient.confirmed_at = datetime.now(UTC)
+    record(records, name=ingredient.canonical_name, allergens=allergens)
 
 
 def describe(db: Session, ingredient: Ingredient, allergens: list[str], categories: list[str],
@@ -125,12 +135,14 @@ def run_review(
         f"{len(plain)} n'en portent aucun."
     )
 
+    records = load_confirmations()
     confirmed = 0
     if bulk_safe:
-        for ingredient, *_ in plain:
-            confirm(db, ingredient)
+        for ingredient, allergens, *_ in plain:
+            confirm(db, ingredient, allergens, records)
             confirmed += 1
         db.commit()
+        save_confirmations(records)
         say(f"{confirmed} entrées sans allergène confirmées en bloc.")
         queue = risky
 
@@ -141,12 +153,18 @@ def run_review(
         if answer == "q":
             break
         if answer == "o":
-            confirm(db, ingredient)
+            confirm(db, ingredient, allergens, records)
             confirmed += 1
             db.commit()
+            # Written after every answer, not at the end: a review interrupted
+            # by Ctrl-C keeps what was already decided.
+            save_confirmations(records)
         say("")
 
-    say(f"{confirmed} entrées confirmées. `catalog resolve` prendra en compte les nouvelles.")
+    say(
+        f"{confirmed} entrées confirmées, écrites dans db/confirmations.yaml — "
+        "pense à le commiter. `catalog resolve` prendra en compte les nouvelles."
+    )
     return confirmed
 
 

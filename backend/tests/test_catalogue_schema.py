@@ -127,3 +127,88 @@ def test_the_shipped_referential_is_loadable_and_coherent() -> None:
     # mean someone emptied the field, and the filter would pass everything.
     with_allergens = sum(1 for e in document["ingredients"] if e["allergens"])
     assert with_allergens > 80
+
+
+# ---------------------------------------------------------------------------
+# Confirmations — an approval covers a VALUE, not a name
+# ---------------------------------------------------------------------------
+
+
+def test_an_approval_does_not_transfer_to_a_changed_allergen_list() -> None:
+    """The one way this whole mechanism could lie.
+
+    Correcting `sauce soja` from `[soybeans]` to `[gluten, soybeans]` must not
+    inherit the approval given for the shorter list — otherwise a human would
+    have read one thing and the filter would apply another. Checked
+    declaratively, so it holds on a database that was restored or rebuilt.
+    """
+    from app.catalog.confirmations import approves
+
+    approval = {"name": "Sauce soja", "allergens": ["soybeans"], "at": "2026-08-17T15:00:00+00:00"}
+
+    assert approves(approval, ["soybeans"])
+    assert not approves(approval, ["gluten", "soybeans"])   # un allergène ajouté
+    assert not approves(approval, [])                       # un allergène retiré
+    assert not approves(None, [])                           # jamais relu
+
+
+def test_order_does_not_change_whether_an_approval_applies() -> None:
+    """`[gluten, soybeans]` and `[soybeans, gluten]` are the same statement."""
+    from app.catalog.confirmations import approves
+
+    approval = {"name": "x", "allergens": ["soybeans", "gluten"], "at": "2026-08-17T15:00:00Z"}
+    assert approves(approval, ["gluten", "soybeans"])
+
+
+def test_confirmations_round_trip_through_the_file(tmp_path) -> None:
+    """The file is what survives a lost volume.
+
+    An hour of human judgement is the one part of this pipeline no machine can
+    reproduce; keeping it only in the database put it one `down -v` from gone.
+    """
+    import pathlib
+
+    from app.catalog.confirmations import load_confirmations, record, save_confirmations
+
+    path = pathlib.Path(tmp_path) / "confirmations.yaml"
+    records = record({}, name="Sauce soja", allergens=["gluten", "soybeans"])
+    save_confirmations(records, path)
+
+    reloaded = load_confirmations(path)
+    assert reloaded["Sauce soja"]["allergens"] == ["gluten", "soybeans"]
+    assert reloaded["Sauce soja"]["at"].startswith("20")
+
+
+def test_the_shipped_confirmations_match_the_shipped_referential() -> None:
+    """Both files are versioned, so a drift between them is a real state.
+
+    It is not an error — a corrected entry legitimately loses its approval — but
+    the count is worth seeing, because it is exactly the number of entries
+    someone has to read again.
+    """
+    import pathlib
+
+    import yaml
+
+    from app.catalog.confirmations import approves
+
+    root = pathlib.Path(__file__).resolve().parents[2] / "db"
+    referential = yaml.safe_load((root / "ingredients.yaml").read_text(encoding="utf-8"))
+    approvals_file = root / "confirmations.yaml"
+    if not approvals_file.is_file():
+        pytest.skip("aucune confirmation livrée")
+
+    approvals = {
+        entry["name"]: entry
+        for entry in (yaml.safe_load(approvals_file.read_text(encoding="utf-8")) or {}).get(
+            "confirmations"
+        )
+        or []
+    }
+    stale = [
+        entry["name"]
+        for entry in referential["ingredients"]
+        if entry["name"] in approvals
+        and not approves(approvals[entry["name"]], entry["allergens"])
+    ]
+    assert not stale, f"approbations devenues caduques : {stale}"
