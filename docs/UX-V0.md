@@ -255,6 +255,19 @@ Le premier couvre le cas le plus fréquent : « pas envie de celui-là, montre-m
 autre chose ». Le second est là où vit la négociation d'`ARCHITECTURE.md` §6.4 —
 et la raison donnée a de la valeur, elle enrichit les contraintes pour la suite.
 
+> **Allumé en V1.** `GET …/alternatives` renvoie désormais trois candidats réels
+> — titre, temps, complexité, ingrédients — pris dans le classement du pré-filtre,
+> **sans appel de modèle**. Tout ce qui est déjà à l'assiette cette semaine en est
+> exclu : proposer le gratin de jeudi en remplacement de celui de mardi est une
+> réponse dont personne ne veut. Et **rien n'est stocké** : le classement est
+> réamorcé sur `household_id` + `week_start`, donc le reconstruire redonne
+> exactement la liste que le modèle avait sous les yeux.
+>
+> Le remplacement accepte maintenant `recipe_id` **ou** `label`, exactement l'un
+> des deux. Le titre écrit à la main n'est pas un repli : c'est ce que le
+> paragraphe ci-dessous a identifié comme souvent le plus rapide — et c'est le
+> seul plat qu'aucun filtre ne peut couvrir, donc le seul qui garde une marque.
+
 ### En V0, le premier mécanisme n'existe pas
 
 Sans catalogue il n'y a pas de candidats écartés : `GET …/alternatives` renvoie une
@@ -677,6 +690,24 @@ C'est le seul endroit de la V0 où l'interface parle plus fort que d'habitude. U
 garantie absente qui n'est écrite que dans un fichier d'architecture n'a jamais
 protégé un enfant allergique. La mention disparaît en V1, quand le filtre devient
 réel.
+
+> **Ce qui la remplace en V1, et pourquoi ce n'est pas un bandeau reformulé.**
+> Le seul scénario réellement dangereux est singulier : quelqu'un déclare une
+> allergie mardi pour une semaine composée lundi, quand rien ne filtrait. Un
+> bandeau lui demanderait de relire neuf créneaux à la main. **L'ajout d'une
+> contrainte re-valide donc le plan en cours** — déterministe, sans appel de
+> modèle — et marque exactement les créneaux concernés, avec deux codes distincts :
+> `allergen_on_planned_dish` quand le plat porte l'allergène, et
+> `unverified_on_planned_dish` quand ses ingrédients n'ont pas tous été reconnus.
+> Le retrait de la contrainte efface les marques, sans quoi un plan garderait un
+> avertissement pour une allergie que plus personne n'a.
+>
+> Mesuré sur un foyer réel : déclarer une allergie sévère au lait après coup marque
+> **8 créneaux sur 9**. C'est beaucoup, et c'est juste — le foyer ne déclarait aucun
+> allergène, donc son catalogue n'était pas vérifié.
+>
+> Reste une marque permanente, sur le plat et non sur la page : **celui que
+> l'utilisateur a écrit lui-même**, que rien ne peut vérifier.
 
 ---
 

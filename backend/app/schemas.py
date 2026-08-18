@@ -249,8 +249,33 @@ class MealPlanOut(BaseModel):
     violations: list[ViolationOut] = Field(default_factory=list)
 
 
+class AlternativeOut(BaseModel):
+    """A candidate the pre-filter produced and the model passed over.
+
+    Carries what the card shows, so choosing one costs no second request. The
+    effort fields are null on the 18 % of the catalogue that declares neither a
+    time nor a step count — the interface then says nothing rather than
+    implying a recipe is quick.
+    """
+
+    recipe_id: uuid.UUID
+    title: str
+    minutes: int | None = None
+    complexity: int | None = None
+    ingredients: list[str] = Field(default_factory=list)
+
+
 class DishReplace(BaseModel):
-    label: str = Field(min_length=1, max_length=200)
+    """Either a catalogue recipe, or a title written by hand.
+
+    The second is not a fallback: `UX-V0.md` §6 found that someone often knows
+    what they want to eat, and letting them write it beats any negotiation with
+    a model. A hand-written dish is also the one thing no filter can vouch for,
+    which is why it stays marked in the interface (§15).
+    """
+
+    label: str | None = Field(default=None, min_length=1, max_length=200)
+    recipe_id: uuid.UUID | None = None
 
 
 class DishRegenerate(BaseModel):

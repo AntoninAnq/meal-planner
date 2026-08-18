@@ -256,10 +256,16 @@ class SqlCatalogue:
         week_start: date,
         household: HouseholdFilter,
         limit: int,
+        exclude: frozenset[uuid.UUID] = frozenset(),
     ) -> None:
         self._db = db
         self._household = household
         self._limit = limit
+        #: Recipes the household has just refused. Excluded from the pool
+        #: entirely rather than merely ranked last: a directed repair that
+        #: proposes the dish someone just said no to is the one answer that
+        #: makes the feature useless.
+        self._exclude = exclude
         self._ranked = self._rank(household_id, week_start)
         self._chosen = self._decorate(self._ranked[:limit])
         self._by_handle = {candidate.handle: candidate for candidate in self._chosen}
@@ -337,6 +343,25 @@ class SqlCatalogue:
     def pool_size(self) -> int:
         return len(self._ranked)
 
+    def alternatives(self, *, exclude: set[uuid.UUID], limit: int) -> list[Candidate]:
+        """What to offer someone who says "not that one".
+
+        Taken from the ranking in order, so the first alternatives are the ones
+        the model itself was shown and passed over — `UX-V0.md` §6 calls them
+        *les candidats écartés*, and they are the cheapest possible answer: no
+        model call, a few tens of milliseconds.
+
+        Nothing was stored to make this work. The ranking is seeded on
+        `household_id` and `week_start`, so rebuilding it here reproduces
+        exactly the list that was used to generate the plan.
+        """
+        offered = [recipe_id for recipe_id in self._ranked if recipe_id not in exclude]
+        return self._decorate(offered[:limit])
+
+    def detail(self, recipe_ids: list[uuid.UUID]) -> list[Candidate]:
+        """Titles, effort and ingredients for an arbitrary set."""
+        return self._decorate(recipe_ids)
+
     def _resolved_ingredients(
         self, recipe_ids: list[uuid.UUID]
     ) -> dict[uuid.UUID, frozenset[uuid.UUID]]:
@@ -376,6 +401,9 @@ class SqlCatalogue:
                 RecipeSuitableStage.life_stage.in_(sorted(self._household.life_stages))
             )
             statement = statement.where(Recipe.id.in_(suitable))
+
+        if self._exclude:
+            statement = statement.where(Recipe.id.not_in(sorted(self._exclude)))
 
         # Explicit order for the same reason `rank` sorts: an unordered
         # SELECT is free to change its mind after any table rewrite.

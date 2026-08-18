@@ -25,12 +25,15 @@ from app.db.models import (
     PlannedDish,
     PlannedDishMember,
     Recipe,
+    RecipeAllergen,
     RecipeSuitableStage,
 )
 from app.domain.enums import ConstraintSeverity, DishSource, LifeStage, MealType
 from app.domain.planning import (
+    ALLERGEN_ON_PLANNED_DISH,
     NO_CANDIDATES,
     STAGE_NOT_PLANNED,
+    UNVERIFIED_ON_PLANNED_DISH,
     ProposedSlot,
     SlotSpec,
     Violation,
@@ -123,6 +126,37 @@ def _member_inputs(
             )
         )
     return inputs
+
+
+def catalogue_for(
+    db: Session,
+    *,
+    household_id: uuid.UUID,
+    week_start: date,
+    exclude: frozenset[uuid.UUID] = frozenset(),
+) -> SqlCatalogue:
+    """Rebuild the exact pre-filter a generation used.
+
+    Same household, same week, same seed — so the ranking comes back
+    identical and `GET …/alternatives` offers candidates the model really was
+    shown. This is what makes storing the candidate set unnecessary.
+    """
+    members = _members_of(db, household_id)
+    unplannable = stages_without_candidates(
+        db, frozenset(member.life_stage for member in members)
+    )
+    served = [member for member in members if member.life_stage not in unplannable]
+    slots = enabled_slots(db, household_id)
+    return SqlCatalogue(
+        db,
+        household_id=household_id,
+        week_start=week_start,
+        household=household_filter(db, household_id, served or members),
+        limit=candidate_count(
+            slots=max(len(slots), 1), dishes_per_slot=_dishes_per_slot(db, household_id)
+        ),
+        exclude=exclude,
+    )
 
 
 def household_filter(
@@ -258,6 +292,7 @@ def generate_plan(
     guests: Sequence[GuestGroup] = (),
     user_constraints: Sequence[str] = (),
     language: str = "fr",
+    exclude_recipe_ids: Sequence[uuid.UUID] = (),
 ) -> tuple[MealPlan, PlanOutcome]:
     """Generate for a whole week, or for a subset of slots.
 
@@ -309,6 +344,7 @@ def generate_plan(
         limit=candidate_count(
             slots=len(spec), dishes_per_slot=_dishes_per_slot(db, household_id)
         ),
+        exclude=frozenset(exclude_recipe_ids),
     )
 
     request = PlanRequest(
@@ -540,3 +576,100 @@ def load_plan(db: Session, household_id: uuid.UUID, week_start: date) -> MealPla
 def clear_plan(db: Session, plan: MealPlan) -> None:
     db.execute(delete(PlannedDish).where(PlannedDish.meal_plan_id == plan.id))
     db.commit()
+
+
+def revalidate_plans(db: Session, household_id: uuid.UUID, *, from_week: date) -> int:
+    """Re-check the plans already written against the constraints as they stand.
+
+    This is the whole reason `UX-V0.md` §15's allergen banner could be removed
+    rather than merely reworded. The dangerous case is concrete and singular:
+    someone declares an allergy on Tuesday for a week composed on Monday, when
+    nothing filtered it. A banner would ask them to re-read nine slots by hand;
+    re-validation tells them exactly which ones.
+
+    Deterministic and free — no model call, the same SQL the pre-filter uses.
+    Past weeks are left alone: they were eaten, and rewriting history to say a
+    meal was unsafe helps nobody.
+
+    Returns the number of plans whose violations changed.
+    """
+    members = _members_of(db, household_id)
+    if not members:
+        return 0
+    household = household_filter(db, household_id, members)
+
+    plans = list(
+        db.scalars(
+            select(MealPlan).where(
+                MealPlan.household_id == household_id, MealPlan.week_start >= from_week
+            )
+        )
+    )
+    changed = 0
+
+    for plan in plans:
+        dishes = list(
+            db.scalars(select(PlannedDish).where(PlannedDish.meal_plan_id == plan.id))
+        )
+        recipe_ids = [dish.recipe_id for dish in dishes if dish.recipe_id]
+
+        allergens: dict[uuid.UUID, set[str]] = {}
+        verified: dict[uuid.UUID, bool] = {}
+        if recipe_ids:
+            for recipe_id, code in db.execute(
+                select(RecipeAllergen.recipe_id, RecipeAllergen.allergen_code).where(
+                    RecipeAllergen.recipe_id.in_(recipe_ids)
+                )
+            ).all():
+                allergens.setdefault(recipe_id, set()).add(code.value)
+            verified = dict(
+                db.execute(
+                    select(Recipe.id, Recipe.allergens_verified).where(Recipe.id.in_(recipe_ids))
+                ).all()
+            )
+
+        found: list[Violation] = []
+        for dish in dishes:
+            if dish.recipe_id is None:
+                continue
+            carried = allergens.get(dish.recipe_id, set())
+            clashing = sorted(carried & household.excluded_allergens)
+            if clashing:
+                found.append(
+                    Violation(
+                        ALLERGEN_ON_PLANNED_DISH,
+                        f"this dish carries {', '.join(clashing)}",
+                        dish.day_of_week,
+                        dish.meal_type,
+                    )
+                )
+            elif household.require_verified and not verified.get(dish.recipe_id, False):
+                found.append(
+                    Violation(
+                        UNVERIFIED_ON_PLANNED_DISH,
+                        "this dish's ingredients were not all recognised",
+                        dish.day_of_week,
+                        dish.meal_type,
+                    )
+                )
+
+        # Only OUR codes are replaced. A `too_many_dishes` recorded at
+        # generation still describes the plan, and dropping it here would make
+        # adding an aversion quietly erase an unrelated warning.
+        ours = {ALLERGEN_ON_PLANNED_DISH, UNVERIFIED_ON_PLANNED_DISH}
+        kept = [entry for entry in (plan.violations or []) if entry.get("code") not in ours]
+        rewritten = kept + [
+            {
+                "code": violation.code,
+                "detail": violation.detail,
+                "day_of_week": violation.day_of_week,
+                "meal_type": violation.meal_type,
+            }
+            for violation in found
+        ]
+        if rewritten != (plan.violations or []):
+            plan.violations = rewritten
+            changed += 1
+
+    db.commit()
+    return changed

@@ -21,6 +21,7 @@ from app.domain.enums import DishSource
 from app.llm.base import LLMClient, LLMError
 from app.llm.factory import get_llm_client
 from app.schemas import (
+    AlternativeOut,
     DishEaterOut,
     DishOut,
     DishRating,
@@ -39,6 +40,7 @@ from app.schemas import (
 from app.services.planning_service import (
     GuestGroup,
     SlotTarget,
+    catalogue_for,
     generate_plan,
     load_plan,
     monday_of,
@@ -245,18 +247,58 @@ def _load_dish(db: Session, plan_id: uuid.UUID, dish_id: uuid.UUID, household_id
     return dish
 
 
-@router.get("/{plan_id}/dishes/{dish_id}/alternatives", response_model=list[str])
+#: How many alternatives a refusal offers. `UX-V0.md` §6 says "en montrer
+#: trois autres": enough to choose from, few enough to read at a glance.
+ALTERNATIVES_SHOWN = 3
+
+
+@router.get(
+    "/{plan_id}/dishes/{dish_id}/alternatives", response_model=list[AlternativeOut]
+)
 def alternatives(
     plan_id: uuid.UUID, dish_id: uuid.UUID, db: DbDep, household_id: CurrentHousehold
-) -> list[str]:
+) -> list[AlternativeOut]:
     """Candidates the pre-filter produced but did not pick. No LLM call.
 
-    Empty in V0: without a catalogue there is no candidate set. The endpoint
-    exists so the front is written against the final contract rather than
-    against the stub.
+    The cheapest mechanism in the product and, per `UX-V0.md` §6, the most
+    frequently useful one: "not that one, show me something else" needs no
+    negotiation, just the list the model already had.
+
+    Nothing was stored to make this possible. The ranking is seeded on the
+    household and the week, so rebuilding it here reproduces exactly what the
+    generation was shown — which is why the reserve costs neither tokens nor a
+    table.
     """
+    # Called for its checks, not its value: it is what turns another
+    # household's dish id into a 404.
     _load_dish(db, plan_id, dish_id, household_id)
-    return []
+    plan = db.get(MealPlan, plan_id)
+    assert plan is not None
+
+    # Everything already on the plate this week is excluded, not just the dish
+    # being refused: offering Thursday's gratin as an alternative to Tuesday's
+    # is an answer nobody wants.
+    already = {
+        row
+        for row in db.scalars(
+            select(PlannedDish.recipe_id).where(
+                PlannedDish.meal_plan_id == plan.id, PlannedDish.recipe_id.is_not(None)
+            )
+        )
+    }
+    catalogue = catalogue_for(db, household_id=household_id, week_start=plan.week_start)
+    offered = catalogue.alternatives(exclude=already, limit=ALTERNATIVES_SHOWN)
+
+    return [
+        AlternativeOut(
+            recipe_id=candidate.recipe_id,
+            title=candidate.title,
+            minutes=candidate.minutes,
+            complexity=candidate.complexity,
+            ingredients=candidate.ingredients,
+        )
+        for candidate in offered
+    ]
 
 
 @router.put("/{plan_id}/dishes/{dish_id}", response_model=MealPlanOut)
@@ -272,8 +314,29 @@ def replace_dish(
     A plan is not a document: an edit-then-save mechanism would add state, a way
     to lose changes, and a button, for an object the user does not treat as one.
     """
+    if (payload.recipe_id is None) == (payload.label is None):
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            "give either a recipe_id or a label, not both and not neither",
+        )
+
     dish = _load_dish(db, plan_id, dish_id, household_id)
-    dish.free_text_label = payload.label
+
+    if payload.recipe_id is not None:
+        recipe = db.get(Recipe, payload.recipe_id)
+        if recipe is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "recipe not found")
+        dish.recipe_id = recipe.id
+        dish.free_text_label = None
+        dish.source = DishSource.CATALOG
+    else:
+        # A title someone typed. `recipe_id` is cleared: the dish is no longer
+        # the catalogue's, and keeping the old reference would make the plan
+        # claim a provenance it lost.
+        dish.recipe_id = None
+        dish.free_text_label = payload.label
+        dish.source = DishSource.USER
+
     db.commit()
     return _serialise(db, db.get(MealPlan, plan_id))  # type: ignore[arg-type]
 
@@ -305,6 +368,10 @@ def regenerate_dish(
             week_start=plan.week_start,
             targets=[SlotTarget(dish.day_of_week, dish.meal_type)],
             user_constraints=[payload.reason],
+            # The refused dish leaves the pool. Without this the model may
+            # answer with the very thing someone just rejected — the one reply
+            # that makes directed repair worthless.
+            exclude_recipe_ids=[dish.recipe_id] if dish.recipe_id else [],
         )
     except LLMError as exc:
         raise _unavailable(exc) from exc

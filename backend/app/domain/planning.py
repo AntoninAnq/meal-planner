@@ -105,6 +105,15 @@ NO_CANDIDATES = "no_candidates"
 #: it is a statement about the plan as a whole, so an interface must say it
 #: once rather than mark every slot as failed.
 STAGE_NOT_PLANNED = "stage_not_planned"
+#: A dish already on the plan carries an allergen someone declared AFTER it
+#: was planned. Written by re-validation, never by generation: the pre-filter
+#: makes it impossible at generation time, and the only way it appears is a
+#: constraint added on Tuesday to a week composed on Monday.
+ALLERGEN_ON_PLANNED_DISH = "allergen_on_planned_dish"
+#: The dish is a catalogue recipe whose ingredients did not all resolve, in a
+#: household that now declares an allergen constraint. Not a violation of a
+#: known allergen — a violation of the guarantee itself (I3).
+UNVERIFIED_ON_PLANNED_DISH = "unverified_on_planned_dish"
 
 
 def validate_proposal(

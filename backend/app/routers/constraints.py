@@ -8,6 +8,7 @@ question of what happens when they contradict each other.
 from __future__ import annotations
 
 import uuid
+from datetime import date
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -19,6 +20,7 @@ from app.db.models import DietaryConstraint, Member
 from app.db.session import get_db
 from app.domain.enums import ConstraintSeverity
 from app.schemas import DietaryConstraintCreate, DietaryConstraintOut
+from app.services.planning_service import monday_of, revalidate_plans
 
 router = APIRouter(prefix="/household/constraints", tags=["constraints"])
 
@@ -64,6 +66,13 @@ def add_constraint(
     )
     db.add(constraint)
     db.commit()
+
+    # The plans already written were composed without this. Re-checking them
+    # here is what allowed `UX-V0.md` §15's permanent allergen banner to be
+    # removed rather than reworded: the dangerous case — an allergy declared on
+    # Tuesday for a week composed on Monday — is corrected instead of being
+    # announced. Deterministic, no model call, a few milliseconds.
+    revalidate_plans(db, household_id, from_week=monday_of(date.today()))
     return constraint
 
 
@@ -106,3 +115,6 @@ def delete_constraint(constraint_id: uuid.UUID, db: DbDep, household_id: Current
         raise HTTPException(status.HTTP_404_NOT_FOUND, "constraint not found")
     db.delete(constraint)
     db.commit()
+    # Symmetrical on purpose: removing a constraint must clear the warnings it
+    # caused, or a plan keeps a red mark for an allergy nobody has any more.
+    revalidate_plans(db, household_id, from_week=monday_of(date.today()))
