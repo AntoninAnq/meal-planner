@@ -66,7 +66,10 @@ class CataloguePort(Protocol):
         """Allowed recipe ids for this slot, or None when unbounded (V0)."""
 
     def describe(self, recipe_ids: frozenset[str]) -> list[str]:
-        """One short line per candidate: title and key ingredients."""
+        """One short line per candidate: title, effort, key ingredients."""
+
+    def signals(self, recipe_ids: frozenset[str]) -> list[str]:
+        """Soft observations about the candidate set — they never filter."""
 
 
 class EmptyCatalogue:
@@ -81,6 +84,9 @@ class EmptyCatalogue:
         return None
 
     def describe(self, recipe_ids: frozenset[str]) -> list[str]:
+        return []
+
+    def signals(self, recipe_ids: frozenset[str]) -> list[str]:
         return []
 
 
@@ -132,6 +138,7 @@ class PlanState(TypedDict, total=False):
     request: PlanRequest
     allowed_recipe_ids: Annotated[frozenset[str] | None, _keep_last]
     candidate_lines: Annotated[list[str], _keep_last]
+    catalogue_signals: Annotated[list[str], _keep_last]
     context: Annotated[str, _keep_last]
     proposal: Annotated[list[ProposedSlot], _keep_last]
     violations: Annotated[list[Violation], _keep_last]
@@ -151,11 +158,17 @@ def build_graph(llm: LLMClient, catalogue: CataloguePort) -> Any:
             # Unbounded: V0, or a slot the catalogue cannot constrain.
             allowed: frozenset[str] | None = None
             lines: list[str] = []
+            signals: list[str] = []
         else:
             allowed = frozenset().union(*per_slot)  # type: ignore[arg-type]
             lines = catalogue.describe(allowed)
+            signals = catalogue.signals(allowed)
 
-        return {"allowed_recipe_ids": allowed, "candidate_lines": lines}
+        return {
+            "allowed_recipe_ids": allowed,
+            "candidate_lines": lines,
+            "catalogue_signals": signals,
+        }
 
     def signals(state: PlanState) -> PlanState:
         """Soft signals -> prompt context. They inform, they never filter."""
@@ -167,6 +180,7 @@ def build_graph(llm: LLMClient, catalogue: CataloguePort) -> Any:
                 language=request.language,
                 user_constraints=request.user_constraints,
                 candidate_lines=state.get("candidate_lines", []),
+                catalogue_signals=state.get("catalogue_signals", []),
                 recent_meals=request.recent_meals,
             ),
             "attempt": 0,

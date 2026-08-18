@@ -97,6 +97,7 @@ def build_context(
     language: str = "fr",
     user_constraints: Sequence[str] = (),
     candidate_lines: Sequence[str] = (),
+    catalogue_signals: Sequence[str] = (),
     recent_meals: Sequence[str] = (),
 ) -> str:
     """Assemble the per-request half of the prompt."""
@@ -151,6 +152,19 @@ def build_context(
         blocks.append(
             "CANDIDATES — you may ONLY choose from these\n"
             + "\n".join(f"- {line}" for line in candidate_lines)
+        )
+
+    # A soft signal, and the block says so in as many words. Overlap is worth
+    # money — one shopping trip, one base cooked twice — but a household that
+    # wants variety must win against it, so it is written as an opportunity and
+    # never as an instruction.
+    if catalogue_signals:
+        blocks.append(
+            "SHARED BASES — these candidates use several of the same "
+            "ingredients. Reusing one across the week saves shopping and "
+            "cooking, but variety matters more than saving; treat this as an "
+            "opportunity, not a rule.\n"
+            + "\n".join(f"- {group}" for group in catalogue_signals)
         )
 
     return "\n\n".join(blocks)

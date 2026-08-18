@@ -375,6 +375,18 @@ Ce projet est **délibérément agentic**. La frontière ci-dessous préserve le
 
 Format du signal passé au prompt : `legumineuses: 23 jours · poisson: 4 jours · viande_rouge: 9 jours`.
 
+> **Trois signaux sur quatre en V1, et le quatrième est celui-là même.** Mesuré sur les 279 recettes éligibles d'un foyer contraint : `œuf 103 · viande blanche 29 · légumineuse 13 · poisson 11 · viande rouge 6`, et **132 sans protéine identifiée (47 %)**. Ces chiffres ne décrivent pas le catalogue mais le référentiel, qui connaît **16 ingrédients protéiques**. Un tajine au poulet dont le poulet n'a pas résolu compterait comme végétarien.
+>
+> Un signal faux avec assurance est pire qu'un signal absent : le §6.3 le passe au prompt comme du contexte, et le modèle n'a aucun moyen de le contredire. **La rotation par catégorie est donc repoussée**, avec sa condition de réouverture : elle revient quand le référentiel reconnaît une protéine dans plus de la moitié du pool éligible — une cinquantaine d'entrées ciblées, pas la queue de 6 440 chaînes.
+>
+> Les trois autres partent :
+>
+> | Signal | État |
+> |---|---|
+> | **Anti-répétition** | Deux fois. Le classement du pré-filtre place les recettes jamais servies en tête, puis les plus anciennes ; et le bloc `RECENT MEALS` du prompt lit désormais le titre de la recette quand le plat vient du catalogue — sans quoi il devenait silencieux le jour du branchement, les plans étant pleins et `free_text_label` nul. |
+> | **Recouvrement** | Calculable : 74,7 % des lignes d'ingrédients résolvent. Le piège est le garde-manger — un simple compte d'ingrédients partagés mettait **douze recettes sans rapport dans une même « base commune »**, parce que le sel, l'huile d'olive et l'ail sont partout. Un ingrédient présent dans plus d'un quart des candidats est écarté du calcul. Observé ensuite sur une génération réelle : le modèle a choisi 4 des 6 membres de la plus grosse famille. |
+> | **Complexité** | Par formule (§6.4), jamais jugée. Les seuils sont les **quartiles mesurés du catalogue** — 25/65 min, 4/10 étapes, 6/10 ingrédients — donc « simple » veut dire *plus simple que les trois quarts de ce qui existe*, ce que la donnée soutient, là où « moins de 30 minutes » aurait été un nombre choisi parce qu'il sonne bien. 2 806 recettes notées sur 3 439 ; les 633 sans temps ni étapes restent `NULL`, et le prompt n'en dit rien. |
+
 ### 6.4 Où l'agentic vit réellement
 
 | Zone | Rôle du LLM | Phase |

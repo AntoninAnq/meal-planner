@@ -78,6 +78,14 @@ def build_parser() -> argparse.ArgumentParser:
         help="change nothing; print the distribution and the rubrics still unmapped",
     )
 
+    effort = sub.add_parser(
+        "complexity",
+        help="derive recipe.complexity from declared times, steps and ingredient count",
+    )
+    effort.add_argument(
+        "--report", action="store_true", help="change nothing; print the distribution"
+    )
+
     review = sub.add_parser("review", help="confirm the proposed referential entries (I1, I3)")
     review.add_argument(
         "--bulk-safe",
@@ -201,6 +209,16 @@ def _dish_types(args) -> int:
     return 0
 
 
+def _complexity(args) -> int:
+    from app.catalog.complexity import derive
+    from app.db.session import get_session_factory
+
+    with get_session_factory()() as db:
+        report = derive(db, report_only=args.report)
+    print(report.render())
+    return 0
+
+
 def _review(args) -> int:
     from app.catalog.review import run_review
     from app.db.session import get_session_factory
@@ -217,6 +235,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         "load-referential": _load_referential,
         "resolve": _resolve,
         "dish-types": _dish_types,
+        "complexity": _complexity,
         "review": _review,
     }
     return handlers[args.command](args)

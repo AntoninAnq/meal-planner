@@ -16,6 +16,7 @@ from app.services.catalogue import (
     CANDIDATE_FLOOR,
     Candidate,
     candidate_count,
+    overlap_groups,
     rank,
 )
 
@@ -71,6 +72,23 @@ def test_the_same_week_always_ranks_the_same_way() -> None:
     second = rank(eligible, last_planned={}, seed=seed)
 
     assert first == second
+
+
+def test_the_order_the_database_returned_does_not_change_the_draw() -> None:
+    """Found in production, not imagined.
+
+    Two runs on the same seed returned different candidates: deriving
+    `complexity` had rewritten the table, and an unordered SELECT handed the
+    rows back differently. A seeded shuffle is only reproducible if its input
+    order is — and "the reserve is recomputed rather than stored" rests on it.
+    """
+    eligible = _ids(50)
+    seed = "household-1:2026-08-17"
+
+    forwards = rank(eligible, last_planned={}, seed=seed)
+    backwards = rank(list(reversed(eligible)), last_planned={}, seed=seed)
+
+    assert forwards == backwards
 
 
 def test_the_next_week_draws_differently() -> None:
@@ -159,3 +177,94 @@ def test_a_candidate_with_no_resolved_ingredient_still_has_a_line() -> None:
     candidate = Candidate(handle="r_000", recipe_id=uuid.UUID(int=0), title="Soupe", ingredients=[])
 
     assert candidate.line() == "r_000 — Soupe"
+
+
+# ---------------------------------------------------------------------------
+# The overlap signal
+# ---------------------------------------------------------------------------
+
+
+def _ing(*numbers: int) -> frozenset[uuid.UUID]:
+    return frozenset(uuid.UUID(int=1000 + n) for n in numbers)
+
+
+def test_pantry_ingredients_do_not_make_a_family() -> None:
+    """The bug the first real run exposed.
+
+    Salt, olive oil and garlic are in almost every recipe, so a plain
+    shared-ingredient count put twelve unrelated dishes in one "shared base".
+    A signal that fires everywhere carries nothing.
+    """
+    pantry = _ing(1, 2, 3)
+    by_handle = {f"r_{index:03d}": pantry | _ing(100 + index) for index in range(8)}
+
+    assert overlap_groups(by_handle) == []
+
+
+def test_a_real_shared_base_is_reported() -> None:
+    """Three distinctive ingredients in common, over a common pantry.
+
+    Sized like a real candidate set: the pantry rule is a proportion, so it
+    only means anything against a pool of a realistic size.
+    """
+    pantry = _ing(1, 2, 3)
+    by_handle = {f"r_{index:03d}": pantry | _ing(200 + index) for index in range(20)}
+    by_handle["r_000"] = pantry | _ing(10, 11, 12)
+    by_handle["r_001"] = pantry | _ing(10, 11, 12, 13)
+
+    assert overlap_groups(by_handle) == ["r_000, r_001"]
+
+
+def test_a_family_is_written_once_not_pair_by_pair() -> None:
+    """`a+b`, `a+c`, `b+c` is one fact written three times."""
+    base = _ing(10, 11, 12)
+    by_handle = {f"r_{index:03d}": _ing(300 + index, 400 + index) for index in range(20)}
+    by_handle["r_000"] = base | _ing(20)
+    by_handle["r_001"] = base | _ing(21)
+    by_handle["r_002"] = base | _ing(22)
+
+    assert overlap_groups(by_handle) == ["r_000, r_001, r_002"]
+
+
+def test_a_candidate_with_nothing_resolved_joins_no_family() -> None:
+    """25 % of ingredient lines still do not resolve; an empty set is not a
+    match with everything."""
+    by_handle = {"r_000": frozenset(), "r_001": frozenset(), "r_002": _ing(10, 11, 12)}
+
+    assert overlap_groups(by_handle) == []
+
+
+# ---------------------------------------------------------------------------
+# Complexity — computed, never judged (§6.4)
+# ---------------------------------------------------------------------------
+
+
+def test_a_recipe_declaring_nothing_is_not_rated() -> None:
+    """The ingredient count alone is a poor proxy.
+
+    A salad of twelve raw things is not harder than a two-ingredient sauce that
+    needs an hour of stirring. Putting a confident number on that is worse than
+    saying nothing — and the prompt then simply omits it.
+    """
+    from app.catalog.complexity import score
+
+    assert score(minutes=None, steps=None, ingredients=12) is None
+
+
+def test_the_bands_come_from_the_catalogue_quartiles() -> None:
+    """Below the first quartile on every axis is the easiest quarter."""
+    from app.catalog.complexity import score
+
+    assert score(minutes=20, steps=3, ingredients=5) == 1
+    assert score(minutes=110, steps=16, ingredients=15) == 3
+
+
+def test_a_missing_signal_does_not_make_a_recipe_look_easy() -> None:
+    """The trap of summing points over a variable number of axes.
+
+    A two-hour recipe that declares no step count must not score as simple just
+    because one of its three terms is absent.
+    """
+    from app.catalog.complexity import score
+
+    assert score(minutes=120, steps=None, ingredients=14) == 3

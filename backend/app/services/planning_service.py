@@ -224,16 +224,26 @@ def recent_meals(db: Session, household_id: uuid.UUID, *, before: date) -> list[
     is where they get unioned in.
     """
     since = before - timedelta(days=RECENT_WINDOW_DAYS)
+    # A catalogue dish carries a `recipe_id` and no label, so reading
+    # `free_text_label` alone made the anti-repetition signal go silent the day
+    # the catalogue was branched — the plans were full and the block was empty.
     rows = db.execute(
-        select(MealPlan.week_start, PlannedDish.day_of_week, PlannedDish.free_text_label)
+        select(
+            MealPlan.week_start,
+            PlannedDish.day_of_week,
+            PlannedDish.free_text_label,
+            Recipe.title,
+        )
         .join(PlannedDish, PlannedDish.meal_plan_id == MealPlan.id)
+        .outerjoin(Recipe, Recipe.id == PlannedDish.recipe_id)
         .where(MealPlan.household_id == household_id, MealPlan.week_start >= since)
     ).all()
 
     labels: list[str] = []
-    for week_start, day_of_week, label in rows:
-        if label and since <= week_start + timedelta(days=day_of_week) < before:
-            labels.append(label)
+    for week_start, day_of_week, label, title in rows:
+        eaten = label or title
+        if eaten and since <= week_start + timedelta(days=day_of_week) < before:
+            labels.append(eaten)
     return labels
 
 

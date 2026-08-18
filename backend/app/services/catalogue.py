@@ -71,6 +71,30 @@ CANDIDATE_FLOOR = 60
 CANDIDATE_CEILING = 120
 CANDIDATE_MARGIN = 3
 
+#: What a complexity rating is called in the prompt. The model reads French
+#: here for the same reason the dish titles are French: they are shown as-is.
+COMPLEXITY_LABELS = {1: "simple", 2: "moyen", 3: "long"}
+
+#: How many DISTINCTIVE ingredients two candidates must share before it is
+#: worth telling the model.
+OVERLAP_THRESHOLD = 3
+
+#: An ingredient present in more than this share of the candidate set is not a
+#: shared base, it is pantry. Measured on a real run: with a plain count, salt,
+#: olive oil and garlic put twelve unrelated recipes in one "family" — a signal
+#: that fires everywhere carries nothing, which is the trap this constant
+#: exists to avoid.
+UBIQUITOUS_SHARE = 0.25
+
+#: …but never fewer than this many candidates. A pool smaller than the
+#: 60-candidate floor happens when the household's constraints leave little,
+#: and that is exactly when the signal must not eat itself.
+UBIQUITOUS_FLOOR = 4
+
+#: How many overlap groups reach the prompt. Enough to plan a week around,
+#: short enough not to drown the candidate list it comments on.
+OVERLAP_GROUPS_SHOWN = 8
+
 #: How many ingredients a candidate line shows. Enough for the model to tell a
 #: gratin from a curry, short enough that the line stays around 31 tokens.
 INGREDIENTS_SHOWN = 5
@@ -78,6 +102,56 @@ INGREDIENTS_SHOWN = 5
 
 def candidate_count(*, slots: int, dishes_per_slot: int) -> int:
     return max(CANDIDATE_FLOOR, min(CANDIDATE_CEILING, CANDIDATE_MARGIN * slots * dishes_per_slot))
+
+
+def overlap_groups(by_handle: Mapping[str, frozenset[uuid.UUID]]) -> list[str]:
+    """Which candidates share a base, so a week can be planned around one.
+
+    This is the V1 promise of `UX-V0.md` §12 — "lundi et jeudi partagent une
+    base" — and the only one of the four signals that differentiates the
+    product. Computable today because 74.7 % of ingredient lines resolve.
+
+    **Pantry ingredients are removed first, and that is the whole difficulty.**
+    A plain shared-ingredient count put twelve unrelated recipes in one family
+    on the first real run: salt, olive oil and garlic are in almost everything,
+    so every pair cleared the threshold. An ingredient present in more than a
+    quarter of the candidates is not a shared base, it is a cupboard.
+
+    Grouped rather than listed pair by pair: `r_005 + r_018`, `r_005 + r_042`,
+    `r_018 + r_042` is one fact written three times, and the model would have
+    to rebuild the family from it.
+    """
+    handles = sorted(by_handle)
+    counts: dict[uuid.UUID, int] = {}
+    for ids in by_handle.values():
+        for ingredient_id in ids:
+            counts[ingredient_id] = counts.get(ingredient_id, 0) + 1
+
+    # The floor keeps the rule sane on a small pool: at 8 candidates, a
+    # quarter is two, and a base genuinely shared by three dishes would be
+    # written off as pantry.
+    ceiling = max(UBIQUITOUS_FLOOR, int(len(handles) * UBIQUITOUS_SHARE))
+    common = {ingredient_id for ingredient_id, n in counts.items() if n > ceiling}
+    distinctive = {handle: by_handle[handle] - common for handle in handles}
+
+    groups: list[list[str]] = []
+    placed: set[str] = set()
+    for index, handle in enumerate(handles):
+        if handle in placed or not distinctive[handle]:
+            continue
+        family = [handle]
+        for other in handles[index + 1 :]:
+            if other in placed or not distinctive[other]:
+                continue
+            if len(distinctive[handle] & distinctive[other]) >= OVERLAP_THRESHOLD:
+                family.append(other)
+                placed.add(other)
+        if len(family) > 1:
+            placed.add(handle)
+            groups.append(family)
+
+    groups.sort(key=len, reverse=True)
+    return [", ".join(family) for family in groups[:OVERLAP_GROUPS_SHOWN]]
 
 
 def rank(
@@ -100,7 +174,15 @@ def rank(
     on a catalogue nobody has eaten from, every recipe is equally stale, and a
     single ordering would collapse to whatever the database returned first.
     """
-    fresh = [recipe_id for recipe_id in eligible if recipe_id not in last_planned]
+    # Sorted before shuffling, and this is load-bearing rather than tidy. A
+    # seeded shuffle is only reproducible if its INPUT order is: the first time
+    # this ran twice on the same seed it returned different candidates, because
+    # deriving `complexity` had rewritten the table and Postgres handed the
+    # rows back in a new physical order. The whole "the reserve is recomputed,
+    # never stored" design rests on this line.
+    fresh = sorted(
+        (recipe_id for recipe_id in eligible if recipe_id not in last_planned), key=str
+    )
     served = sorted(
         (recipe_id for recipe_id in eligible if recipe_id in last_planned),
         key=lambda recipe_id: (last_planned[recipe_id], str(recipe_id)),
@@ -133,10 +215,29 @@ class Candidate:
     recipe_id: uuid.UUID
     title: str
     ingredients: list[str] = field(default_factory=list)
+    #: Declared prep + cooking. None on the 22 % of the catalogue that says
+    #: nothing — and then the line says nothing either, rather than implying
+    #: a recipe is quick because no number was found.
+    minutes: int | None = None
+    #: 1..3, computed by formula (`catalog/complexity.py`), never judged.
+    complexity: int | None = None
 
     def line(self) -> str:
-        shown = ", ".join(self.ingredients[:INGREDIENTS_SHOWN])
-        return f"{self.handle} — {self.title}" + (f" — {shown}" if shown else "")
+        parts = [f"{self.handle} — {self.title}"]
+
+        effort = " ".join(
+            piece
+            for piece in (
+                f"{self.minutes} min" if self.minutes else "",
+                COMPLEXITY_LABELS.get(self.complexity or 0, ""),
+            )
+            if piece
+        )
+        if effort:
+            parts.append(effort)
+        if self.ingredients:
+            parts.append(", ".join(self.ingredients[:INGREDIENTS_SHOWN]))
+        return " — ".join(parts)
 
 
 class SqlCatalogue:
@@ -162,6 +263,9 @@ class SqlCatalogue:
         self._ranked = self._rank(household_id, week_start)
         self._chosen = self._decorate(self._ranked[:limit])
         self._by_handle = {candidate.handle: candidate for candidate in self._chosen}
+        self._ingredient_ids = self._resolved_ingredients(
+            [candidate.recipe_id for candidate in self._chosen]
+        )
 
     # -- CataloguePort ----------------------------------------------------
 
@@ -179,6 +283,28 @@ class SqlCatalogue:
     def describe(self, recipe_ids: frozenset[str]) -> list[str]:
         return [self._by_handle[handle].line() for handle in sorted(recipe_ids)
                 if handle in self._by_handle]
+
+    def signals(self, recipe_ids: frozenset[str]) -> list[str]:
+        """Soft signals about the candidate set. They inform, never filter.
+
+        Only overlap for now. Rotation by `food_category` is deliberately
+        absent: the referential knows 16 protein ingredients, so 47 % of the
+        eligible pool shows no identified protein and the signal would call a
+        chicken tajine vegetarian. A signal that is confidently wrong is worse
+        than an absent one — the model reads it as context and has no way to
+        contradict it. It comes back when the referential recognises a protein
+        in more than half the pool.
+        """
+        return self._overlap(recipe_ids)
+
+    def _overlap(self, recipe_ids: frozenset[str]) -> list[str]:
+        handles = [handle for handle in sorted(recipe_ids) if handle in self._by_handle]
+        return overlap_groups(
+            {
+                handle: self._ingredient_ids.get(self._by_handle[handle].recipe_id, frozenset())
+                for handle in handles
+            }
+        )
 
     # -- Beyond the port --------------------------------------------------
 
@@ -211,6 +337,24 @@ class SqlCatalogue:
     def pool_size(self) -> int:
         return len(self._ranked)
 
+    def _resolved_ingredients(
+        self, recipe_ids: list[uuid.UUID]
+    ) -> dict[uuid.UUID, frozenset[uuid.UUID]]:
+        """Only the candidates shown: overlap is a comment on the prompt."""
+        if not recipe_ids:
+            return {}
+        rows = self._db.execute(
+            select(RecipeIngredient.recipe_id, RecipeIngredient.ingredient_id).where(
+                RecipeIngredient.recipe_id.in_(recipe_ids),
+                RecipeIngredient.ingredient_id.is_not(None),
+                RecipeIngredient.is_section.is_(False),
+            )
+        ).all()
+        grouped: dict[uuid.UUID, set[uuid.UUID]] = {}
+        for recipe_id, ingredient_id in rows:
+            grouped.setdefault(recipe_id, set()).add(ingredient_id)
+        return {recipe_id: frozenset(ids) for recipe_id, ids in grouped.items()}
+
     # -- Ranking ----------------------------------------------------------
 
     def _eligible(self) -> list[uuid.UUID]:
@@ -233,7 +377,9 @@ class SqlCatalogue:
             )
             statement = statement.where(Recipe.id.in_(suitable))
 
-        return list(self._db.scalars(statement))
+        # Explicit order for the same reason `rank` sorts: an unordered
+        # SELECT is free to change its mind after any table rewrite.
+        return list(self._db.scalars(statement.order_by(Recipe.id)))
 
     def _last_planned(self, household_id: uuid.UUID) -> dict[uuid.UUID, date]:
         rows = self._db.execute(
@@ -258,9 +404,18 @@ class SqlCatalogue:
         the first candidate the model sees, and the reserve has none until it
         is decorated in its turn.
         """
-        titles = dict(
-            self._db.execute(select(Recipe.id, Recipe.title).where(Recipe.id.in_(shown))).all()
-        )
+        rows = self._db.execute(
+            select(Recipe.id, Recipe.title, Recipe.prep_minutes, Recipe.cook_minutes,
+                   Recipe.complexity).where(Recipe.id.in_(shown))
+        ).all()
+        meta = {
+            recipe_id: (
+                title,
+                (prep or 0) + (cook or 0) if (prep is not None or cook is not None) else None,
+                complexity,
+            )
+            for recipe_id, title, prep, cook, complexity in rows
+        }
 
         ingredients: dict[uuid.UUID, list[str]] = {}
         if shown:
@@ -280,12 +435,15 @@ class SqlCatalogue:
 
         candidates: list[Candidate] = []
         for index, recipe_id in enumerate(shown):
+            title, minutes, complexity = meta.get(recipe_id, ("", None, None))
             candidates.append(
                 Candidate(
                     handle=f"r_{index:03d}",
                     recipe_id=recipe_id,
-                    title=titles.get(recipe_id, ""),
+                    title=title,
                     ingredients=ingredients.get(recipe_id, []),
+                    minutes=minutes,
+                    complexity=complexity,
                 )
             )
         return candidates
