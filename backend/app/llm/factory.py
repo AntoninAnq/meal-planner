@@ -22,6 +22,7 @@ def build_llm_client(settings: Settings) -> LLMClient:
                 base_url=settings.ollama_base_url,
                 model=settings.ollama_model,
                 timeout_seconds=settings.ollama_timeout_seconds,
+                context_tokens=settings.ollama_context_tokens,
             )
         case "anthropic":
             from app.llm.anthropic_client import AnthropicClient

@@ -1,0 +1,368 @@
+# Type de plat — correspondance entre les rubriques déclarées par les sources
+# et un ensemble fermé de moments de repas.
+#
+# POURQUOI CE FICHIER EXISTE. Le catalogue vérifié contient une majorité de
+# recettes sucrées : la complétude exigée par I3 sélectionne mécaniquement le
+# dessert, dont les huit ingrédients résolvent tous, contre le tajine dont
+# quinze lignes en comptent quatre d'inconnues. Un pré-filtre sans cette
+# information proposerait des gâteaux au dîner.
+#
+# CE QUE C'EST, ET CE QUE CE N'EST PAS. Les libellés ci-dessous sont ceux que
+# les sources publient elles-mêmes comme métadonnée de leur page — même statut
+# que le titre ou la durée. Rien n'est généré (I7) et rien n'est republié (I9) :
+# la rubrique sert à décider en interne, elle ne s'affiche pas.
+#
+# Ce qu'on écrit ici est la CORRESPONDANCE, pas la donnée. Aucun allergène n'y
+# est en jeu, donc I1 ne s'applique pas et ces entrées ne passent pas par
+# `catalog review`. La relecture est celle du diff Git.
+#
+# LA RÈGLE DE PRUDENCE, quand une recette porte plusieurs rubriques : le type
+# le plus restrictif gagne, dans l'ordre déclaré par `precedence` ci-dessous.
+# Une recette étiquetée à la fois « Provence » et « Dessert » est un dessert ;
+# une recette étiquetée « Plat » et « Dessert » aussi. Rater un plat coûte un
+# candidat, servir un gâteau au dîner coûte la confiance dans l'outil.
+#
+# UN LIBELLÉ ABSENT DE CE FICHIER VAUT `unknown`, et `unknown` passe le filtre.
+# C'est délibéré : 111 des 555 recettes vérifiées n'ont aucune rubrique, et les
+# écarter paierait 20 % du catalogue pour une garantie de confort. Le type de
+# plat est un défaut de qualité, pas de sécurité.
+
+types:
+  - { code: main,      label: Plat }
+  - { code: starter,   label: Entrée ou apéritif }
+  - { code: side,      label: Accompagnement }
+  - { code: dessert,   label: Dessert }
+  - { code: snack,     label: Goûter }
+  - { code: breakfast, label: Petit déjeuner }
+  - { code: drink,     label: Boisson }
+  - { code: component, label: Composant — ni plat ni dessert }
+
+# Du plus restrictif au moins restrictif.
+precedence: [component, drink, dessert, snack, breakfast, side, starter, main]
+
+labels:
+
+  # ── Composants : ce ne sont pas des plats ────────────────────────────────
+  # Une vinaigrette ou un roux blanc ne peut occuper aucun créneau. Sans cette
+  # catégorie ils tomberaient dans « pas étiqueté dessert », donc dans les
+  # candidats du dîner.
+  component:
+    - Cuissons
+    - Recettes de base
+    - Base cuisine
+    - Beurres parfumés
+    - Sauces
+    - Vinaigrettes
+    - Roux blancs
+    - Mayonnaises
+    - Persillades
+    - Pestos et pistous
+    - Tartinades
+    - Pâtes à tartiner
+    - Garnitures
+    - Farces
+    - Pâtes à tartes
+    - Pâtes de base
+    - Pâtes à pain
+    - Pâtes à choux
+    - Pâtes à crêpes et blinis
+    - Confitures
+    - Confiture
+    - Conserve
+    - Pain
+    - Banniques
+    - Fonds et bouillons
+    - Sirops
+    - Sauces tomate
+    - Chutneys
+    - Tapenades
+    - Moutardes
+    - Mélanges d'épices
+    - Sels parfumés
+    - Pâte à gnocchi
+    - Pâtes à pasta
+    - Conserves à l'huile
+    - Conserves au sucre
+
+  # ── Boissons ─────────────────────────────────────────────────────────────
+  drink:
+    - Boisson
+    - Jus de fruits
+    - Limonades
+    - Smoothies
+    - Milkshakes
+    - Vins et liqueurs
+    - Liqueurs
+    - Cocktails
+    - Punchs
+    - Rhums arrangés
+    - Hydromels
+    - Infusions et thés
+    - Moon Milks
+
+  # ── Desserts ─────────────────────────────────────────────────────────────
+  # Uniquement ce qui est sucré dans tous les cas. Les rubriques à double
+  # lecture — `Cakes`, `Tartes`, `Flans`, `Compotées` — sont plus bas, en
+  # `unknown` : un cake aux olives et une compotée d'oignons existent, et se
+  # tromper dans ce sens retire un plat du dîner sans que rien ne le dise.
+  dessert:
+    - Dessert
+    - Biscuits
+    - Sablés
+    - Cookies
+    - Macarons
+    - Madeleines
+    - Brownies
+    - Moelleux
+    - Gâteaux
+    - Gâteaux invisibles
+    - Gâteaux renversés
+    - Bûches et roulés
+    - Entremets
+    - Flans pâtissiers
+    - Clafoutis
+    - Tatins
+    - Tiramisus et cheesecakes
+    - Glace
+    - Glaces
+    - Fudges et caramels
+    - Fruits confits
+    - Friandises
+    - Salades de fruits
+    - Pâtisserie
+    - Boulangerie et pâtisserie
+    - Banana bread
+    - Muffins
+    - Cupcakes
+    - Financiers
+    - Pains d'épices
+    - Crèmes glacées
+    - Sorbets
+    - Glaces et sorbets
+    - Puddings
+    - Panna cotta
+    - Crumbles
+    - Gâteaux au yaourt
+    - Confiserie
+
+  # ── Goûter ───────────────────────────────────────────────────────────────
+  snack:
+    - Goûter
+    - Gaufres
+    - Pancakes
+    - Scones
+
+  # ── Petit déjeuner ───────────────────────────────────────────────────────
+  breakfast:
+    - Petit déjeuner
+    - Porridges
+    - Mueslis et bouillies
+    - Bouillies de riz
+    - Brioches
+    - Pain & viennoiserie
+    - Breakfast
+    - Brioche
+    - Bouillies
+
+  # ── Entrées et apéritif ──────────────────────────────────────────────────
+  starter:
+    - Entrée
+    - Entrées
+    - Apéritif
+    - Amuse-gueules
+    - Antipasti
+    - Tapas
+    - Kémia
+    - Verrines apéritives
+    - Carpaccios
+    - Trempettes
+    - Guacamoles
+    - Bricks et samoussas
+    - Œufs farcis
+    - Croque au sel
+    - Terrines
+    - Rillettes
+    - Bruschettas
+    - Houmous
+    - Mezzés
+    - Tempura et pakoras
+    - Toasts et canapés
+    - Planches
+    - Aspic
+
+  # ── Accompagnements ──────────────────────────────────────────────────────
+  # Des aliments, mais pas un dîner à eux seuls.
+  side:
+    - Accompagnement
+    - Purées
+    - Légumes
+    - Légumes rôtis
+    - Légumes vapeur
+    - Chips et frites
+    - Salades râpées
+    - Salades vertes
+    - Macédoines
+    - Jardinières
+    - Porées
+    - Raïtas
+    - Pickles
+    - Pickles lactofermentés
+    - Gratins dauphinois
+    - Purées gratinées
+
+  # ── Plats ────────────────────────────────────────────────────────────────
+  main:
+    - Plat
+    - Plat principal
+    - Plat végétarien
+    - Viande
+    - Poisson
+    - Soupe
+    - Soupes au pain
+    - Potages
+    - Veloutés
+    - Gaspachos
+    - Minestrones et hariras
+    - Salade
+    - Salades
+    - Salades de haricots
+    - Salades de lentilles
+    - Salades de patates
+    - Quiches
+    - Ragoûts
+    - Daubes et civets
+    - Poêlées et woks
+    - Gratins
+    - Tourtes et pâtés en croûte
+    - Gnocchi
+    - Risottos
+    - Pasta
+    - Pates
+    - Plats de pâtes
+    - Pizza
+    - Pizzas
+    - Currys
+    - Currys asiatiques
+    - Currys britanniques
+    - Tajines
+    - Parmentiers
+    - Papillotes
+    - Farcis
+    - Petits farcis
+    - Tians
+    - Piperades et ratatouilles
+    - Omelettes
+    - Omelettes et tortillas
+    - Œufs cocotte
+    - Boulettes
+    - Croquettes
+    - Panés
+    - Steaks
+    - Grillades
+    - Rôtis
+    - Volailles rôties
+    - Sandwichs
+    - Galettes fourrées
+    - Ramequins et cocottes
+    - Soupes
+    - Bisques
+    - Soupes de nouilles
+    - Potées
+    - Woks
+    - Taboulés
+    - Lasagne & cannelloni
+    - Salades composées
+    - Salades de pâtes
+    - Salades de féculents
+    - Salades de maïs
+    - Dals
+    - Courges farcies
+    - Tartares
+    - Viandes rôties
+    - Poissons au four
+    - Tartines et sandwichs
+    - Burgers
+    - Raclettes et fondues
+    - Couscous
+    - Blanquettes
+    - Navarins
+    - Risotto
+    - Pilafs
+    - Pilafs et risottos
+    - Cassoulets
+    - Chilis
+    - Chilis et cassoulets
+    - Brochettes
+    - Tortillas fourrées
+    - Tartiflettes
+    - Choucroutes et chouées
+    - Ratatouilles
+    - Brouillades
+    - Flamiches
+    - Pastillas
+    - Pâtés en croûte
+
+  # ── Explicitement sans information ───────────────────────────────────────
+  # Écrits plutôt qu'omis, pour que le prochain lecteur sache qu'ils ont été
+  # examinés. Deux familles : les origines géographiques, qui ne disent rien du
+  # moment du repas ; et les rubriques à double lecture, sucrées ou salées
+  # selon la recette. Elles passent le filtre, comme toute recette non étiquetée.
+  unknown:
+    - Afrique
+    - Bretagne
+    - Corse
+    - Cuisine de l'Est
+    - Espagne
+    - Flandre
+    - Inde
+    - Maghreb
+    - Méditerranée
+    - Provence
+    - Russie
+    - Savoie
+    - Cakes            # le cake aux olives
+    - Tarte
+    - Tartes           # la tarte à l'oignon
+    - Flans            # le flan de courgettes
+    - Compotées        # la compotée d'oignons
+    - Crémées
+    - Crêpes           # la galette de sarrasin
+    - Soufflés         # le soufflé au fromage
+    - Mousselines      # la mousseline de pommes de terre
+    - Röstis et galettes
+    - États-Unis
+    - Angleterre
+    - Japon
+    - Normandie
+    - Italie
+    - Maroc
+    - Mexique
+    - Grèce
+    - Turquie
+    - Allemagne
+    - Suisse
+    - Danemark
+    - Écosse
+    - Hongrie
+    - Roumanie
+    - Ukraine
+    - Québec
+    - Antilles
+    - Cambodge
+    - Thaïlande
+    - Cuisine chinoise
+    - Cuisine irlandaise
+    - Cuisine lyonnaise
+    - Îles Britanniques
+    - Amérique du nord
+    - Amérique latine
+    - Pays nordiques
+    - Pays basque
+    - Pays ch'ti
+    - Île-de-France
+    - Périgord
+    - Bourgogne
+    - Beignets
+    - Cake
+    - Fouaces
+    - Fruits farcis

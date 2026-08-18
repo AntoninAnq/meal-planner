@@ -241,6 +241,7 @@ Une recette non vérifiée est **invisible pour tout foyer ayant une allergie s�
 | Situation | Comportement |
 |---|---|
 | Match exact après normalisation (minuscules, `unaccent`, singulier, espaces) | Résolution automatique |
+| **Relaxation** : retrait d'un qualificatif d'une **liste fermée**, et seulement si la chaîne complète est inconnue | Résolution automatique |
 | Match approché (trigrammes `pg_trgm`) | **Proposition affichée à l'utilisateur**, jamais appliquée seule |
 | Aucun match | Texte libre, ligne marquée non résolue |
 
@@ -253,6 +254,17 @@ Une recette non vérifiée est **invisible pour tout foyer ayant une allergie s�
 > | `crème de soja` | `crème` | Lait ⇄ soja, deux allergènes échangés |
 >
 > Les ingrédients de substitution sont, par construction, nommés comme l'aliment qu'ils remplacent. Une similarité textuelle élevée y signale une **opposition** allergénique, pas une équivalence.
+
+> **La relaxation n'est pas du matching approché**, et la distinction tient à quatre propriétés vérifiables. Elle a été ajoutée en fin de phase 1, après avoir mesuré que **423 recettes salées étaient à une seule ligne de résoudre** et que les trois quarts de ces lignes étaient un aliment connu portant un calibre, un état ou un conditionnement — `courgette moyenne`, `betterave cuite`, `beurre en dés`. Écrire ces variantes à la main, c'est payer pour un défaut d'outil.
+>
+> 1. **Elle n'est tentée que si la chaîne complète est inconnue.** Le référentiel protège par construction tout composé qu'il porte déjà : `petits pois`, `chocolat noir`, `crème fraîche`, `raisin sec` se résolvent comme eux-mêmes et ne sont jamais dépouillés.
+> 2. **Un complément en `de X` / `au X` n'est jamais retiré.** C'est exactement le tableau ci-dessus : `crème de soja → crème` échangerait `soybeans` contre `milk`. Corollaire : `noix de beurre` ne peut pas être atteint par une règle et reste un alias écrit à la main.
+> 3. **Les variétés et les couleurs ne sont dans aucune liste.** `farine de blé noir` est du sarrasin — ni blé, ni gluten. Une couleur peut traverser une frontière d'allergène, donc elle s'écrit en entrée de référentiel, une par une.
+> 4. **`sec` / `séché` n'est dans aucune liste.** `Raisin sec` porte `sulphites` et `Raisin` non : les fruits séchés sont soufrés, et retirer le mot retirerait l'allergène.
+>
+> Le seul cas mesuré du catalogue où une relaxation retirerait un allergène est le **petit-beurre** — un biscuit (`gluten, eggs, milk`) que la règle de calibre rattacherait à `beurre` (`milk` seul). Il a son entrée propre, et une liste `_NEVER_RELAXED` interdit en plus de l'atteindre par règle. Les quatre propriétés sont tenues par des tests qui échouent si on les retire.
+>
+> **Effet mesuré** : 372 → 555 recettes à `allergens_verified = true`, dont 154 → 259 salées, pour deux entrées saisies à la main.
 
 ### I5 — Le constructeur de prompt ne reçoit jamais l'entité `member`
 
@@ -308,7 +320,9 @@ Ce projet est **délibérément agentic**. La frontière ci-dessous préserve le
 │    · allergies sévères → exclusion foyer                         │
 │    · intolérances     → exclusion membre                         │
 │    · suitable_stages  → compatibilité membre                     │
-│    · allergens_verified si allergie sévère au foyer              │
+│    · allergens_verified si le foyer déclare UNE contrainte       │
+│    · dish_type        → exclut dessert, goûter, boisson,         │
+│                         composant et accompagnement d'un repas   │
 │    Puis CLASSE et TRONQUE : ~15-25 candidats par créneau          │
 └────────────────────────────┬─────────────────────────────────────┘
                              ▼
@@ -335,6 +349,20 @@ Ce projet est **délibérément agentic**. La frontière ci-dessous préserve le
 │    Sinon → rejeu, avec compteur borné.                           │
 └──────────────────────────────────────────────────────────────────┘
 ```
+
+> **`allergens_verified` devient dur dès qu'une contrainte est déclarée, pas seulement une allergie sévère.** Ce paragraphe disait « si allergie sévère au foyer ». La distinction sévère/intolérance gouverne la **portée** de l'exclusion — foyer entier ou membre seul — pas la **fiabilité** de la donnée qui la calcule. Sur une recette non vérifiée, `recipe_allergen` est dérivé des seuls ingrédients qui ont résolu : l'absence de tag n'y signifie pas « pas d'allergène » mais « on n'a pas su lire ». Une exclusion de membre calculée là-dessus rate silencieusement, et rien dans l'interface ne le dirait.
+>
+> Coût mesuré et assumé : un foyer sans aucune contrainte planifie sur 2 143 recettes, un foyer qui en déclare une seule sur **279**.
+
+> **Le type de plat, et pourquoi il a fallu l'ajouter.** Des 555 recettes vérifiées, **296 contiennent un sucrant**. Ce n'est pas un biais des sources : c'est une propriété de I3. Les huit lignes d'un gâteau résolvent toutes, les quinze d'un tajine en comptent quatre que personne n'a encore écrites — la complétude exigée par l'invariant sélectionne le dessert. Un pré-filtre branché tel quel répondait « gâteau » à un mardi soir.
+>
+> **Deux axes, à ne pas confondre.** `recipe_food_category` décrit la **composition** et se dérive des ingrédients résolus ; c'est lui qui alimente le signal de rotation. `dish_type` décrit **quand ça se mange**, et ne se dérive pas de la composition — une quiche et une tarte aux pommes portent les mêmes catégories d'ingrédients.
+>
+> La valeur vient de la **rubrique que la source publie en métadonnée** — même statut que le titre ou la durée, donc ni générée (I7) ni republiée (I9) — à travers la correspondance versionnée de `db/dish_types.yaml`. Aucun allergène n'y est en jeu, donc I1 ne s'applique pas et ces entrées ne passent pas par `catalog review` : la relecture est celle du diff Git.
+>
+> **`NULL` est un état réel et il passe le filtre.** 961 recettes du catalogue ne portent aucune rubrique connue ; les écarter paierait un cinquième du catalogue pour une garantie de confort. Un dessert au dîner est un défaut de qualité, pas de sécurité.
+>
+> Deux règles portent le reste : le type le plus **restrictif** gagne quand une recette porte plusieurs rubriques — rater un plat coûte un candidat sur plusieurs centaines, servir un gâteau au dîner coûte la confiance ; et **`component` doit exister** — une vinaigrette ou un roux blanc est une recette du catalogue qui n'est un repas à aucun moment, et sans ce membre les 221 concernées tombaient dans « pas étiqueté dessert », donc dans les candidats du dîner.
 
 ### 6.3 La règle de répartition
 
@@ -372,6 +400,22 @@ L'explication (« pourquoi ce plat ») est un **appel séparé, à la demande, s
 > **Pourquoi.** Le goulot de génération est la sortie, pas l'entrée. 25 candidats (titre + ingrédients) ≈ 1 500 tokens d'entrée, ingérés en 10-20 s même sur CPU. Faire produire de la prose dans le même appel multiplie la latence par un ordre de grandeur et rend l'endpoint synchrone intenable.
 
 Cette règle rend l'endpoint synchrone parfaitement tenable, y compris sans GPU.
+
+> **Mesuré, et la contrainte n'est pas celle qu'on croyait.** L'estimation ci-dessus — « 25 candidats ≈ 1 500 tokens, ingérés en 10-20 s » — était pessimiste d'un ordre de grandeur sur le temps, et le vrai plafond est ailleurs.
+>
+> | candidats | tokens | prefill |
+> |---|---|---|
+> | 40 | 1 211 | 0,06 s |
+> | 120 | 3 773 | 2,7 s |
+> | 279 (pool entier) | 8 709 | 8,3 s |
+>
+> Une ligne de candidat vaut **31 tokens**. Le prefill du pool entier coûte 8 s, négligeable devant les 182 s d'une semaine : **le goulot reste la sortie**, comme ce paragraphe le disait.
+>
+> **Ce que la mesure a trouvé, en revanche : `num_ctx` n'était pas renseigné.** Le défaut d'Ollama vaut 4 096 tokens là où `qwen3:8b` en déclare 40 960 — un dixième du modèle, utilisé par accident (I8). Et au-delà de la fenêtre, Ollama ne refuse pas : il **tronque en gardant la fin**. `build_context` empile les mangeurs en premier et les candidats en dernier, donc le bloc qui disparaît est celui qui dit **qui doit manger**. Le filtre allergène n'est pas concerné — il est en SQL (I2) — mais le plan serait composé pour personne, rejeté par l'enveloppe, et lu comme une incapacité du modèle.
+>
+> D'où deux décisions. `OLLAMA_CONTEXT_TOKENS` est **déclaré** (8 192, soit ~190 candidats après le reste du prompt), et une troncature **lève** au lieu de dégrader en silence — `prompt_eval_count` atteignant la fenêtre est le seul signe qu'Ollama en donne.
+>
+> `num_ctx` est une **réservation**, pas une limite atteinte progressivement : le cache KV est alloué entier au chargement. Sur ce modèle — 36 couches, 8 têtes clé/valeur en GQA, dimension 128 — un token coûte 144 Kio, donc 8 192 réserve 1,13 Gio en plus des ~4,9 Gio de poids. **Élargir la fenêtre coûte de la mémoire, jamais de la latence ; ce qui coûte du temps, c'est de la remplir.** La question disparaît le jour où le fournisseur est Anthropic : Haiku 4.5 porte 200 k de contexte.
 
 ---
 
@@ -488,6 +532,7 @@ Le pré-filtre ne se contente pas de filtrer : il **classe et tronque** à ~15-2
 | **Propositions = table + CLI de revue** | Matchs approchés `pg_trgm` (I4), et plus tard les propositions de modèle | Garde la phase 1 back pur, comme le §10.1 le prévoit. La revue est une tâche au clavier, en volume : un terminal y bat une page web. Et si un écran devient utile, il sera une deuxième vue sur la même table, pas une reprise. |
 | **Extensions Postgres** | `unaccent` et `pg_trgm` | Normalisation et similarité du matching d'ingrédients (I4). |
 | **Le transport est une interface, avec une implémentation réelle et une factice** | `Transport`, `HttpxTransport`, `FakeTransport` — plus une horloge et un `sleep` injectés | Même raisonnement que pour le client LLM (§7.1, §13.3). Sans la factice, aucune des règles du §11.4 n'est jamais exercée avant le jour où elle compte, et le chemin de recul sur `429` est celui qui sera faux. Les tests d'allure vérifient qu'on attend le bon nombre de secondes **sans attendre une seule seconde**. |
+| **Le parseur paie mieux que la saisie** | Avant d'écrire des entrées, relire la queue non résolue et corriger ce qui est un défaut d'outil (I4, encadré sur la relaxation) | Mesuré deux fois. Une première passe — `1,5 cuillerée levure chimique`, `cuiller à café bombée` — a rendu 14 recettes en vingt minutes. Une seconde, dirigée sur la queue salée, en a rendu 183 pour deux entrées saisies. À comparer à la courbe de saisie manuelle : au-delà des 1 000 premières entrées, il faut **une entrée pour une demi-recette**, et 81 % des chaînes restantes n'apparaissent qu'une seule fois. |
 | **L'ingestion n'écrit jamais `allergens_verified` ni `recipe_allergen`** | Elles sont calculées par la passe de résolution, à partir des seuls ingrédients résolus | I2 et I3. Un pipeline de collecte qui les renseignerait déclarerait une propriété de sécurité qu'il n'a aucun moyen de connaître. |
 
 ---

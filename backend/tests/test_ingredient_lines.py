@@ -11,7 +11,13 @@ from fractions import Fraction
 
 import pytest
 
-from app.catalog.ingredient_lines import fold, normalise, parse_line, singularise
+from app.catalog.ingredient_lines import (
+    fold,
+    normalise,
+    parse_line,
+    singularise,
+    variants,
+)
 
 
 @pytest.mark.parametrize(
@@ -196,3 +202,142 @@ def test_hedges_and_false_units_found_in_the_resolution_report(raw: str, expecte
 )
 def test_measure_qualifiers_are_stripped_only_before_a_unit(raw: str, expected: str) -> None:
     assert parse_line(raw).normalized == expected
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        # A range is one ingredient. Consuming only the first number left the
+        # rest in the name: three spellings, three unusable strings.
+        ("2 à 3 œufs entiers", "oeuf entier"),
+        ("1 à 2 gousses d’ail hachées", "ail hachee"),
+        ("225 g+125 g de sucre", "sucre"),
+        ("180-200 g de sucre", "sucre"),
+        # A length is how ginger and leeks are measured.
+        ("4 cm gingembre frais", "gingembre frais"),
+        # This pattern is applied after `fold`, so an accented spelling in the
+        # unit list could never match — `dl` carried the case alone.
+        ("2 décilitres de lait", "lait"),
+        # The elided article survived the digit strip and made `jus d' citron`
+        # a string of its own.
+        ("Jus d’1 citron frais", "jus citron frais"),
+        ("1 belle pincée origan", "origan"),
+        ("Quelques amandes effilées", "amande effilee"),
+    ],
+)
+def test_quantity_bugs_found_by_reading_the_unresolved_tail(raw: str, expected: str) -> None:
+    assert parse_line(raw).normalized == expected
+
+
+def test_a_unit_is_not_lost_to_the_orphan_article_filter() -> None:
+    """`l` is the litre, and the unit goes through `normalise` too."""
+    assert parse_line("50 cl de lait").unit == "cl"
+    assert parse_line("1 l de bouillon").unit == "l"
+
+
+def test_a_qualifier_after_a_unit_cannot_eat_a_food() -> None:
+    """`1 sachet petits pois` must not become `pois`.
+
+    The post-unit list is deliberately shorter than the pre-unit one: there no
+    following unit can act as a guard, and `petit` / `gros` can open a food
+    name where `bombée` or `généreuse` cannot.
+    """
+    assert parse_line("1 sachet petits pois").normalized == "petit pois"
+    assert parse_line("2 cuillerées bombées de sucre").normalized == "sucre"
+
+
+# ---------------------------------------------------------------------------
+# Relaxation — the four things it must never do
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "creme de soja",       # `crème` would swap `soybeans` for `milk`
+        "lait de coco",        # `lait` would invent `milk` where there is none
+        "farine de riz",       # `farine de blé` is the gluten-free one's neighbour
+        "sel de celeri",       # `sel` would drop `celery`
+        "noix de beurre",      # and `noix de coco` would become a tree nut
+    ],
+)
+def test_a_complement_in_de_is_never_removed(name: str) -> None:
+    """The rule that makes relaxation safe rather than clever.
+
+    Every one of these has a head that resolves to a DIFFERENT allergen set
+    from the whole. There is no version of this feature where they are touched.
+    """
+    head = name.split(" de ")[0]
+    assert head not in list(variants(name))
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "radis noir",
+        "betterave rouge",
+        "mais doux",
+        "farine de ble noir",   # buckwheat: not wheat, and no gluten
+        "chocolat noir",        # carries `milk`, where a bare `chocolat` need not
+    ],
+)
+def test_a_variety_or_a_colour_is_never_removed(name: str) -> None:
+    """A colour can cross an allergen boundary, so it is never a rule.
+
+    These become referential entries, written and confirmed one at a time.
+    """
+    assert list(variants(name)) == []
+
+
+@pytest.mark.parametrize("name", ["raisin sec", "abricot sec", "figue seche", "tomate sechee"])
+def test_dried_is_never_removed(name: str) -> None:
+    """Dried fruit is sulphited and fresh fruit is not.
+
+    `Raisin sec` carries `sulphites` in the shipped referential and `Raisin`
+    does not — removing the word would remove the allergen.
+    """
+    assert list(variants(name)) == []
+
+
+def test_petit_beurre_can_never_reach_beurre() -> None:
+    """The one case measured where a relaxation would REMOVE an allergen.
+
+    The petit-beurre is a biscuit — gluten, eggs, milk. `Beurre` carries milk
+    alone, so reading one as the other hides gluten from a coeliac household.
+    Checked from the qualified form too, because the leading-calibre rule fires
+    before the others and would otherwise offer `beurre écrasé` first.
+    """
+    assert "beurre" not in list(variants("petit beurre"))
+    assert "beurre" not in list(variants("petit beurre ecrase"))
+    assert "beurre ecrase" not in list(variants("petit beurre ecrase"))
+    assert "lait" not in list(variants("petit lait froid"))
+
+
+def test_a_protected_compound_is_still_a_valid_destination() -> None:
+    """Protection forbids relaxing it further, not reaching it.
+
+    `petits pois surgelés` must find `petits pois` — an entry — and must never
+    reach `pois`, which is a different vegetable.
+    """
+    reachable = list(variants("petit pois surgele"))
+    assert "petit pois" in reachable
+    assert "pois" not in reachable
+
+
+@pytest.mark.parametrize(
+    ("name", "expected"),
+    [
+        ("courgette moyenne", "courgette"),
+        ("grosse carotte", "carotte"),
+        ("betterave cuite", "betterave"),
+        ("graine de sesame torrefiee", "graine de sesame"),
+        ("beurre en des", "beurre"),
+        ("thon au naturel", "thon"),
+        ("oignon finement hache", "oignon"),
+        ("lentille verte du puy", "lentille verte"),
+        ("creme liquide entiere froide", "creme liquide"),
+    ],
+)
+def test_what_relaxation_is_actually_for(name: str, expected: str) -> None:
+    """Measured: 423 savoury recipes were one line of this kind short of I3."""
+    assert expected in list(variants(name))

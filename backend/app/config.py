@@ -63,6 +63,19 @@ class Settings(BaseSettings):
     #: in the wrong place (I8) — and the failure it causes reads as "the model
     #: is unreachable", which sends you looking in entirely the wrong place.
     ollama_timeout_seconds: float = 600.0
+    #: The context window, in tokens. Written here because Ollama's own default
+    #: is 4 096 while `qwen3:8b` declares 40 960 — so leaving it unset uses a
+    #: tenth of the model, chosen by nobody (I8).
+    #:
+    #: It is a RESERVATION, not a limit reached progressively: the KV cache is
+    #: allocated in full when the model loads. On this model — 36 layers, 8
+    #: key/value heads of dimension 128 — one token costs 144 KiB, so 8 192
+    #: reserves 1.13 GiB on top of the ~4.9 GiB of weights. Widening it costs
+    #: memory, never latency; what costs latency is FILLING it.
+    #:
+    #: 8 192 leaves room for roughly 190 candidate lines at 31 tokens each,
+    #: which is well beyond the 60-120 the pre-filter sends.
+    ollama_context_tokens: int = 8192
     anthropic_api_key: str = ""
     anthropic_model: str = "claude-haiku-4-5"
 
@@ -91,6 +104,10 @@ class Settings(BaseSettings):
     #: and versioned, because the confirmations are the one part of the
     #: pipeline no machine can reproduce.
     catalog_confirmations_path: str = "/db/confirmations.yaml"
+    #: Source rubric -> moment of the meal. Versioned next to the referential
+    #: and reviewed the same way, but it carries no allergen, so it never goes
+    #: through `catalog review` — I1 has nothing to say about it.
+    catalog_dish_types_path: str = "/db/dish_types.yaml"
     catalog_cache_dir: str = "/var/cache/catalog"
     catalog_cache_ttl_seconds: float = 24 * 3600
     catalog_request_timeout_seconds: float = 30.0

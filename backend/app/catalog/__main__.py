@@ -67,6 +67,17 @@ def build_parser() -> argparse.ArgumentParser:
     )
     resolve.add_argument("--top", type=int, default=40, help="how many candidates to list")
 
+    dish = sub.add_parser(
+        "dish-types",
+        help="derive recipe.dish_type from the rubrics the sources publish (idempotent)",
+    )
+    dish.add_argument("--path", help="override the mapping file")
+    dish.add_argument(
+        "--report",
+        action="store_true",
+        help="change nothing; print the distribution and the rubrics still unmapped",
+    )
+
     review = sub.add_parser("review", help="confirm the proposed referential entries (I1, I3)")
     review.add_argument(
         "--bulk-safe",
@@ -172,6 +183,24 @@ def _resolve(args) -> int:
     return 0
 
 
+def _dish_types(args) -> int:
+    from pathlib import Path
+
+    from app.catalog.dish_types import DishTypeError, derive
+    from app.db.session import get_session_factory
+
+    with get_session_factory()() as db:
+        try:
+            report = derive(
+                db, report_only=args.report, path=Path(args.path) if args.path else None
+            )
+        except DishTypeError as exc:
+            print(f"correspondance refusée : {exc}", file=sys.stderr)
+            return 2
+    print(report.render())
+    return 0
+
+
 def _review(args) -> int:
     from app.catalog.review import run_review
     from app.db.session import get_session_factory
@@ -187,6 +216,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         "ingest": _ingest,
         "load-referential": _load_referential,
         "resolve": _resolve,
+        "dish-types": _dish_types,
         "review": _review,
     }
     return handlers[args.command](args)

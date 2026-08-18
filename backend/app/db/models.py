@@ -39,6 +39,7 @@ from app.domain.enums import (
     AllergenCode,
     ConstraintSeverity,
     DishSource,
+    DishType,
     LifeStage,
     MealType,
     ProposalStatus,
@@ -76,6 +77,7 @@ dish_source_enum = _pg_enum(DishSource, "dish_source")
 allergen_enum = _pg_enum(AllergenCode, "allergen_code")
 recipe_source_enum = _pg_enum(RecipeSourceType, "recipe_source_type")
 proposal_status_enum = _pg_enum(ProposalStatus, "proposal_status")
+dish_type_enum = _pg_enum(DishType, "dish_type")
 
 
 class Household(Base):
@@ -537,6 +539,11 @@ class Recipe(Base):
     #: Derived by formula, never judged by a model (§6.4). NULL until the
     #: formula is settled.
     complexity: Mapped[int | None] = mapped_column(SmallInteger)
+    #: When this can be eaten, derived from the rubric the source publishes and
+    #: the mapping in `db/dish_types.yaml`. NULL means nobody classified it —
+    #: 111 of the 555 verified recipes carry no rubric at all — and the
+    #: pre-filter lets NULL through. A quality signal, never a safety one.
+    dish_type: Mapped[DishType | None] = mapped_column(dish_type_enum, index=True)
     #: A count, not the steps. Counting is a fact; the text is the author's (I9).
     step_count: Mapped[int | None] = mapped_column(SmallInteger)
 

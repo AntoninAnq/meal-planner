@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import re
 import unicodedata
+from collections.abc import Iterator
 from dataclasses import dataclass
 from fractions import Fraction
 
@@ -35,7 +36,9 @@ from fractions import Fraction
 UNITS = (
     r"kilogrammes?|kilos?|kg"
     r"|grammes?|gr?\b"
-    r"|litres?|l\b|décilitres?|dl|centilitres?|cl|millilitres?|ml"
+    # Accent-free spellings: this pattern is applied AFTER `fold`, so a literal
+    # `décilitres?` could never match anything. `dl` carried the case alone.
+    r"|litres?|l\b|d[ée]cilitres?|dl|centilitres?|cl|millilitres?|ml"
     r"|cuill[eè]r[ée]?e?s?\s+[àa]\s+(?:soupe|caf[ée])"
     # Spelled-out forms FIRST: the abbreviated `c. à s.` pattern would otherwise
     # match `c. a s` inside `c. à soupe` and leave a stray `oupe` as the name.
@@ -54,6 +57,10 @@ UNITS = (
     # ingredient at all, which silently dropped the allergen and blocked the
     # recipe. `noix de beurre` is handled as an alias in the referential.
     r"|rouleaux?|tablettes?|zestes?|gouttes?|cubes?|louches?|traits?"
+    # `4 cm gingembre frais` — a length really is how ginger and leeks are
+    # measured. Left out, `cm` stayed in the name and `cm gingembre frais`
+    # became a string of its own.
+    r"|cm\b|mm\b"
 )
 
 #: Vulgar fractions and the ligatures that a naive NFKD pass silently destroys.
@@ -93,14 +100,28 @@ _QUALIFIER = re.compile(
 #: `bombee de levure chimique` — and each such variant is a referential entry
 #: someone would otherwise have to write by hand.
 _MEASURE_QUALIFIER = re.compile(
-    r"^\s*(?:bomb[ée]es?|rases?|pleines?|g[ée]n[ée]reuses?|bonnes?|petites?|grosses?)\b",
+    r"^\s*(?:bomb[ée]es?|rases?|pleines?|g[ée]n[ée]reuses?|bonnes?"
+    r"|petites?|grosses?|belles?|beaux?|bel|jolies?|jolis?)\b",
     re.I,
 )
+#: The same idea in the position AFTER the unit — `2 cuillerées bombées de
+#: sucre`. Deliberately a shorter list: there the guard of a following unit is
+#: not available, and `petit` / `gros` can open a food name. `1 sachet petits
+#: pois` must not become `pois`, which is a different vegetable; `1 pincée
+#: généreuse` has no such reading.
+_AFTER_UNIT_QUALIFIER = re.compile(
+    r"^\s*(?:bomb[ée]es?|rases?|pleines?|g[ée]n[ée]reuses?|bonnes?|belles?)\b", re.I
+)
+#: What joins two quantities: `2 à 3 gousses`, `225 g+125 g de sucre`,
+#: `180-200 g`. The first quantity is kept and the rest consumed — a range is
+#: one ingredient, and left in place the tail became the name (`g de sucre`).
+#: A digit must follow, or `1 boîte à l'huile` would lose its `à`.
+_CONNECTOR = re.compile(r"^\s*(?:[+\-–—]|[àa]|ou)\s*(?=\d)", re.I)
 #: Removed as a WORD, never used as a truncation point. `environ` hedges the
 #: quantity and these sources put it before the name: truncating there turned
 #: `150 g environ farine` into nothing at all, and a line that normalises to
 #: nothing can never resolve — so it blocked its whole recipe (I3).
-_HEDGE = re.compile(r"\b(?:environ|voire un peu plus|un peu plus)\b", re.I)
+_HEDGE = re.compile(r"\b(?:environ|voire un peu plus|un peu plus|quelques?)\b", re.I)
 
 
 #: Lines that structure a list without naming a food. They arrive tagged as
@@ -199,11 +220,163 @@ def singularise(word: str) -> str:
     return word
 
 
+#: Elided articles left stranded once the digits are gone. `Jus d’1 citron`
+#: keeps its `d'` through the `[^a-z' ]` pass and yields `jus d' citron` — a
+#: string distinct from `jus de citron` for no reason a reader would accept.
+#:
+#: Only the apostrophe forms. A bare `l` is the litre — `50 cl de lait` reads
+#: its unit through this same function, and dropping it left the line unitless.
+_ORPHAN_ARTICLES = frozenset({"d'", "l'", "n'", "s'", "qu'"})
+
+
 def normalise(name: str) -> str:
     folded = fold(name)
     folded = re.sub(r"[^a-z' ]", " ", folded)
     words = [singularise(word) for word in folded.split()]
-    return " ".join(word for word in words if word)
+    return " ".join(word for word in words if word and word not in _ORPHAN_ARTICLES)
+
+
+# ---------------------------------------------------------------------------
+# Relaxation — reading `courgette moyenne` as a courgette
+# ---------------------------------------------------------------------------
+#
+# Measured cause: 423 savoury recipes in the catalogue were ONE line short of
+# resolving, and three quarters of those lines were a known food carrying a
+# size, a state or a packaging. Writing `betterave cuite` by hand when
+# `betterave` already exists is paying for a missing tool.
+#
+# This is NOT fuzzy matching, and I4 is not bent here. Four properties hold,
+# and each was chosen against a case that appeared in the real data:
+#
+# 1. **A relaxation is only ever TRIED when the full string is unknown.**
+#    The referential shields every compound it already carries: `petits pois`,
+#    `chocolat noir`, `crème fraîche`, `raisin sec` are never touched, because
+#    they resolve before any of this runs.
+# 2. **A complement in `de X` / `au X` is never removed.** `crème de soja`
+#    would become `crème` — swapping `soybeans` for `milk`, an UNDER-exclusion.
+#    So `noix de beurre` cannot be reached by rule either; it is an alias.
+# 3. **Varieties and colours are not in any list.** `farine de blé noir` is
+#    buckwheat, which has no gluten and is not wheat; `chocolat noir` carries
+#    `milk` where `chocolat au lait` does too. A colour can cross an allergen
+#    boundary, so colours are written as referential entries, one at a time.
+# 4. **`sec` / `séché` is not in any list.** `Raisin sec` carries `sulphites`
+#    and `Raisin` does not — dried fruit is sulphited. Removing it would
+#    remove an allergen.
+#
+# The lists are closed and written in NORMALISED form: unaccented, singular,
+# which is what `normalise` produces.
+
+#: Size and calibre. Removable at either end: `grosse carotte`, `courgette
+#: moyenne`.
+_CALIBRE = (
+    r"gros|grosse|petit|petite|moyen|moyenne|grand|grande|beau|bel|belle|joli|jolie"
+)
+#: How the food arrives or is cut. None of these changes what the food IS.
+#: Some `-us` forms are spelled out because `singularise` treats that ending as
+#: invariable (`moulus` stays `moulus`, by design — it protects `maïs`).
+_PREPARATION = (
+    r"rape|rapee|moulu|moulue|moulus|torrefie|torrefiee|surgele|surgelee"
+    r"|cuit|cuite|cru|crue|crus|emince|emincee|hache|hachee|pele|pelee"
+    r"|coupe|coupee|fondu|fondue|ramolli|ramollie|egoutte|egouttee|essore|essoree"
+    r"|denoyaute|denoyautee|epluche|epluchee|lave|lavee|ecrase|ecrasee"
+    r"|concasse|concassee|effile|effilee|cisele|ciselee|blanchi|blanchie"
+    r"|decortique|decortiquee|entier|entiere|tiede|froid|froide|mur|mure"
+    r"|bio|nature|frais|fraiche|nouveau|nouvelle|grille|grillee"
+    # Adverbs, removed in a second pass: `oignon finement hache` loses its
+    # participle first, then this. An adverb qualifies the gesture and can
+    # never be a food nor change one.
+    r"|finement|grossierement|fraichement|legerement|prealablement"
+)
+#: Packaging and provenance of the product, not of the food.
+#: `a l'huile` is listed alone and never `a l'huile de X`, which could hide
+#: `arachide` or `sesame`.
+_PACKAGING = (
+    # `en des` and not `en de`: `singularise` leaves words of three letters
+    # alone, so `en dés` normalises to `en des`.
+    r"a point|en poudre|en morceau|en des|en boite|en conserve|en lamelle"
+    r"|en rondelle|en tranche|en branche|en grain|en filet|au naturel"
+    r"|a l'huile|a temperature ambiante|du commerce|maison|de qualite"
+    r"|de preference|si possible|bien mur|bien mure"
+)
+#: Geographical origin, a closed list of places rather than a `de X` rule.
+_ORIGIN = (
+    r"du puy|de bretagne|d'espagne|du perigord|de savoie|de provence|corse"
+)
+
+#: Removing a LEADING calibre is the only rule that can cut into a compound
+#: noun, so it is kept apart and guarded below.
+_CALIBRE_PREFIX = re.compile(rf"^(?:{_CALIBRE})\s+(?P<stem>.+)$")
+
+_SUFFIX_RULES = (
+    re.compile(rf"^(?P<stem>.+?)\s+(?:{_CALIBRE})$"),
+    re.compile(rf"^(?P<stem>.+?)\s+(?:{_PREPARATION})$"),
+    re.compile(rf"^(?P<stem>.+?)\s+(?:{_PACKAGING})$"),
+    re.compile(rf"^(?P<stem>.+?)\s+(?:{_ORIGIN})$"),
+)
+
+#: Compound nouns that a calibre rule would take apart, with the wrong result.
+#: `petit-beurre` is the one case in the whole catalogue where a relaxation
+#: would REMOVE an allergen: it is a biscuit — gluten, eggs, milk — and `beurre`
+#: carries milk alone. It has its own referential entry; this list makes sure
+#: nothing can reach `Beurre` from it even if that entry is ever removed.
+_NEVER_RELAXED = frozenset(
+    {
+        "petit beurre",
+        "petit lait",      # lactosérum, not a small quantity of milk
+        "petit sale",
+        "petit epeautre",  # a different cereal from épeautre
+        "petit suisse",
+        "petit four",
+        "petit dejeuner",
+        "petit pois",      # a different vegetable from `pois`
+    }
+)
+
+#: How many qualifiers one name may carry. `creme liquide entiere froide` needs
+#: three; beyond that the string is noise, not a food.
+_MAX_RELAXATIONS = 4
+
+
+def _opens_a_protected_compound(name: str) -> bool:
+    """`petit beurre écrasé` still starts with `petit-beurre`.
+
+    Without this, the leading-calibre rule fires first and offers `beurre
+    écrasé` before `petit beurre` is ever tried — one alias away from resolving
+    a biscuit as butter.
+    """
+    return any(name == word or name.startswith(f"{word} ") for word in _NEVER_RELAXED)
+
+
+def variants(normalized: str) -> Iterator[str]:
+    """Progressively simpler spellings of a name, most specific first.
+
+    Yields nothing for a name that carries no known qualifier. The caller looks
+    each one up and stops at the first hit, so the most specific match wins.
+    """
+    seen = {normalized}
+    frontier = [(normalized, 0)]
+
+    while frontier:
+        current, depth = frontier.pop(0)
+        if current in _NEVER_RELAXED or depth >= _MAX_RELAXATIONS:
+            continue
+        rules = _SUFFIX_RULES
+        if not _opens_a_protected_compound(current):
+            rules = (*rules, _CALIBRE_PREFIX)
+        for pattern in rules:
+            match = pattern.match(current)
+            if match is None:
+                continue
+            stem = match.group("stem").strip()
+            # A protected compound is a valid DESTINATION — `petit pois
+            # surgelé` must reach `petits pois`, which is an entry. What the
+            # protection forbids is relaxing it FURTHER, and that is enforced
+            # when it comes back off the frontier.
+            if not stem or stem in seen:
+                continue
+            seen.add(stem)
+            frontier.append((stem, depth + 1))
+            yield stem
 
 
 def _read_quantity(text: str) -> tuple[Fraction | None, str]:
@@ -222,6 +395,25 @@ def _read_quantity(text: str) -> tuple[Fraction | None, str]:
     return value, text[match.end():]
 
 
+def _read_quantity_range(text: str) -> tuple[Fraction | None, str]:
+    """`2 à 3 gousses`, `180-200 g`, `225 g+125 g` — the first value wins.
+
+    A range is one ingredient, and the sources write it three different ways.
+    Consuming only the first number left the rest in the name: `2 à 3 œufs
+    entiers` normalised to `a oeuf entier`, and `225 g+125 g de sucre` to
+    `g de sucre` — strings no referential will ever carry.
+    """
+    quantity, text = _read_quantity(text)
+    if quantity is None:
+        return None, text
+    while (connector := _CONNECTOR.match(text)) is not None:
+        extra, rest = _read_quantity(text[connector.end():])
+        if extra is None:
+            break
+        text = rest
+    return quantity, text
+
+
 def parse_line(raw: str) -> ParsedLine:
     """One line in, its parts out. Never raises: an unparsable line is a name."""
     text = fold(raw)
@@ -230,7 +422,7 @@ def parse_line(raw: str) -> ParsedLine:
     text = _HEDGE.sub(" ", text)
     text = _TRAILING_NOTE.sub("", text)
 
-    quantity, text = _read_quantity(text)
+    quantity, text = _read_quantity_range(text)
 
     # A measure qualifier is consumed ONLY when a unit follows it. Stripping
     # `petit` unconditionally would turn `petits pois` into `pois` — a
@@ -247,9 +439,10 @@ def parse_line(raw: str) -> ParsedLine:
         unit = unit_match.group("unit").strip()
         text = text[unit_match.end():]
         # `2 c. à soupe d'huile` — a second quantity sometimes follows the unit
-        # in `1 boîte de 400 g de tomates`.
-        text = _MEASURE_QUALIFIER.sub(" ", text)
-        extra, text = _read_quantity(_ARTICLE.sub(" ", text))
+        # in `1 boîte de 400 g de tomates`, and `225 g+125 g de sucre` puts the
+        # connector here rather than before the unit.
+        text = _AFTER_UNIT_QUALIFIER.sub(" ", text)
+        extra, text = _read_quantity(_CONNECTOR.sub("", _ARTICLE.sub(" ", text)))
         if extra is not None:
             second_unit = _UNIT.match(text)
             if second_unit:

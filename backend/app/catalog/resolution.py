@@ -31,7 +31,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.catalog.ingredient_lines import parse_line
-from app.catalog.referential import spelling_index
+from app.catalog.referential import find, spelling_index
 from app.db.models import (
     Ingredient,
     IngredientAllergen,
@@ -121,7 +121,7 @@ def resolve(db: Session, *, report_only: bool = False, top: int = 40) -> Resolut
                 line.ingredient_id = None
             continue
 
-        match = index.get(parsed.normalized)
+        match = find(index, parsed.normalized)
         if match is None:
             unresolved[parsed.normalized] += 1
         else:

@@ -91,3 +91,32 @@ class AllergenCode(StrEnum):
     SULPHITES = "sulphites"
     LUPIN = "lupin"
     MOLLUSCS = "molluscs"
+
+
+class DishType(StrEnum):
+    """When a recipe can be eaten, derived from the rubric its source publishes.
+
+    A quality axis, not a safety one — which is why it is allowed to be wrong
+    and why no member of this enum ever gates the allergen filter. It exists
+    because the verified catalogue is majority-sweet by construction: I3
+    requires every ingredient line to resolve, and a cake's eight lines all do
+    where a tajine's fifteen do not.
+
+    `COMPONENT` is the member that is easy to forget and expensive to omit. A
+    vinaigrette, a roux or a pastry base is a catalogue recipe that is not a
+    meal at all; without it they fall into "not labelled dessert", and from
+    there into the dinner candidates.
+
+    There is deliberately no `UNKNOWN` member: absence of a rubric is a NULL
+    column, not a value. A recipe nobody classified must read as unclassified
+    everywhere, and a magic member would let it be selected by mistake.
+    """
+
+    MAIN = "main"
+    STARTER = "starter"
+    SIDE = "side"
+    DESSERT = "dessert"
+    SNACK = "snack"
+    BREAKFAST = "breakfast"
+    DRINK = "drink"
+    COMPONENT = "component"

@@ -78,7 +78,8 @@ meal-planner/
 │   ├── migrations/        Alembic
 │   └── tests/
 ├── web/                   Next.js App Router, i18n-ready (fr par défaut)
-├── db/                    référentiel d'ingrédients, versionné (phase 1)
+├── db/                    référentiel d'ingrédients et types de plat,
+│                          versionnés (phases 1 et 2)
 └── eval/                  fixtures figées + banc d'essai (phase 2)
 ```
 
@@ -96,9 +97,15 @@ cp backend/sources.example.yaml sources.yaml     # la whitelist, ignorée par gi
 
 docker compose run --rm catalog ingest --source <clé> --limit 60 --dry-run
 docker compose run --rm catalog ingest --source <clé>
+docker compose run --rm catalog load-referential # db/ingredients.yaml, idempotent
 docker compose run --rm catalog resolve          # rejouable, idempotent
 docker compose run --rm catalog review           # les propositions I4, à confirmer
+docker compose run --rm catalog dish-types       # rubrique source → moment du repas
 ```
+
+`review` est le seul de ces cinq qui demande un humain, et c'est voulu : il porte
+sur des allergènes (I1). `dish-types` n'en porte aucun — sa relecture est celle
+du diff de `db/dish_types.yaml`.
 
 La whitelist **n'est pas dans le dépôt** (`docs/ARCHITECTURE.md` §11.5) : elle
 est montée depuis `./sources.yaml`, et son absence est une erreur explicite,

@@ -64,10 +64,18 @@ ingredients:
   # ── Base : sel, poivre, eau ───────────────────────────────────────────────
   # Les lignes composées `sel et poivre` rejoignent `sel` : ni l'un ni l'autre
   # ne porte d'allergène, donc le raccourci ne peut rien masquer (règle 2).
+  # Les sels d'origine rejoignent `sel` ; les sels AROMATISÉS non — `sel de
+  # céleri` porte `celery`, `sel d'ail` et `sel aux herbes` ne sont pas du sel.
+  # C'est la même raison qui interdit de dépouiller un complément en `de X`.
   - name: Sel
     aliases: [sel, sel fin, gros sel, sel marin, fleur de sel, sel et poivre, sel poivre,
               sel et poivre du moulin, sel et poivre au moulin, rase de sel,
-              bonne pincee de sel, grosse pincee de sel]
+              bonne pincee de sel, grosse pincee de sel,
+              sel et poivre noir, sel poivre noir, sel et poivre noir au moulin,
+              sel et poivre blanc au moulin, sel poivre blanc moulu, sel poivre du moulin,
+              sel fin et poivre au moulin, sel fin poivre, sel et du poivre, sel et de poivre,
+              sel de mer, sel de mer non raffine, sel non raffine, sel de guerande,
+              sel de camargue, sel casher, sel gemme, sel fin marin, sel d'himalaya]
     allergens: []
     categories: [condiment]
   - name: Poivre
@@ -188,6 +196,15 @@ ingredients:
     aliases: [speculoos]
     allergens: [gluten]
     categories: [cereal]
+  # Le petit-beurre est un BISCUIT, pas une petite quantité de beurre. C'est le
+  # seul cas mesuré du catalogue où dépouiller un calibre retirerait un
+  # allergène : `beurre` ne porte que `milk`, le biscuit porte aussi le gluten
+  # et l'œuf. L'entrée existe pour que la ligne résolve correctement ; la liste
+  # `_NEVER_RELAXED` du parseur interdit en plus d'y arriver par règle.
+  - name: Petit-beurre
+    aliases: [petit beurre, petit beurre lu]
+    allergens: [gluten, eggs, milk]
+    categories: [cereal]
   - name: Crème pâtissière
     aliases: [creme patissiere]
     allergens: [milk, eggs, gluten]
@@ -231,7 +248,11 @@ ingredients:
   - name: Beurre
     aliases: [beurre, beurre doux, beurre mou, beurre fondu, beurre pommade, beurre ramolli,
               beurre doux mou, beurre doux fondu, beurre frais, beurre froid,
-              noisette de beurre]
+              # `noix` est ici la quantité, pas le fruit à coque. C'est la
+              # chaîne salée la plus fréquente du catalogue, et aucune règle
+              # ne peut l'atteindre : un complément en `de X` n'est jamais
+              # dépouillé, sans quoi `noix de coco` deviendrait `noix`.
+              noisette de beurre, noix de beurre]
     allergens: [milk]
     categories: [fat_oil, dairy]
   - name: Beurre demi-sel
@@ -297,6 +318,13 @@ ingredients:
     aliases: [fromage rape, fromage]
     allergens: [milk]
     categories: [cheese]
+  # `fromage` nu appartient à « fromage râpé » ci-dessus, si bien que `fromage
+  # frais` y tombait par relaxation — même allergène, autre aliment. Entrée
+  # propre plutôt qu'alias.
+  - name: Fromage frais
+    aliases: [fromage frais, fromage blanc battu, fromage a tartiner]
+    allergens: [milk]
+    categories: [cheese, dairy]
   - name: Chèvre frais
     aliases: [chevre frais, fromage de chevre frais]
     allergens: [milk]
@@ -524,7 +552,7 @@ ingredients:
   # ── Fruits ────────────────────────────────────────────────────────────────
   - name: Citron
     aliases: [citron, citron jaune, citron presse, citron bio, citron non traite,
-              jus de citron, jus citron, jus d'un citron, jus d' citron,
+              jus de citron, jus citron, jus d'un citron,
               jus d'un demi citron, zeste d'un citron]
     allergens: []
     categories: [fruit]
@@ -862,8 +890,10 @@ ingredients:
     categories: [herb_spice]
 
   # ── Levures et poudres ────────────────────────────────────────────────────
+  # `levure en poudre` désigne la levure chimique en français courant. Sans cet
+  # alias, `levure` seul rattachait la ligne à la levure de boulanger.
   - name: Levure chimique
-    aliases: [levure chimique, poudre a lever]
+    aliases: [levure chimique, poudre a lever, levure en poudre]
     allergens: []
     categories: [leavening]
   - name: Levure de boulanger
@@ -899,8 +929,10 @@ ingredients:
     aliases: [coriandre, coriandre fraiche, bouquet de coriandre, bouquet de coriandre fraiche]
     allergens: []
     categories: [herb_spice]
+  # `coriandre moulue` est la GRAINE, pas l'herbe. Sans cet alias la relaxation
+  # la rattachait à la coriandre fraîche : même allergène, autre aliment.
   - name: Coriandre en poudre
-    aliases: [coriandre en poudre, graine de coriandre]
+    aliases: [coriandre en poudre, graine de coriandre, coriandre moulue, coriandre moulu]
     allergens: []
     categories: [herb_spice]
   - name: Basilic

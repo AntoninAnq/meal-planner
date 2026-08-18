@@ -21,7 +21,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.catalog.confirmations import approves, load_confirmations
-from app.catalog.ingredient_lines import normalise
+from app.catalog.ingredient_lines import normalise, variants
 from app.db.models import (
     FoodCategory,
     Ingredient,
@@ -194,10 +194,17 @@ def load_referential(db: Session, path: Path | None = None) -> LoadReport:
                 )
             )
 
+        # Deduplicated: two spellings of the SAME entry can normalise to one
+        # string — `jus d' citron` and `jus citron` did, once the parser stopped
+        # leaving elided articles behind. `_validate` cannot catch it (it only
+        # refuses a spelling claimed by two DIFFERENT ingredients), so the
+        # collision surfaced as a unique-constraint violation mid-load.
+        written: set[str] = set()
         for spelling in entry.get("aliases") or []:
             alias = normalise(spelling)
-            if not alias or alias == normalized:
+            if not alias or alias == normalized or alias in written:
                 continue
+            written.add(alias)
             db.add(IngredientAlias(ingredient_id=ingredient.id, normalized_name=alias))
             report.aliases += 1
 
@@ -223,3 +230,21 @@ def spelling_index(db: Session) -> dict[str, tuple[str, bool]]:
         if ingredient is not None:
             index[alias.normalized_name] = (str(ingredient.id), ingredient.confirmed_at is not None)
     return index
+
+
+def find(index: dict[str, tuple[str, bool]], normalized: str) -> tuple[str, bool] | None:
+    """The exact spelling first, then progressively relaxed ones.
+
+    The order is what makes the relaxation safe: an exact hit always wins, so
+    every compound the referential carries — `petits pois`, `chocolat noir`,
+    `crème fraîche` — is matched as itself and never taken apart. Relaxation
+    only ever runs on a string nobody has written down.
+    """
+    match = index.get(normalized)
+    if match is not None:
+        return match
+    for candidate in variants(normalized):
+        match = index.get(candidate)
+        if match is not None:
+            return match
+    return None
