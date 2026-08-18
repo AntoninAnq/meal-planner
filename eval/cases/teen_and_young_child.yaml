@@ -1,0 +1,20 @@
+# Deux stades, aucun allergène.
+case: teen_and_young_child
+runs: 5
+
+expected_exact:
+  # Les deux stades sont servis par le catalogue, donc la règle de stade seule
+  # ne doit forcer aucun second plat.
+  stages_all_served: true
+
+expected_properties:
+  allergen_violations: 0
+  dishes_outside_candidates: 0
+  # Un seul plat suffit. En proposer deux systématiquement serait l'optimum
+  # dégénéré que `suitable_stages` existe pour tuer (§4.3).
+  max_dishes_per_slot: "<= 2"
+
+human_reference:
+  note: >-
+    Une semaine ordinaire. C'est le cas qui doit être ennuyeux ; s'il ne l'est
+    pas, quelque chose force des plats en trop.

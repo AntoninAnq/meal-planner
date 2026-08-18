@@ -1,0 +1,20 @@
+# Le filtre dur, au plus étroit.
+case: severe_milk_allergy
+runs: 5
+
+expected_exact:
+  # Le lait est l'allergène le plus fréquent du catalogue. Le pré-filtre doit
+  # exclure toute recette qui en porte, sans exception et sans arbitrage.
+  candidates_carry_milk: 0
+
+expected_properties:
+  allergen_violations: 0          # dur, 0 toléré
+  dishes_outside_candidates: 0    # dur, 0 toléré
+  # Deux mangeurs, deux stades servis par le catalogue : un plat par créneau
+  # suffit, et en proposer deux serait cuisiner deux fois pour rien.
+  max_dishes_per_slot: "<= 2"
+
+human_reference:
+  note: >-
+    Une semaine sans lait se planifie sans effort particulier tant que le
+    catalogue est assez large. Ce cas mesure la largeur, pas l'ingéniosité.

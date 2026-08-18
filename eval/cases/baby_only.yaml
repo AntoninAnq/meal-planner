@@ -1,0 +1,23 @@
+# Le foyer que le catalogue ne peut pas nourrir.
+case: baby_only
+runs: 5
+
+# 1. Noyau déterministe — égalité stricte. C'est ici que les garanties tiennent.
+expected_exact:
+  # Aucune recette scrapée ne porte `baby` (§6.4). Le plan doit être VIDE et le
+  # dire : inventer un repas ici est l'échec, pas l'absence de repas.
+  plan_is_empty: true
+
+# 2. Couche LLM — invariants durs et taux.
+expected_properties:
+  allergen_violations: 0
+  dishes_outside_candidates: 0
+  # Aucun appel de modèle ne doit partir : le pré-filtre sait déjà qu'il n'y a
+  # rien, et trois tentatives coûteraient des minutes pour une certitude acquise.
+  llm_calls: 0
+
+# 3. Référence humaine — ne fait échouer aucun test (§14.2).
+human_reference:
+  note: >-
+    Un parent nourrit un bébé de moins de 18 mois avec des purées qu'il prépare
+    lui-même. La bonne réponse du produit est de ne pas prétendre le contraire.

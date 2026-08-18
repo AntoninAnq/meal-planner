@@ -1,0 +1,1331 @@
+# ENGENDRÉ — ne pas éditer à la main. Régénérer avec `eval/generate_fixtures.py`.
+#
+# Composé depuis `db/ingredients.yaml`, notre propre fichier. Aucun contenu
+# externe, aucun modèle : ni I9 ni I7 ne sont en jeu. Ce que le banc d'essai
+# mesure est un MODÈLE sur de la planification, ce qui demande une structure
+# réaliste — pas un contenu authentique.
+
+recipes:
+- id: r_000
+  title: Ragoût de lardon à la courgette
+  dish_type: main
+  ingredients:
+  - Lardon
+  - Courgette
+  - Safran
+  - Biscuit
+  - Ketchup
+  - Vinaigre de riz
+  - Lait
+  - Huile de noix
+  - Graisse de canard
+  - Œuf
+  prep_minutes: 13
+  cook_minutes: 27
+  step_count: null
+  servings: 4
+- id: r_001
+  title: Poêlée de petits pois aux ras el-hanout
+  dish_type: main
+  ingredients:
+  - Petits pois
+  - Ras el-hanout
+  - Graisse de canard
+  - Polenta
+  - Crème de marrons
+  - Lait
+  prep_minutes: 8
+  cook_minutes: 17
+  step_count: null
+  servings: 4
+- id: r_002
+  title: Tarte à la myrtille
+  dish_type: dessert
+  ingredients:
+  - Myrtille
+  - Kiwi
+  - Flocons d'avoine
+  - Pain
+  - Crème liquide
+  prep_minutes: 5
+  cook_minutes: 10
+  step_count: 4
+  servings: 4
+- id: r_003
+  title: Filet de crevette au basilic
+  dish_type: main
+  ingredients:
+  - Crevette
+  - Basilic
+  - Huile neutre
+  - Miel
+  - Flocons d'avoine
+  - Petit-beurre
+  - Huile d'arachide
+  - Vergeoise
+  prep_minutes: 43
+  cook_minutes: 87
+  step_count: 4
+  servings: 4
+- id: r_004
+  title: Gâteau à la datte
+  dish_type: dessert
+  ingredients:
+  - Datte
+  - Raisin
+  - Œuf
+  - Pain
+  - Vanille
+  - Beurre demi-sel
+  - Ketchup
+  prep_minutes: null
+  cook_minutes: null
+  step_count: null
+  servings: 6
+- id: r_005
+  title: Velouté de pomme de terre
+  dish_type: starter
+  ingredients:
+  - Pomme de terre
+  - Échalote
+  - Lait concentré sucré
+  - Vergeoise
+  - Œuf
+  - Farine de maïs
+  - Yaourt
+  - Vinaigre de vin
+  prep_minutes: 6
+  cook_minutes: 14
+  step_count: null
+  servings: 4
+- id: r_006
+  title: Curry de saucisse au thym
+  dish_type: main
+  ingredients:
+  - Saucisse
+  - Thym
+  - Confiture
+  - Huile neutre
+  - Sirop d'agave
+  - Pâte brisée
+  prep_minutes: 6
+  cook_minutes: 14
+  step_count: null
+  servings: 4
+- id: r_007
+  title: Soupe de courge au beurre demi-sel
+  dish_type: main
+  ingredients:
+  - Courge
+  - Beurre demi-sel
+  - Za'atar
+  - Curry
+  - Chapelure
+  - Olive
+  - Cannelle
+  prep_minutes: null
+  cook_minutes: null
+  step_count: null
+  servings: 6
+- id: r_008
+  title: Porridge à l'orange
+  dish_type: breakfast
+  ingredients:
+  - Orange
+  - Poire
+  - Huile neutre
+  - Farine de sarrasin
+  - Za'atar
+  prep_minutes: 16
+  cook_minutes: 34
+  step_count: 16
+  servings: 4
+- id: r_009
+  title: Ragoût de fève au poivron
+  dish_type: main
+  ingredients:
+  - Fève
+  - Poivron
+  - Ketchup
+  - Œuf
+  - Estragon
+  - Blanc d'œuf
+  - Curcuma
+  - Jaune d'œuf
+  - Yaourt
+  - Cannelle
+  prep_minutes: 13
+  cook_minutes: 27
+  step_count: null
+  servings: 4
+- id: r_010
+  title: Sauce à l'échalote
+  dish_type: component
+  ingredients:
+  - Échalote
+  - Menthe
+  - Huile neutre
+  - Gingembre
+  - Beurre de cacao
+  prep_minutes: null
+  cook_minutes: null
+  step_count: 3
+  servings: 4
+- id: r_011
+  title: Ragoût de bœuf à l'endive
+  dish_type: main
+  ingredients:
+  - Bœuf
+  - Endive
+  - Huile de sésame
+  - Olive
+  - Cornichon
+  - Jaune d'œuf
+  - Graisse de canard
+  - Feuille de brick
+  - Saindoux
+  - Pain
+  - Origan
+  prep_minutes: 6
+  cook_minutes: 14
+  step_count: null
+  servings: 4
+- id: r_012
+  title: Gratin d'aubergine au fromage frais
+  dish_type: main
+  ingredients:
+  - Aubergine
+  - Fromage frais
+  - Huile d'arachide
+  - Piment
+  - Poivre
+  - Vinaigre de vin
+  - Flocons d'avoine
+  - Curcuma
+  - Beurre
+  - Huile de noix
+  prep_minutes: 10
+  cook_minutes: 20
+  step_count: null
+  servings: 4
+- id: r_013
+  title: Gratin de concombre au pecorino
+  dish_type: main
+  ingredients:
+  - Concombre
+  - Pecorino
+  - Crème de marrons
+  - Farine de maïs
+  - Polenta
+  - Miel
+  - Farine de châtaigne
+  - Petit-beurre
+  prep_minutes: 8
+  cook_minutes: 17
+  step_count: null
+  servings: 4
+- id: r_014
+  title: Ragoût de pois chiche aux radis
+  dish_type: main
+  ingredients:
+  - Pois chiche
+  - Radis
+  - Blanc d'œuf
+  - Crème fraîche
+  - Jaune d'œuf
+  - Chapelure
+  - Lait concentré sucré
+  - Curcuma
+  - Huile de noix
+  prep_minutes: 10
+  cook_minutes: 20
+  step_count: 10
+  servings: 2
+- id: r_015
+  title: Crème à la canneberge séchée
+  dish_type: dessert
+  ingredients:
+  - Canneberge séchée
+  - Datte
+  - Lait concentré sucré
+  - Muscade
+  - Blanc d'œuf
+  - Riz
+  - Citronnelle
+  prep_minutes: null
+  cook_minutes: null
+  step_count: 12
+  servings: 4
+- id: r_016
+  title: Tarte à la groseille
+  dish_type: dessert
+  ingredients:
+  - Groseille
+  - Canneberge séchée
+  - Thym
+  - Beurre
+  - Chocolat noir
+  - Crème pâtissière
+  - Fromage frais
+  - Farine de sarrasin
+  - Chocolat au lait
+  - Eau de fleur d'oranger
+  - Curcuma
+  - Pâte feuilletée
+  prep_minutes: 10
+  cook_minutes: 20
+  step_count: 10
+  servings: 6
+- id: r_017
+  title: Gâteau aux noix
+  dish_type: dessert
+  ingredients:
+  - Noix
+  - Framboise
+  - Sel
+  - Blanc d'œuf
+  - Pain
+  - Yaourt
+  prep_minutes: 20
+  cook_minutes: 40
+  step_count: null
+  servings: 4
+- id: r_018
+  title: Velouté d'endive
+  dish_type: starter
+  ingredients:
+  - Endive
+  - Tomate
+  - Jaune d'œuf
+  - Olive
+  - Ciboulette
+  - Menthe
+  - Coriandre fraîche
+  - Poivre
+  - Crème fraîche
+  - Pâte à pizza
+  - Persil
+  prep_minutes: null
+  cook_minutes: null
+  step_count: null
+  servings: 6
+- id: r_019
+  title: Concentré de tomate au four au gingembre
+  dish_type: side
+  ingredients:
+  - Concentré de tomate
+  - Gingembre
+  - Mirin
+  - Pâte (non qualifiée)
+  - Vinaigre de vin
+  prep_minutes: 36
+  cook_minutes: 74
+  step_count: 7
+  servings: 4
+- id: r_020
+  title: Poêlée de tomate à la graine de fenouil
+  dish_type: main
+  ingredients:
+  - Tomate
+  - Graine de fenouil
+  - Vinaigre de cidre
+  - Fromage frais
+  - Cornichon
+  prep_minutes: 5
+  cook_minutes: 10
+  step_count: 6
+  servings: 4
+- id: r_021
+  title: Sauce à la salade
+  dish_type: component
+  ingredients:
+  - Salade
+  - Sauge
+  - Crème de marrons
+  - Margarine
+  - Petit-beurre
+  - Beurre
+  - Huile de sésame
+  - Fromage frais
+  - Mirin
+  - Beurre de cacao
+  prep_minutes: 26
+  cook_minutes: 54
+  step_count: null
+  servings: 4
+- id: r_022
+  title: Tarte salée au poivron
+  dish_type: main
+  ingredients:
+  - Poivron
+  - Brocoli
+  - Moutarde
+  - Za'atar
+  - Farine de sarrasin
+  - Petit-beurre
+  prep_minutes: 16
+  cook_minutes: 34
+  step_count: 12
+  servings: 4
+- id: r_023
+  title: Salade tiède d'avocat aux noix de pécan
+  dish_type: starter
+  ingredients:
+  - Avocat
+  - Noix de pécan
+  - Pépites de chocolat
+  - Blanc d'œuf
+  - Mayonnaise
+  - Sel
+  - Œuf
+  - Crème fraîche
+  - Cornichon
+  - Piment
+  prep_minutes: 36
+  cook_minutes: 74
+  step_count: null
+  servings: 6
+- id: r_024
+  title: Gâteau aux noix de coco
+  dish_type: dessert
+  ingredients:
+  - Noix de coco
+  - Kiwi
+  - Confiture
+  - Sauce d'huître
+  - Semoule
+  - Vergeoise
+  - Pépites de chocolat
+  prep_minutes: null
+  cook_minutes: null
+  step_count: 4
+  servings: 4
+- id: r_025
+  title: Soupe d'haricot vert à la crème fraîche
+  dish_type: main
+  ingredients:
+  - Haricot vert
+  - Crème fraîche
+  - Chocolat blanc
+  - Piment
+  - Paprika
+  - Miel
+  - Beurre demi-sel
+  - Curcuma
+  - Farine de blé
+  - Feuille de brick
+  - Vergeoise
+  - Jaune d'œuf
+  - Pépites de chocolat
+  - Beurre
+  prep_minutes: 10
+  cook_minutes: 20
+  step_count: null
+  servings: 4
+- id: r_026
+  title: Soupe de petits pois au beurre demi-sel
+  dish_type: main
+  ingredients:
+  - Petits pois
+  - Beurre demi-sel
+  - Cerfeuil
+  - Beurre de cacao
+  - Mayonnaise
+  - Nuoc-mâm
+  - Semoule
+  - Huile d'olive
+  - Safran
+  - Huile de noix
+  prep_minutes: 21
+  cook_minutes: 44
+  step_count: null
+  servings: 4
+- id: r_027
+  title: Poêlée de poivron au romarin
+  dish_type: main
+  ingredients:
+  - Poivron
+  - Romarin
+  - Crème pâtissière
+  - Beurre de cacao
+  - Polenta
+  - Chocolat noir
+  - Pâte sablée
+  prep_minutes: null
+  cook_minutes: null
+  step_count: null
+  servings: 4
+- id: r_028
+  title: Gratin d'ail au beurre
+  dish_type: main
+  ingredients:
+  - Ail
+  - Beurre
+  - Miel
+  - Margarine
+  - Vinaigre balsamique
+  - Sucre glace
+  - Fécule de pomme de terre
+  - Ketchup
+  - Pâte feuilletée
+  prep_minutes: null
+  cook_minutes: null
+  step_count: null
+  servings: 2
+- id: r_029
+  title: Ragoût de saucisse au poireau
+  dish_type: main
+  ingredients:
+  - Saucisse
+  - Poireau
+  - Lait
+  - Moutarde
+  - Œuf
+  - Jaune d'œuf
+  - Eau de rose
+  prep_minutes: 43
+  cook_minutes: 87
+  step_count: null
+  servings: 4
+- id: r_030
+  title: Crème à la clémentine
+  dish_type: dessert
+  ingredients:
+  - Clémentine
+  - Pruneau
+  - Cardamome
+  - Vanille
+  - Yaourt
+  - Quinoa
+  - Crème liquide
+  - Fromage frais
+  - Jaune d'œuf
+  prep_minutes: 21
+  cook_minutes: 44
+  step_count: null
+  servings: 4
+- id: r_031
+  title: Purée d'oignon aux épices (non qualifiées)
+  dish_type: side
+  ingredients:
+  - Oignon
+  - Épices (non qualifiées)
+  - Huile d'arachide
+  - Œuf
+  - Blanc d'œuf
+  - Yaourt
+  prep_minutes: null
+  cook_minutes: null
+  step_count: null
+  servings: 4
+- id: r_032
+  title: Filet de saumon au piment
+  dish_type: main
+  ingredients:
+  - Saumon
+  - Piment
+  - Clou de girofle
+  - Persil
+  - Huile neutre
+  - Sel
+  prep_minutes: null
+  cook_minutes: null
+  step_count: null
+  servings: 6
+- id: r_033
+  title: Crème à la myrtille
+  dish_type: dessert
+  ingredients:
+  - Myrtille
+  - Clémentine
+  - Sucre glace
+  - Blanc d'œuf
+  - Crème de marrons
+  - Fécule de maïs
+  prep_minutes: 21
+  cook_minutes: 44
+  step_count: null
+  servings: 4
+- id: r_034
+  title: Ragoût de saucisse au concentré de tomate
+  dish_type: main
+  ingredients:
+  - Saucisse
+  - Concentré de tomate
+  - Sirop d'érable
+  - Miel
+  - Za'atar
+  prep_minutes: null
+  cook_minutes: null
+  step_count: null
+  servings: 4
+- id: r_035
+  title: Velouté de poireau
+  dish_type: starter
+  ingredients:
+  - Poireau
+  - Avocat
+  - Olive
+  - Pépites de chocolat
+  - Farine de sarrasin
+  - Saindoux
+  - Huile neutre
+  - Pâte (non qualifiée)
+  - Vinaigre balsamique
+  - Blanc d'œuf
+  - Vinaigre de riz
+  prep_minutes: 11
+  cook_minutes: 24
+  step_count: null
+  servings: 4
+- id: r_036
+  title: Salade tiède de courgette à la mascarpone
+  dish_type: starter
+  ingredients:
+  - Courgette
+  - Mascarpone
+  - Épices (non qualifiées)
+  - Laurier
+  - Chocolat noir
+  - Sucre
+  - Crème de marrons
+  - Vinaigre balsamique
+  - Romarin
+  - Safran
+  - Œuf
+  - Nuoc-mâm
+  - Crème pâtissière
+  - Vergeoise
+  prep_minutes: 8
+  cook_minutes: 17
+  step_count: 4
+  servings: 4
+- id: r_037
+  title: Poêlée d'asperge au safran
+  dish_type: main
+  ingredients:
+  - Asperge
+  - Safran
+  - Miel
+  - Vergeoise
+  - Chocolat au lait
+  - Vinaigre de vin
+  - Jaune d'œuf
+  - Vinaigre de cidre
+  - Crème liquide
+  prep_minutes: 13
+  cook_minutes: 27
+  step_count: null
+  servings: 4
+- id: r_038
+  title: Sauce à l'estragon
+  dish_type: component
+  ingredients:
+  - Estragon
+  - Vanille
+  - Clou de girofle
+  - Pâte brisée
+  - Farine de châtaigne
+  - Beurre
+  - Vinaigre de riz
+  - Farine de blé
+  - Polenta
+  - Vermicelles de riz
+  prep_minutes: 10
+  cook_minutes: 20
+  step_count: null
+  servings: 2
+- id: r_039
+  title: Crème à la pomme
+  dish_type: dessert
+  ingredients:
+  - Pomme
+  - Figue séchée
+  - Huile d'olive
+  - Beurre demi-sel
+  - Clou de girofle
+  - Chocolat au lait
+  - Beurre
+  - Lait concentré sucré
+  - Œuf
+  - Semoule
+  prep_minutes: 11
+  cook_minutes: 24
+  step_count: 6
+  servings: 4
+- id: r_040
+  title: Gratin d'avocat au lait
+  dish_type: main
+  ingredients:
+  - Avocat
+  - Lait
+  - Huile d'arachide
+  - Cassonade
+  - Jaune d'œuf
+  - Épices (non qualifiées)
+  - Pâte brisée
+  - Blanc d'œuf
+  prep_minutes: 43
+  cook_minutes: 87
+  step_count: null
+  servings: 4
+- id: r_041
+  title: Velouté de courgette
+  dish_type: starter
+  ingredients:
+  - Courgette
+  - Patate douce
+  - Confiture
+  - Blanc d'œuf
+  - Sauce hoisin
+  - Beurre de cacao
+  - Yaourt
+  - Lait
+  prep_minutes: 13
+  cook_minutes: 27
+  step_count: 10
+  servings: 6
+- id: r_042
+  title: Sauce à l'haricot vert
+  dish_type: component
+  ingredients:
+  - Haricot vert
+  - Coriandre fraîche
+  - Cardamome
+  - Beurre demi-sel
+  - Crème de marrons
+  - Sucre glace
+  - Vinaigre de riz
+  - Sauce d'huître
+  - Vermicelles de riz
+  prep_minutes: 20
+  cook_minutes: 40
+  step_count: 3
+  servings: 6
+- id: r_043
+  title: Purée de brocoli à la crème fraîche
+  dish_type: side
+  ingredients:
+  - Brocoli
+  - Crème fraîche
+  - Crème de marrons
+  - Blanc d'œuf
+  - Romarin
+  - Confiture
+  - Jaune d'œuf
+  prep_minutes: 11
+  cook_minutes: 24
+  step_count: null
+  servings: 4
+- id: r_044
+  title: Tarte à la poire
+  dish_type: dessert
+  ingredients:
+  - Poire
+  - Citron confit
+  - Vanille
+  - Œuf
+  - Jaune d'œuf
+  - Margarine
+  - Vergeoise
+  - Huile d'arachide
+  - Sucre
+  - Fécule de maïs
+  - Eau de fleur d'oranger
+  prep_minutes: 10
+  cook_minutes: 20
+  step_count: null
+  servings: 4
+- id: r_045
+  title: Sablés à l'abricot
+  dish_type: snack
+  ingredients:
+  - Abricot
+  - Graine de courge
+  - Farine de blé
+  - Tahini
+  - Pâte feuilletée
+  prep_minutes: 26
+  cook_minutes: 54
+  step_count: 7
+  servings: 4
+- id: r_046
+  title: Poêlée de panais au persil
+  dish_type: main
+  ingredients:
+  - Panais
+  - Persil
+  - Harissa
+  - Nuoc-mâm
+  - Paprika
+  - Coriandre fraîche
+  - Œuf
+  - Margarine
+  - Cannelle
+  - Estragon
+  prep_minutes: 26
+  cook_minutes: 54
+  step_count: null
+  servings: 2
+- id: r_047
+  title: Smoothie figue séchée et raisin sec
+  dish_type: drink
+  ingredients:
+  - Figue séchée
+  - Raisin sec
+  - Pâte sablée
+  - Crème de marrons
+  - Sauce d'huître
+  - Sirop de glucose
+  prep_minutes: 16
+  cook_minutes: 34
+  step_count: null
+  servings: 4
+- id: r_048
+  title: Gâteau à la groseille
+  dish_type: dessert
+  ingredients:
+  - Groseille
+  - Rhubarbe
+  - Nuoc-mâm
+  - Eau de rose
+  - Sauce hoisin
+  - Câpre
+  - Farine de blé
+  - Huile de noix
+  - Vinaigre de vin
+  prep_minutes: 11
+  cook_minutes: 24
+  step_count: null
+  servings: 4
+- id: r_049
+  title: Poêlée de salade à la vanille
+  dish_type: main
+  ingredients:
+  - Salade
+  - Vanille
+  - Bouquet garni
+  - Menthe
+  - Cornichon
+  - Olive
+  - Épices (non qualifiées)
+  - Farine de châtaigne
+  - Blanc d'œuf
+  - Pain d'épices
+  - Beurre de cacao
+  - Saindoux
+  prep_minutes: 8
+  cook_minutes: 17
+  step_count: 4
+  servings: 2
+- id: r_050
+  title: Sablés au praliné
+  dish_type: snack
+  ingredients:
+  - Praliné
+  - Pistache
+  - Cacao en poudre
+  - Spéculoos
+  - Citronnelle
+  - Cassonade
+  - Olive
+  - Sel
+  - Lait fermenté
+  prep_minutes: 26
+  cook_minutes: 54
+  step_count: 3
+  servings: 6
+- id: r_051
+  title: Sablés au raisin sec
+  dish_type: snack
+  ingredients:
+  - Raisin sec
+  - Noix de cajou
+  - Œuf
+  - Fromage frais
+  - Mayonnaise
+  - Huile d'arachide
+  - Sauce d'huître
+  prep_minutes: 26
+  cook_minutes: 54
+  step_count: 3
+  servings: 4
+- id: r_052
+  title: Tarte à la canneberge séchée
+  dish_type: dessert
+  ingredients:
+  - Canneberge séchée
+  - Datte
+  - Cassonade
+  - Semoule
+  - Œuf
+  - Fécule de maïs
+  - Chocolat blanc
+  - Nuoc-mâm
+  prep_minutes: 10
+  cook_minutes: 20
+  step_count: null
+  servings: 4
+- id: r_053
+  title: Sauce à la carotte
+  dish_type: component
+  ingredients:
+  - Carotte
+  - Sauge
+  - Crème de marrons
+  - Graisse de canard
+  - Thym
+  - Sirop de glucose
+  - Nuoc-mâm
+  - Bouquet garni
+  - Œuf
+  - Blanc d'œuf
+  - Lait
+  - Cacao en poudre
+  - Cassonade
+  - Herbes de Provence
+  prep_minutes: 10
+  cook_minutes: 20
+  step_count: null
+  servings: 4
+- id: r_054
+  title: Tarte à la pomme
+  dish_type: dessert
+  ingredients:
+  - Pomme
+  - Noix de coco
+  - Graisse de canard
+  - Saindoux
+  - Sucre glace
+  - Blanc d'œuf
+  - Sucre
+  - Épices (non qualifiées)
+  prep_minutes: 6
+  cook_minutes: 14
+  step_count: 7
+  servings: 2
+- id: r_055
+  title: Purée d'échalote à la sauge
+  dish_type: side
+  ingredients:
+  - Échalote
+  - Sauge
+  - Pain
+  - Flocons d'avoine
+  - Blanc d'œuf
+  - Huile d'olive
+  prep_minutes: 15
+  cook_minutes: 30
+  step_count: 4
+  servings: 4
+- id: r_056
+  title: Sauce au brocoli
+  dish_type: component
+  ingredients:
+  - Brocoli
+  - Thym
+  - Curry
+  - Sel
+  - Saindoux
+  - Sirop de glucose
+  - Chocolat blanc
+  - Huile d'olive
+  - Beurre de cacao
+  - Blanc d'œuf
+  prep_minutes: 8
+  cook_minutes: 17
+  step_count: 10
+  servings: 4
+- id: r_057
+  title: Gâteau au pruneau
+  dish_type: dessert
+  ingredients:
+  - Pruneau
+  - Mangue
+  - Beurre demi-sel
+  - Beurre
+  - Jaune d'œuf
+  - Sel
+  - Huile neutre
+  - Curcuma
+  - Chocolat noir
+  prep_minutes: null
+  cook_minutes: null
+  step_count: null
+  servings: 4
+- id: r_058
+  title: Porridge à la grenade
+  dish_type: breakfast
+  ingredients:
+  - Grenade
+  - Pêche
+  - Blanc d'œuf
+  - Ketchup
+  - Beurre demi-sel
+  - Margarine
+  - Sirop d'érable
+  - Confiture
+  - Crème fraîche
+  - Huile de noix
+  prep_minutes: 21
+  cook_minutes: 44
+  step_count: null
+  servings: 4
+- id: r_059
+  title: Filet de thon au cumin
+  dish_type: main
+  ingredients:
+  - Thon
+  - Cumin
+  - Beurre
+  - Sauge
+  - Saindoux
+  - Huile d'olive
+  - Vinaigre balsamique
+  - Citronnelle
+  - Graisse de canard
+  - Blanc d'œuf
+  - Pâte à pizza
+  - Vinaigre de cidre
+  - Za'atar
+  - Œuf
+  prep_minutes: 13
+  cook_minutes: 27
+  step_count: null
+  servings: 4
+- id: r_060
+  title: Gâteau à la grenade
+  dish_type: dessert
+  ingredients:
+  - Grenade
+  - Rhubarbe
+  - Menthe
+  - Œuf
+  - Vermicelles de riz
+  - Clou de girofle
+  - Miel
+  - Jaune d'œuf
+  - Cannelle
+  - Chapelure
+  - Blanc d'œuf
+  - Tahini
+  - Pépites de chocolat
+  - Beurre
+  prep_minutes: 10
+  cook_minutes: 20
+  step_count: null
+  servings: 2
+- id: r_061
+  title: Gratin de tomate au mozzarella
+  dish_type: main
+  ingredients:
+  - Tomate
+  - Mozzarella
+  - Blanc d'œuf
+  - Œuf
+  - Sirop d'agave
+  - Graine de fenouil
+  - Huile d'olive
+  - Sucre
+  prep_minutes: null
+  cook_minutes: null
+  step_count: 4
+  servings: 6
+- id: r_062
+  title: Crème à la pêche
+  dish_type: dessert
+  ingredients:
+  - Pêche
+  - Mangue
+  - Bouquet garni
+  - Huile d'olive
+  - Pépites de chocolat
+  - Polenta
+  - Mayonnaise
+  prep_minutes: 43
+  cook_minutes: 87
+  step_count: 4
+  servings: 4
+- id: r_063
+  title: Poêlée de chou à la coriandre fraîche
+  dish_type: main
+  ingredients:
+  - Chou
+  - Coriandre fraîche
+  - Biscuit
+  - Huile neutre
+  - Sauce soja
+  - Romarin
+  - Jaune d'œuf
+  - Fromage blanc
+  - Eau de rose
+  prep_minutes: 16
+  cook_minutes: 34
+  step_count: null
+  servings: 2
+- id: r_064
+  title: Salade tiède d'échalote au mozzarella
+  dish_type: starter
+  ingredients:
+  - Échalote
+  - Mozzarella
+  - Vinaigre balsamique
+  - Chocolat blanc
+  - Jaune d'œuf
+  - Lait
+  - Lait fermenté
+  - Farine de blé
+  - Huile d'arachide
+  prep_minutes: 6
+  cook_minutes: 14
+  step_count: null
+  servings: 4
+- id: r_065
+  title: Gâteau à la myrtille
+  dish_type: dessert
+  ingredients:
+  - Myrtille
+  - Fraise
+  - Blanc d'œuf
+  - Pâte feuilletée
+  - Olive
+  - Fécule de pomme de terre
+  - Vinaigre de cidre
+  - Farine de riz
+  prep_minutes: 15
+  cook_minutes: 30
+  step_count: 3
+  servings: 4
+- id: r_066
+  title: Ragoût de chorizo au concentré de tomate
+  dish_type: main
+  ingredients:
+  - Chorizo
+  - Concentré de tomate
+  - Crème de marrons
+  - Chocolat au lait
+  - Huile de sésame
+  - Huile d'arachide
+  - Graisse de canard
+  - Curry
+  prep_minutes: 16
+  cook_minutes: 34
+  step_count: 12
+  servings: 2
+- id: r_067
+  title: Smoothie fraise et pêche
+  dish_type: drink
+  ingredients:
+  - Fraise
+  - Pêche
+  - Citronnelle
+  - Blanc d'œuf
+  - Pain
+  - Beurre de cacao
+  - Fromage blanc
+  prep_minutes: null
+  cook_minutes: null
+  step_count: 16
+  servings: 4
+- id: r_068
+  title: Tarte à l'abricot sec
+  dish_type: dessert
+  ingredients:
+  - Abricot sec
+  - Kiwi
+  - Ketchup
+  - Margarine
+  - Beurre demi-sel
+  - Chocolat au lait
+  - Flocons d'avoine
+  - Blanc d'œuf
+  - Saindoux
+  - Yaourt
+  prep_minutes: 21
+  cook_minutes: 44
+  step_count: null
+  servings: 4
+- id: r_069
+  title: Gâteau à la poire
+  dish_type: dessert
+  ingredients:
+  - Poire
+  - Figue
+  - Blanc d'œuf
+  - Citronnelle
+  - Fécule de pomme de terre
+  - Pâte feuilletée
+  - Beurre demi-sel
+  - Sel
+  prep_minutes: 20
+  cook_minutes: 40
+  step_count: 5
+  servings: 4
+- id: r_070
+  title: Porridge à la myrtille
+  dish_type: breakfast
+  ingredients:
+  - Myrtille
+  - Datte
+  - Graisse de canard
+  - Blanc d'œuf
+  - Sauce d'huître
+  prep_minutes: 10
+  cook_minutes: 20
+  step_count: 6
+  servings: 4
+- id: r_071
+  title: Crème à la grenade
+  dish_type: dessert
+  ingredients:
+  - Grenade
+  - Cerise
+  - Farine de châtaigne
+  - Sirop d'érable
+  - Pâte (non qualifiée)
+  - Graisse de canard
+  - Petit-beurre
+  - Pâte brisée
+  prep_minutes: null
+  cook_minutes: null
+  step_count: 3
+  servings: 4
+- id: r_072
+  title: Purée de petits pois au beurre demi-sel
+  dish_type: side
+  ingredients:
+  - Petits pois
+  - Beurre demi-sel
+  - Blanc d'œuf
+  - Cornichon
+  - Olive
+  - Cannelle
+  - Fromage frais
+  - Pain d'épices
+  - Farine de sarrasin
+  - Mayonnaise
+  prep_minutes: null
+  cook_minutes: null
+  step_count: null
+  servings: 4
+- id: r_073
+  title: Tarte à la rhubarbe
+  dish_type: dessert
+  ingredients:
+  - Rhubarbe
+  - Figue séchée
+  - Ras el-hanout
+  - Paprika
+  - Fécule de pomme de terre
+  prep_minutes: null
+  cook_minutes: null
+  step_count: null
+  servings: 2
+- id: r_074
+  title: Purée de fenouil au laurier
+  dish_type: side
+  ingredients:
+  - Fenouil
+  - Laurier
+  - Chocolat noir
+  - Margarine
+  - Farine de maïs
+  - Jaune d'œuf
+  - Cannelle
+  - Pâte feuilletée
+  - Sucre
+  - Vanille
+  - Crème liquide
+  - Thym
+  - Sauge
+  - Crème pâtissière
+  prep_minutes: 43
+  cook_minutes: 87
+  step_count: 6
+  servings: 6
+- id: r_075
+  title: Gratin de champignon à l'yaourt
+  dish_type: main
+  ingredients:
+  - Champignon
+  - Yaourt
+  - Sirop d'agave
+  - Crème pâtissière
+  - Fromage blanc
+  - Fromage frais
+  - Sauce hoisin
+  - Beurre
+  - Sucre glace
+  prep_minutes: null
+  cook_minutes: null
+  step_count: 8
+  servings: 6
+- id: r_076
+  title: Tarte salée au cream cheese
+  dish_type: main
+  ingredients:
+  - Cream cheese
+  - Topinambour
+  - Saindoux
+  - Jaune d'œuf
+  - Tahini
+  - Huile de sésame
+  - Biscuit
+  - Riz
+  - Estragon
+  - Sirop d'érable
+  - Crème de marrons
+  - Œuf
+  prep_minutes: 10
+  cook_minutes: 20
+  step_count: 3
+  servings: 4
+- id: r_077
+  title: Velouté de radis
+  dish_type: starter
+  ingredients:
+  - Radis
+  - Carotte
+  - Lait concentré sucré
+  - Chocolat au lait
+  - Beurre
+  - Miel
+  - Poivre
+  prep_minutes: null
+  cook_minutes: null
+  step_count: null
+  servings: 2
+- id: r_078
+  title: Curry de chou-fleur au clou de girofle
+  dish_type: main
+  ingredients:
+  - Chou-fleur
+  - Clou de girofle
+  - Tahini
+  - Beurre
+  - Œuf
+  - Crème pâtissière
+  - Miel
+  prep_minutes: 36
+  cook_minutes: 74
+  step_count: null
+  servings: 6
+- id: r_079
+  title: Tarte à la cerise
+  dish_type: dessert
+  ingredients:
+  - Cerise
+  - Orange
+  - Aneth
+  - Mirin
+  - Huile d'arachide
+  - Œuf
+  - Lait fermenté
+  - Beurre
+  - Sel
+  - Cacao en poudre
+  - Lait concentré sucré
+  prep_minutes: 21
+  cook_minutes: 44
+  step_count: 7
+  servings: 2

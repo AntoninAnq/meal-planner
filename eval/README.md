@@ -3,21 +3,60 @@
 Hors CI. Objectif : **comparer des modèles** (Ollama 8B vs Haiku 4.5 vs Sonnet 5)
 et détecter les régressions de prompt. Voir `docs/ARCHITECTURE.md` §14.
 
-Le contenu arrive en **phase 2**, avec le workflow semaine réel. Ce dossier est
-créé dès la phase 0 pour que les fixtures aient une place évidente et ne
-finissent pas éparpillées dans les tests.
+```bash
+docker compose run --rm --no-deps \
+    -v "$PWD/eval:/eval" -v "$PWD/db:/db:ro" -w / api \
+    python /eval/run.py --runs 5
+```
 
-## Ce qui vivra ici
+Le modèle vient de l'environnement (`LLM_PROVIDER`, `OLLAMA_MODEL`) : comparer
+deux modèles, c'est deux exécutions avec une seule variable changée.
 
 ```
 eval/
-├── fixtures/          jeu de données FIGÉ et commité
-│   ├── catalogue.yaml
-│   └── households/    bébé seul, allergie sévère, intolérance forçant
-│                      un 2ᵉ plat, ado + jeune enfant, sans contrainte
-├── cases/             un fichier par cas, à trois sections
-└── run.py             exécute, agrège, produit le tableau comparatif
+├── generate_fixtures.py   compose le catalogue depuis db/ingredients.yaml
+├── fixtures/              FIGÉ et commité — engendré, jamais édité à la main
+│   ├── catalogue.yaml     80 recettes
+│   └── households.yaml    bébé seul, allergie sévère, intolérance forçant
+│                          un 2ᵉ plat, ado + jeune enfant, sans contrainte
+├── cases/                 un fichier par cas, à trois sections
+└── run.py                 exécute dans une base jetable, agrège, rapporte
 ```
+
+## Les fixtures sont ENGENDRÉES, pas copiées
+
+C'est la correction la plus importante de ce fichier. Un `catalogue.yaml` figé
+contenant trois cents titres et listes d'ingrédients recopiés de blogs, commité
+sur un dépôt public, satisferait le §14.1 en violant **I9**.
+
+Le catalogue est donc **composé** depuis `db/ingredients.yaml` — notre propre
+fichier, écrit à la main — par `generate_fixtures.py`, avec des titres assemblés
+par gabarits. Aucun contenu externe, aucun modèle : ni I9 ni I7 ne sont en jeu.
+Les recettes y portent `source_type: user`, ce qui est la vérité.
+
+**Ce dont le banc a besoin est une STRUCTURE réaliste, pas un contenu
+authentique** : la distribution des allergènes, des types de plat, du nombre
+d'ingrédients et de l'effort. Elles émergent ici comme en production — les
+allergènes sont **dérivés** des ingrédients par la vraie passe de résolution,
+pas déclarés par la fixture, sinon on testerait la fixture.
+
+Ce que ce choix ne couvre pas : la qualité du parseur et de l'extraction. Elle
+se mesure ailleurs, sur les lignes réelles de `test_ingredient_lines.py` — des
+fragments de quelques mots, ce qui n'est pas la même chose que publier trois
+cents recettes.
+
+## Pourquoi 80 recettes et pas 300
+
+Mesuré sur le vrai catalogue : le lait est porté par 62 % des recettes
+éligibles, le gluten par 46 %. Une allergie sévère lait + gluten en laisse
+donc ~28 %. À 80 recettes, ce pire cas tombe à une vingtaine de candidats pour
+dix-huit plats — **le bord où le pré-filtre doit avoir raison**, et c'est là
+qu'un banc d'essai gagne son coût.
+
+Trois cents enterreraient ce cas. Quatre-vingts gardent le fichier lisible, et
+**une fixture que personne ne peut lire n'explique aucun échec** : quand un cas
+tombe, il faut pouvoir ouvrir le catalogue et comprendre pourquoi le pré-filtre
+a rendu ces quatre recettes-là.
 
 ## Deux règles à ne pas contourner
 

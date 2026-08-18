@@ -1,0 +1,61 @@
+# ENGENDRÉ — ne pas éditer à la main. Régénérer avec `eval/generate_fixtures.py`.
+#
+# Composé depuis `db/ingredients.yaml`, notre propre fichier. Aucun contenu
+# externe, aucun modèle : ni I9 ni I7 ne sont en jeu. Ce que le banc d'essai
+# mesure est un MODÈLE sur de la planification, ce qui demande une structure
+# réaliste — pas un contenu authentique.
+
+households:
+- key: baby_only
+  why: No catalogue recipe carries `baby` (§6.4). The plan must contain NOTHING and
+    say so — inventing a meal here is the failure.
+  members:
+  - alias: m1
+    life_stage: baby
+  constraints: []
+- key: severe_milk_allergy
+  why: 'The hard filter at its narrowest: milk is the most common allergen in the
+    catalogue, and the pool collapses.'
+  members:
+  - alias: m1
+    life_stage: teen_adult
+  - alias: m2
+    life_stage: young_child
+  constraints:
+  - member: m2
+    allergen_code: milk
+    severity: severe_allergy
+- key: intolerance_forcing_two_dishes
+  why: 'The product''s own wedge: one member cannot eat what the others can, so a
+    slot legitimately needs two dishes.'
+  members:
+  - alias: m1
+    life_stage: teen_adult
+  - alias: m2
+    life_stage: teen_adult
+  - alias: m3
+    life_stage: young_child
+  constraints:
+  - member: m3
+    allergen_code: gluten
+    severity: intolerance
+- key: teen_and_young_child
+  why: 'Two stages, no allergen: the stage rule alone must not force a second dish,
+    since both stages are served by the catalogue.'
+  members:
+  - alias: m1
+    life_stage: teen_adult
+  - alias: m2
+    life_stage: teen_adult
+  - alias: m3
+    life_stage: young_child
+  constraints: []
+- key: no_constraint
+  why: The baseline. Nothing is filtered, `allergens_verified` is not required, and
+    the pool is at its widest.
+  members:
+  - alias: m1
+    life_stage: teen_adult
+  - alias: m2
+    life_stage: teen_adult
+  constraints: []

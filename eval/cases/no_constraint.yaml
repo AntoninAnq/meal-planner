@@ -1,0 +1,20 @@
+# La ligne de base.
+case: no_constraint
+runs: 5
+
+expected_exact:
+  # Rien n'est filtré, donc `allergens_verified` n'est pas exigé et le pool est
+  # au plus large. C'est la mesure de référence des autres cas.
+  requires_verified: false
+
+expected_properties:
+  allergen_violations: 0
+  dishes_outside_candidates: 0
+  # Neuf créneaux, neuf plats distincts attendus : c'est ce que le catalogue
+  # branché a corrigé (le `degenerate_plan` du §14.6 venait de son absence).
+  distinct_dishes: ">= 7"
+
+human_reference:
+  note: >-
+    Sept à neuf plats distincts sur la semaine, dont deux partageant une base.
+    Répéter un plat est une fonctionnalité (§14.6) ; tout répéter n'en est pas une.

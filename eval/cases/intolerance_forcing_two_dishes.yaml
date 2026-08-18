@@ -1,0 +1,21 @@
+# Le wedge du produit : quelqu'un ne peut pas manger le plat des autres.
+case: intolerance_forcing_two_dishes
+runs: 5
+
+expected_exact:
+  # Une intolérance de MEMBRE ne réduit pas l'ensemble de candidats : le plat
+  # qu'un membre ne peut pas avoir reste valable pour les autres (§6.2). Ce qui
+  # est vérifié par membre l'est à la re-validation, pas au pré-filtre.
+  candidates_carry_gluten_allowed: true
+
+expected_properties:
+  allergen_violations: 0
+  dishes_outside_candidates: 0
+  # Un créneau peut légitimement porter deux plats ici. C'est la raison d'être
+  # du produit, pas un défaut, et la limite douce ne doit pas l'interdire.
+  max_dishes_per_slot: "<= 3"
+
+human_reference:
+  note: >-
+    Le meilleur résultat n'est pas deux plats, c'est le niveau 2 du §4.9 — même
+    préparation, assiette différente. Repère de lecture, pas critère d'échec.
