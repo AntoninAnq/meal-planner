@@ -1,0 +1,32 @@
+# Le cas courant : un membre intolérant, et de quoi le contourner.
+case: member_intolerance
+runs: 5
+
+expected_exact:
+  # Une intolérance de MEMBRE ne réduit pas l'ensemble de candidats : le plat
+  # qu'un membre ne peut pas avoir reste valable pour les autres (§6.2). Ce qui
+  # est vérifié par membre l'est à la re-validation, pas au pré-filtre.
+  candidates_carry_gluten_allowed: true
+
+expected_properties:
+  allergen_violations: 0          # dur, 0 toléré
+  dishes_outside_candidates: 0    # dur, 0 toléré
+  # Un second plat reste possible, mais il ne devrait pas être nécessaire :
+  # 13 des 38 candidats sont sans gluten.
+  max_dishes_per_slot: "<= 2"
+
+# Ce cas a porté un temps `slots_with_two_dishes: ">= 1"`. C'était faux, et la
+# mesure l'a montré : sur ce foyer un seul plat nourrit tout le monde tous les
+# soirs, et le §2.3 dit que la fonction objectif est de **minimiser** les
+# préparations — « je ne veux pas cuisiner deux fois ». Exiger deux plats
+# demandait l'inverse de ce que le produit vend.
+#
+# Le nombre de créneaux à deux plats reste RAPPORTÉ, sans seuil : c'est une
+# information, pas une attente. Un seuil dessus serait un chiffre inventé, et
+# le §14.4 a déjà prévu la bonne façon de mesurer la qualité d'une semaine —
+# la distance à une référence humaine.
+
+human_reference:
+  note: >-
+    Neuf plats sans gluten, une préparation par créneau. Le meilleur résultat
+    n'est pas deux plats : c'est le niveau 1 du §4.9, même plat, même assiette.

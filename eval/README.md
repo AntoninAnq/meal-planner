@@ -126,10 +126,19 @@ En dessous, l'arbitrage n'arbitre plus — le modèle recopie le peu qu'on lui
 donne, et le plan « passe » parce que rien ne vérifiait qu'il y avait de quoi
 choisir. `candidates_minimum: 15` échoue aujourd'hui, et c'est l'information.
 
-**`intolerance_forcing_two_dishes` : jamais deux plats.** Sur 25 exécutions,
-aucun créneau n'a porté plus d'un plat — y compris dans le cas écrit pour ça.
-Le golden n'avait qu'un plafond (`<= 3`), qui passait pendant que le contraire
-de l'intention se produisait. `slots_with_two_dishes: ">= 1"` échoue aussi.
+**`member_intolerance` : 6 manquements sur 45 assignations.** Le pipeline sert
+encore du gluten à l'intolérant, moins souvent qu'avant — c'était 30 sur 45 —
+mais pas jamais. Le plan sort **avec** ses violations, l'interface marque les
+créneaux, et `allergen_violations: 0` échoue. C'est la mesure la plus utile du
+banc aujourd'hui.
+
+> **Une attente retirée, et pourquoi.** Ce cas s'appelait
+> `intolerance_forcing_two_dishes` et exigeait `slots_with_two_dishes: ">= 1"`.
+> La mesure a montré que c'était faux : 13 des 38 candidats sont sans gluten,
+> donc **un seul plat nourrit tout le monde tous les soirs**, et le §2.3 fait de
+> la minimisation des préparations la fonction objectif — « je ne veux pas
+> cuisiner deux fois ». Le golden demandait l'inverse de ce que le produit vend.
+> Le nombre de créneaux à deux plats reste rapporté, sans seuil.
 
 Ces deux lignes rouges restent. Le banc est **hors CI** : une attente non tenue
 y est une mesure, pas une build cassée, et la retirer pour retrouver du vert

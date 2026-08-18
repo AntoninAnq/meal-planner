@@ -262,9 +262,11 @@ HOUSEHOLDS: list[dict[str, Any]] = [
         ],
     },
     {
-        "key": "intolerance_forcing_two_dishes",
-        "why": "The product's own wedge: one member cannot eat what the others "
-               "can, so a slot legitimately needs two dishes.",
+        "key": "member_intolerance",
+        "why": "The common case: one member has an intolerance and the catalogue "
+               "holds enough safe dishes that ONE preparation still feeds "
+               "everyone. Named after what it is — an earlier name claimed it "
+               "forced two dishes, which measurement disproved.",
         "members": [
             {"alias": "m1", "life_stage": "teen_adult"},
             {"alias": "m2", "life_stage": "teen_adult"},

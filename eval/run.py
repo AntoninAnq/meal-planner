@@ -408,9 +408,10 @@ def report(case: str, runs: list[RunResult], golden: dict[str, Any]) -> None:
                statistics.mean(run.distinct_dishes for run in ok))
     if "candidates_minimum" in expected:
         _check("candidats", f">= {expected['candidates_minimum']}", ok[0].pool_size)
-    if "slots_with_two_dishes" in expected:
-        _check("créneaux à 2 plats", expected["slots_with_two_dishes"],
-               statistics.mean(run.slots_with_two_dishes for run in ok))
+    # Reported, never asserted. §2.3 makes minimising preparations the
+    # objective, so a threshold on the number of two-dish slots would be a
+    # number nobody can justify — in either direction.
+    print(f"  créneaux à 2 plats   {statistics.mean(r.slots_with_two_dishes for r in ok):g}")
 
     counts: dict[str, int] = {}
     for run in ok:
