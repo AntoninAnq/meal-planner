@@ -1160,6 +1160,28 @@ La comparaison avec Haiku 4.5 sur ce cas précis est le premier travail du harne
 et **le chemin Anthropic n'a jamais été exercé contre la vraie API**, ce qui en fait
 un préalable, pas une conclusion.
 
+> **Ce que le pré-filtre a changé, mesuré.** Même modèle, même machine, même foyer
+> (9 créneaux, 3 mangeurs), avec le catalogue branché et 60 candidats dans le prompt :
+>
+> ```
+> 2026-12-07   40,1 s   1 tentative   in 3088  out 886   (modèle à froid)
+> 2026-12-14   27,5 s   1 tentative   in 3067  out 723
+> 2026-12-21   27,6 s   1 tentative   in 3187  out 719
+> 2026-12-28   27,8 s   1 tentative   in 2975  out 720
+> ```
+>
+> **182 s → ~28 s**, et la cause n'est pas la vitesse : c'est que la boucle de
+> tentatives ne se déclenche plus. Le `degenerate_plan` ci-dessus venait d'un modèle
+> à qui on demandait d'inventer neuf plats distincts sans rien lui donner ; avec une
+> enveloppe de 60 candidats il produit 9 plats distincts pour 9 créneaux, du premier
+> coup, quatre fois de suite. Les 2 000 tokens d'entrée ajoutés coûtent moins d'une
+> seconde (§6.5), et suppriment deux appels de 28 s.
+>
+> Conséquence directe sur le §15 : **la latence mesurée ne justifie pas le passage en
+> asynchrone.** L'écran d'attente de `UX-V0.md` §7 est dimensionné pour cet ordre de
+> grandeur. Ce qui reste à surveiller est le chemin de rejeu — une génération à trois
+> tentatives coûterait ~90 s — et c'est le harness qui dira à quelle fréquence il part.
+
 ### 14.7 LLM-juge : repoussé
 
 Un modèle qui note le plan généré face à la référence capte des choses que les distances ratent. Mais c'est du non-déterministe qui évalue du non-déterministe, il faut le valider lui-même, et il demande un modèle **plus gros** que celui testé — donc plus cher que ce qu'il évalue.
@@ -1173,10 +1195,11 @@ Un modèle qui note le plan généré face à la référence capte des choses qu
 | Sujet | Statut |
 |---|---|
 | Score d'appétence par membre (goûts + historique) | Phase 3+ — le construire trop tôt, c'est calibrer sur du vide |
+| **Le plat bébé dérivé du plat adulte** | Phase 3. Mesuré en phase 2 : **zéro** des 3 439 recettes porte `baby`, comme le §6.4 l'annonçait, donc un foyer avec un enfant de moins de 18 mois ne peut pas être servi par le catalogue scrapé. En V1 il **sort de la grille** plutôt que de produire un `eater_not_served` sur chaque créneau — le système dit une fois ce qu'il ne sait pas faire au lieu de le signaler neuf fois. La forme d'après est un **plat dérivé (niveau 3 du §4.9), pas une variante de service (niveau 2)** : une seconde ligne `planned_dish` portant `derived_from_dish_id`, `source = LLM_SUGGESTION` et `recipe_id` nul — donc dans le plan, jamais au catalogue (I7). Pour que la sécurité reste calculable sans `recipe_id`, la dérivation doit être **structurée** : une liste de `ingredient_id` retirés, dont se déduisent les allergènes du plat dérivé ; le modèle n'écrit que l'instruction de service, ce que le §6.4 lui assigne déjà. Il manque pour ça un **âge minimal par ingrédient** dans `db/ingredients.yaml` — le miel n'y porte aujourd'hui aucune contre-indication alors qu'il est interdit avant 12 mois — et c'est aussi ce qui permettrait de *vérifier* un parent qui ouvrirait `baby` sur une recette, plutôt que de le croire sur parole. |
 | `pgvector` / recherche sémantique | Option future |
 | Désactivation de membres par créneau à la génération | Échappatoire connue, sans nouvelle table, non retenue au MVP |
 | LLM-juge dans le banc d'essai | Phase ultérieure |
-| Passage en asynchrone (job + polling) | Seulement si la latence mesurée le justifie |
+| Passage en asynchrone (job + polling) | **Non retenu — mesuré.** Une semaine complète prend ~28 s sur `qwen3:8b` en local une fois le pré-filtre branché (§14.6), contre 182 s sans catalogue. L'endpoint synchrone tient. À rouvrir si le rejeu à trois tentatives devient fréquent. |
 | Facturation, multi-foyer réel, gestion de comptes | Après validation du wedge |
 | Version anglaise du produit | Demande un catalogue distinct, pas seulement des libellés |
 | Login par identifiant / mot de passe | Indolore techniquement (`auth_subject` préfixé), mais ramène l'infrastructure email via la réinitialisation. Seulement si un utilisateur réel le réclame (§11.1) |

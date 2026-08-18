@@ -18,16 +18,31 @@ from sqlalchemy.orm import Session
 
 from app.db.models import (
     DietaryConstraint,
+    HouseholdSettings,
     MealPlan,
     MealSlotConfig,
     Member,
     PlannedDish,
     PlannedDishMember,
+    Recipe,
+    RecipeSuitableStage,
 )
 from app.domain.enums import ConstraintSeverity, DishSource, LifeStage, MealType
-from app.domain.planning import ProposedSlot, SlotSpec, Violation
+from app.domain.planning import (
+    NO_CANDIDATES,
+    STAGE_NOT_PLANNED,
+    ProposedSlot,
+    SlotSpec,
+    Violation,
+)
 from app.domain.prompt_context import MemberInput, build_prompt_context
 from app.llm.base import LLMClient
+from app.services.catalogue import (
+    NOT_A_MEAL,
+    HouseholdFilter,
+    SqlCatalogue,
+    candidate_count,
+)
 from app.workflows.week_plan import PlanOutcome, PlanRequest, run_plan
 
 #: How far back the anti-repetition signal looks. Soft signal, so the exact
@@ -110,6 +125,88 @@ def _member_inputs(
     return inputs
 
 
+def household_filter(
+    db: Session, household_id: uuid.UUID, members: Sequence[Member]
+) -> HouseholdFilter:
+    """Aggregate the household's constraints into pre-filter terms.
+
+    Two rules, and they are not symmetric. A SEVERE allergy excludes the
+    allergen for everyone — the scope is the household, because a shared
+    kitchen is the unit of contamination (§6.2). An intolerance does not
+    exclude anything here: the whole product is that different people eat
+    different things, so a recipe one member cannot have is still a candidate
+    for the others, and the per-assignment check belongs to re-validation.
+
+    But EITHER makes verification mandatory. The severe/intolerance distinction
+    governs the SCOPE of the exclusion, not the RELIABILITY of the data used to
+    compute it: on an unverified recipe, `recipe_allergen` is derived from the
+    ingredients that resolved, so a missing tag means "we could not read".
+    """
+    constraints = list(
+        db.scalars(select(DietaryConstraint).where(DietaryConstraint.household_id == household_id))
+    )
+    severe = {
+        c.allergen_code
+        for c in constraints
+        if c.severity is ConstraintSeverity.SEVERE_ALLERGY and c.allergen_code
+    }
+    declared = {
+        c.allergen_code
+        for c in constraints
+        if c.allergen_code
+        and c.severity in (ConstraintSeverity.SEVERE_ALLERGY, ConstraintSeverity.INTOLERANCE)
+    }
+    return HouseholdFilter(
+        excluded_allergens=frozenset(severe),
+        require_verified=bool(declared),
+        life_stages=frozenset(member.life_stage for member in members),
+    )
+
+
+def stages_without_candidates(db: Session, stages: frozenset[LifeStage]) -> set[LifeStage]:
+    """Life stages the catalogue cannot feed at all.
+
+    Measured in phase 2: NONE of the 3 439 scraped recipes carries `baby`, as
+    §6.4 warned. Enforcing §4.3 literally would then put an `eater_not_served`
+    on every slot of a household with an infant — nine failures a week, for the
+    product's own target audience.
+
+    So the stage leaves the grid instead. The system says once what it cannot
+    do rather than flagging it nine times, and no safety frontier moves: the
+    baby is not served a dish that suits it, it is not served at all. The dish
+    derived from the adult's (§4.9, level 3) is what fixes this for real, and
+    it is phase 3.
+
+    Computed rather than hardcoded: the day a household writes its own baby
+    recipes, this returns an empty set and nothing else changes.
+    """
+    missing: set[LifeStage] = set()
+    for stage in stages:
+        exists = db.scalar(
+            select(Recipe.id)
+            .join(RecipeSuitableStage, RecipeSuitableStage.recipe_id == Recipe.id)
+            .where(
+                RecipeSuitableStage.life_stage == stage,
+                Recipe.dish_type.is_(None) | Recipe.dish_type.not_in(NOT_A_MEAL),
+            )
+            .limit(1)
+        )
+        if exists is None:
+            missing.add(stage)
+    return missing
+
+
+def _dishes_per_slot(db: Session, household_id: uuid.UUID) -> int:
+    """How many dishes a slot may carry, per the household's soft limit.
+
+    Read here to SIZE the candidate set, never to bound the proposal: the limit
+    stays a scoring penalty (§4.9), since a household with a baby, a
+    lactose-intolerant member and a teenager mechanically needs three dishes.
+    """
+    settings = db.get(HouseholdSettings, household_id)
+    return settings.max_dishes_soft_limit if settings else 2
+
+
 def enabled_slots(db: Session, household_id: uuid.UUID) -> list[SlotTarget]:
     rows = db.scalars(
         select(MealSlotConfig)
@@ -165,6 +262,17 @@ def generate_plan(
     if not members:
         raise ValueError("a plan needs at least one member")
 
+    # A stage the catalogue cannot feed leaves the grid rather than failing
+    # every slot. See `stages_without_candidates` for why that is the honest
+    # behaviour and not a shortcut.
+    unplannable = stages_without_candidates(
+        db, frozenset(member.life_stage for member in members)
+    )
+    unserved = [member for member in members if member.life_stage in unplannable]
+    members = [member for member in members if member.life_stage not in unplannable]
+    if not members:
+        raise ValueError("no member of this household can be served by the catalogue yet")
+
     inputs = _member_inputs(db, household_id, members)
     prompt_context, alias_to_member = build_prompt_context(inputs)
 
@@ -183,17 +291,50 @@ def generate_plan(
     if not spec:
         raise ValueError("no slot to fill")
 
-    outcome = run_plan(
-        PlanRequest(
-            spec=spec,
-            prompt_context=_with_guests(prompt_context, guests, guest_aliases),
-            language=language,
-            user_constraints=list(user_constraints),
-            recent_meals=recent_meals(db, household_id, before=week_start),
-            with_catalogue=False,
+    catalogue = SqlCatalogue(
+        db,
+        household_id=household_id,
+        week_start=week_start,
+        household=household_filter(db, household_id, members),
+        limit=candidate_count(
+            slots=len(spec), dishes_per_slot=_dishes_per_slot(db, household_id)
         ),
-        llm=llm,
     )
+
+    request = PlanRequest(
+        spec=spec,
+        prompt_context=_with_guests(prompt_context, guests, guest_aliases),
+        language=language,
+        user_constraints=list(user_constraints),
+        recent_meals=recent_meals(db, household_id, before=week_start),
+        with_catalogue=True,
+    )
+
+    if catalogue.pool_size == 0:
+        # No model call: the envelope is empty, so every answer would be
+        # rejected, and three attempts would burn minutes to reach a certainty
+        # already known here.
+        outcome = PlanOutcome(
+            proposal=[],
+            violations=[
+                Violation(
+                    NO_CANDIDATES,
+                    "no catalogue recipe passes this household's constraints",
+                )
+            ],
+            attempts=0,
+            llm_results=[],
+        )
+    else:
+        outcome = run_plan(request, llm=llm, catalogue=catalogue)
+
+    for member in unserved:
+        outcome.violations.append(
+            Violation(
+                STAGE_NOT_PLANNED,
+                f"no catalogue recipe suits a {member.life_stage} eater yet",
+            )
+        )
 
     plan = _persist(
         db,
@@ -204,6 +345,7 @@ def generate_plan(
         alias_to_member=alias_to_member,
         violations=outcome.violations,
         guests=guests,
+        catalogue=catalogue,
         generation_input=json.dumps(
             {
                 "constraints": list(user_constraints),
@@ -269,6 +411,7 @@ def _persist(
     generation_input: str,
     violations: Sequence[Violation],
     guests: Sequence[GuestGroup],
+    catalogue: SqlCatalogue | None = None,
 ) -> MealPlan:
     plan = db.scalar(
         select(MealPlan).where(
@@ -329,13 +472,32 @@ def _persist(
 
     for slot in proposal:
         for position, proposed in enumerate(slot.dishes):
+            # The model emits a HANDLE (`r_012`), never a UUID — see
+            # `services/catalogue.py`. Resolving it here is also the last place
+            # a handle that never existed can be caught: `validate_proposal`
+            # rejects it, but a proposal that exhausted its attempts is
+            # persisted WITH its violations, so the row must not be written
+            # with neither a recipe nor a label.
+            recipe_id = (
+                catalogue.resolve(proposed.recipe_id)
+                if catalogue is not None and proposed.recipe_id
+                else None
+            )
+            label = proposed.label if recipe_id is None else None
+            if recipe_id is None and not (label or "").strip():
+                continue
+
             dish = PlannedDish(
                 meal_plan_id=plan.id,
                 day_of_week=slot.day_of_week,
                 meal_type=slot.meal_type,
-                free_text_label=proposed.label,
-                recipe_id=None,  # no catalogue in V0
-                source=DishSource.LLM_SUGGESTION,  # invariant I7
+                free_text_label=label,
+                recipe_id=recipe_id,
+                # I7 read the right way round: a catalogue dish was CHOSEN by
+                # the model among rows nobody generated, so its source is the
+                # catalogue. Only a title the model wrote itself is a
+                # suggestion.
+                source=DishSource.CATALOG if recipe_id else DishSource.LLM_SUGGESTION,
                 position=position,
             )
             db.add(dish)

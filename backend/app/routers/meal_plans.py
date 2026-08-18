@@ -15,7 +15,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.auth.deps import CurrentHousehold
-from app.db.models import MealHistory, MealPlan, PlannedDish, PlannedDishMember
+from app.db.models import MealHistory, MealPlan, PlannedDish, PlannedDishMember, Recipe
 from app.db.session import get_db
 from app.domain.enums import DishSource
 from app.llm.base import LLMClient, LLMError
@@ -90,6 +90,17 @@ def _serialise(db: Session, plan: MealPlan) -> MealPlanOut:
     for assignment in assignments:
         by_dish.setdefault(assignment.planned_dish_id, []).append(assignment)
 
+    # A catalogue dish carries a `recipe_id` and no label — the title belongs to
+    # the recipe, and copying it into the plan would freeze a spelling that a
+    # later correction to the catalogue could no longer reach. Read here, in the
+    # one place that serialises, rather than denormalised at write time.
+    recipe_ids = [dish.recipe_id for dish in dishes if dish.recipe_id]
+    titles: dict[uuid.UUID, str] = (
+        dict(db.execute(select(Recipe.id, Recipe.title).where(Recipe.id.in_(recipe_ids))).all())
+        if recipe_ids
+        else {}
+    )
+
     slots: dict[tuple[int, str], PlanSlotOut] = {}
     for dish in dishes:
         key = (dish.day_of_week, dish.meal_type)
@@ -108,7 +119,7 @@ def _serialise(db: Session, plan: MealPlan) -> MealPlanOut:
         slot.dishes.append(
             DishOut(
                 id=dish.id,
-                label=dish.free_text_label,
+                label=dish.free_text_label or titles.get(dish.recipe_id),
                 recipe_id=dish.recipe_id,
                 derived_from_dish_id=dish.derived_from_dish_id,
                 eaters=[

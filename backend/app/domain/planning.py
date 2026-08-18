@@ -95,6 +95,16 @@ TOO_MANY_DISHES = "too_many_dishes"
 DISH_OUTSIDE_CANDIDATES = "dish_outside_candidates"
 VARIANT_FOR_NON_EATER = "variant_for_non_eater"
 DEGENERATE_PLAN = "degenerate_plan"
+#: No candidate survived the pre-filter. Reported instead of falling back to
+#: free-text dishes: a household that declared a constraint asked for the
+#: filtered catalogue, and silently answering with unverified inventions
+#: would be the V0 behaviour resurrected in the one case it must not be.
+NO_CANDIDATES = "no_candidates"
+#: A life stage the catalogue cannot feed at all — `baby` today, since none
+#: of the scraped recipes carries it (§6.4). Deliberately carries NO slot:
+#: it is a statement about the plan as a whole, so an interface must say it
+#: once rather than mark every slot as failed.
+STAGE_NOT_PLANNED = "stage_not_planned"
 
 
 def validate_proposal(
