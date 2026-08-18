@@ -132,7 +132,41 @@ ingredients:
     allergens: []
     categories: [cereal]
   - name: Semoule
-    aliases: [semoule]
+    aliases: [semoule, semoule fine, semoule moyenne, semoule de ble dur,
+              semoule fine de ble dur, semoule a couscous, couscous]
+    allergens: [gluten]
+    categories: [cereal]
+  - name: Boulgour
+    aliases: [boulgour, boulgour fin, boulgour gros]
+    allergens: [gluten]
+    categories: [cereal]
+  - name: Épeautre
+    aliases: [epeautre]
+    allergens: [gluten]
+    categories: [cereal]
+  - name: Orge
+    aliases: [orge, orge perle]
+    allergens: [gluten]
+    categories: [cereal]
+  - name: Millet
+    aliases: [millet]
+    allergens: []
+    categories: [cereal]
+  # `Pâtes alimentaires` et non `Pâtes` : le second se normalise en `pate`, que
+  # `Pâte (non qualifiée)` revendique déjà, et deux entrées réclamant la même
+  # orthographe sont refusées — à raison, la résolution dépendrait de la ligne
+  # que la requête atteint en premier.
+  - name: Pâtes alimentaires
+    aliases: [pate seche, coquillette, macaroni, penne, tagliatelle, spaghetti,
+              farfalle, fusilli, rigatoni, linguine, orecchiette]
+    allergens: [gluten]
+    categories: [cereal]
+  - name: Pâte à lasagne
+    aliases: [pate a lasagne, feuille de lasagne]
+    allergens: [gluten]
+    categories: [cereal]
+  - name: Gnocchi
+    aliases: [gnocchi]
     allergens: [gluten]
     categories: [cereal]
   - name: Polenta
@@ -548,6 +582,52 @@ ingredients:
     aliases: [haricot rouge]
     allergens: []
     categories: [legumes_secs]
+  - name: Haricot blanc
+    aliases: [haricot blanc, haricot blanc sec, haricot blanc cuit, haricot coco,
+              haricot lingot, mogette]
+    allergens: []
+    categories: [legumes_secs]
+  - name: Haricot tarbais
+    aliases: [haricot tarbais, haricot tarbais sec, haricot tarbais cuit au naturel]
+    allergens: []
+    categories: [legumes_secs]
+  - name: Flageolet
+    aliases: [flageolet]
+    allergens: []
+    categories: [legumes_secs]
+  - name: Haricot noir
+    aliases: [haricot noir]
+    allergens: []
+    categories: [legumes_secs]
+  - name: Pois cassé
+    aliases: [pois casse]
+    allergens: []
+    categories: [legumes_secs]
+  - name: Haricot mungo
+    aliases: [haricot mungo, pousse de haricot mungo]
+    allergens: []
+    categories: [legumes_secs]
+
+  # ── Soja ──────────────────────────────────────────────────────────────────
+  # Tout ce qui vient du soja porte `soybeans`, y compris ce dont le nom ne le
+  # dit pas. Le seitan est l'inverse : c'est du gluten pur, et son nom ne le dit
+  # pas non plus.
+  - name: Tofu
+    aliases: [tofu, tofu ferme, tofu soyeux, tofu fume, tofu nature]
+    allergens: [soybeans]
+    categories: [legumes_secs]
+  - name: Tempeh
+    aliases: [tempeh]
+    allergens: [soybeans]
+    categories: [legumes_secs]
+  - name: Graine de soja
+    aliases: [graine de soja, germe de soja, edamame]
+    allergens: [soybeans]
+    categories: [legumes_secs]
+  - name: Seitan
+    aliases: [seitan]
+    allergens: [gluten]
+    categories: [cereal]
 
   # ── Fruits ────────────────────────────────────────────────────────────────
   - name: Citron
@@ -778,6 +858,77 @@ ingredients:
     aliases: [saucisse, chair a saucisse]
     allergens: []
     categories: [charcuterie]
+  - name: Andouille
+    aliases: [andouille, andouillette]
+    allergens: []
+    categories: [charcuterie]
+  - name: Boudin noir
+    aliases: [boudin noir, boudin]
+    allergens: []
+    categories: [charcuterie]
+  - name: Merguez
+    aliases: [merguez]
+    allergens: []
+    categories: [charcuterie]
+  - name: Saucisson
+    aliases: [saucisson, saucisson sec]
+    allergens: []
+    categories: [charcuterie]
+  - name: Pancetta
+    aliases: [pancetta, guanciale, coppa, speck]
+    allergens: []
+    categories: [charcuterie]
+
+  # ── Viandes ───────────────────────────────────────────────────────────────
+  # Une entrée par animal, les morceaux en alias : le morceau ne change pas
+  # l'allergène, et multiplier les entrées multiplierait les relectures sans
+  # rien apporter au filtre.
+  - name: Veau
+    aliases: [veau, jarret de veau, escalope de veau, tendron de veau, noix de veau,
+              epaule de veau, roti de veau, saute de veau, quasi de veau]
+    allergens: []
+    categories: [red_meat]
+  - name: Agneau
+    aliases: [agneau, epaule d'agneau, gigot d'agneau, cotelette d'agneau,
+              souris d'agneau, collier d'agneau, saute d'agneau, selle d'agneau]
+    allergens: []
+    categories: [red_meat]
+  - name: Porc
+    aliases: [porc, echine de porc, echine, mignon de porc, filet mignon de porc,
+              poitrine de porc, poitrine de porc fumee, porc hache, roti de porc,
+              travers de porc, cote de porc, saute de porc, palette de porc]
+    allergens: []
+    categories: [red_meat]
+  - name: Mouton
+    aliases: [mouton, epaule de mouton]
+    allergens: []
+    categories: [red_meat]
+  - name: Dinde
+    aliases: [dinde, escalope de dinde, blanc de dinde, roti de dinde, dinde hachee,
+              filet de dinde]
+    allergens: []
+    categories: [white_meat]
+  - name: Canard
+    aliases: [canard, cuisse de canard, cuisse canard, confit de canard,
+              aiguillette de canard, filet de canard]
+    allergens: []
+    categories: [white_meat]
+  - name: Pintade
+    aliases: [pintade]
+    allergens: []
+    categories: [white_meat]
+  - name: Lapin
+    aliases: [lapin, rable de lapin, cuisse de lapin]
+    allergens: []
+    categories: [white_meat]
+  - name: Caille
+    aliases: [caille]
+    allergens: []
+    categories: [white_meat]
+  - name: Foie de volaille
+    aliases: [foie de volaille, foie de poulet]
+    allergens: []
+    categories: [white_meat]
 
   # ── Poissons et fruits de mer ─────────────────────────────────────────────
   - name: Saumon
@@ -798,6 +949,118 @@ ingredients:
     categories: [fish]
   - name: Crevette
     aliases: [crevette]
+    allergens: [crustaceans]
+    categories: [seafood]
+  # ── Poissons ──────────────────────────────────────────────────────────────
+  - name: Morue
+    aliases: [morue, morue dessalee]
+    allergens: [fish]
+    categories: [fish]
+  - name: Colin
+    aliases: [colin, lieu noir, lieu jaune, merlu]
+    allergens: [fish]
+    categories: [fish]
+  - name: Merlan
+    aliases: [merlan]
+    allergens: [fish]
+    categories: [fish]
+  - name: Dorade
+    aliases: [dorade, daurade]
+    allergens: [fish]
+    categories: [fish]
+  - name: Bar
+    aliases: [bar, loup de mer]
+    allergens: [fish]
+    categories: [fish]
+  - name: Sole
+    aliases: [sole]
+    allergens: [fish]
+    categories: [fish]
+  - name: Truite
+    aliases: [truite, truite fumee]
+    allergens: [fish]
+    categories: [fish]
+  - name: Sardine
+    aliases: [sardine, sardine a l'huile, sardine a l'huile d'olive]
+    allergens: [fish]
+    categories: [fish]
+  - name: Maquereau
+    aliases: [maquereau]
+    allergens: [fish]
+    categories: [fish]
+  - name: Hareng
+    aliases: [hareng, hareng fume]
+    allergens: [fish]
+    categories: [fish]
+  - name: Lotte
+    aliases: [lotte, queue de lotte]
+    allergens: [fish]
+    categories: [fish]
+  - name: Raie
+    aliases: [aile de raie]
+    allergens: [fish]
+    categories: [fish]
+  - name: Espadon
+    aliases: [espadon]
+    allergens: [fish]
+    categories: [fish]
+  - name: Églefin
+    aliases: [eglefin, haddock]
+    allergens: [fish]
+    categories: [fish]
+  - name: Rouget
+    aliases: [rouget]
+    allergens: [fish]
+    categories: [fish]
+  # Générique, pour les lignes qui ne nomment pas l'espèce. L'allergène est le
+  # même quelle que soit l'espèce, donc la généralisation ne masque rien.
+  - name: Poisson
+    aliases: [poisson, poisson blanc, filet de poisson, pave de poisson,
+              poisson fume, oeuf de saumon, oeuf de poisson]
+    allergens: [fish]
+    categories: [fish]
+
+  # ── Fruits de mer ─────────────────────────────────────────────────────────
+  # Deux allergènes distincts et non interchangeables : `molluscs` pour les
+  # coquillages et les céphalopodes, `crustaceans` pour ce qui a des pinces.
+  - name: Moule
+    aliases: [moule, moule de bouchot]
+    allergens: [molluscs]
+    categories: [seafood]
+  - name: Huître
+    aliases: [huitre]
+    allergens: [molluscs]
+    categories: [seafood]
+  - name: Coquille Saint-Jacques
+    aliases: [coquille saint jacques, noix de saint jacques, saint jacques]
+    allergens: [molluscs]
+    categories: [seafood]
+  - name: Calamar
+    aliases: [calamar, encornet, chipiron]
+    allergens: [molluscs]
+    categories: [seafood]
+  - name: Poulpe
+    aliases: [poulpe, pieuvre]
+    allergens: [molluscs]
+    categories: [seafood]
+  - name: Seiche
+    aliases: [seiche]
+    allergens: [molluscs]
+    categories: [seafood]
+  - name: Palourde
+    aliases: [palourde, coque, bulot, praire]
+    allergens: [molluscs]
+    categories: [seafood]
+  - name: Crabe
+    aliases: [crabe, chair de crabe, tourteau]
+    allergens: [crustaceans]
+    categories: [seafood]
+  - name: Homard
+    aliases: [homard, langouste]
+    allergens: [crustaceans]
+    categories: [seafood]
+  - name: Langoustine
+    aliases: [langoustine, gambas, ecrevisse]
     allergens: [crustaceans]
     categories: [seafood]
   # Nuoc-mâm et sauce de poisson : poisson fermenté. Un foyer allergique au
@@ -1144,8 +1407,18 @@ ingredients:
     allergens: [celery, gluten]
     categories: [broth]
   - name: Bouillon de volaille
-    aliases: [bouillon de volaille]
+    aliases: [bouillon de volaille, bouillon de poulet, fond de volaille]
     allergens: [celery, gluten]
+    categories: [broth]
+  - name: Fond de veau
+    aliases: [fond de veau, fond brun]
+    allergens: [celery, gluten]
+    categories: [broth]
+  # Le fumet porte en plus le poisson dont il est fait — l'omettre serait
+  # exactement la règle 2 enfreinte : un composé qui masque un allergène.
+  - name: Fumet de poisson
+    aliases: [fumet de poisson, fond de poisson, bouillon de poisson]
+    allergens: [celery, gluten, fish]
     categories: [broth]
   - name: Bouillon de bœuf
     aliases: [bouillon de boeuf]
