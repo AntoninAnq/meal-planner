@@ -31,6 +31,7 @@ from langgraph.graph import END, StateGraph
 
 from app.domain.plan_schema import parse_proposal, plan_output_schema
 from app.domain.planning import (
+    EaterSafety,
     ProposedSlot,
     SlotSpec,
     Violation,
@@ -104,6 +105,10 @@ class PlanRequest:
     #: from past planned dishes — history is implicit in V0.
     recent_meals: list[str] = field(default_factory=list)
     with_catalogue: bool = False
+    #: What the deterministic side checks about who may eat what (§6.2 step 4).
+    #: None in V0: no catalogue means no tags, and I2 reads verifiable data or
+    #: nothing at all.
+    safety: EaterSafety | None = None
 
 
 @dataclass
@@ -142,8 +147,38 @@ class PlanState(TypedDict, total=False):
     context: Annotated[str, _keep_last]
     proposal: Annotated[list[ProposedSlot], _keep_last]
     violations: Annotated[list[Violation], _keep_last]
+    #: The best attempt so far, not the latest. See `validate`.
+    best_proposal: Annotated[list[ProposedSlot], _keep_last]
+    best_violations: Annotated[list[Violation] | None, _keep_last]
     attempt: Annotated[int, _keep_last]
     llm_results: Annotated[list[StructuredResult], _append]
+
+
+def _forbidden_lines(
+    safety: EaterSafety | None, allowed: frozenset[str] | None
+) -> list[str]:
+    """One line per eater: the candidates they may not be served.
+
+    Derived from the same data the re-validation reads, so the prompt and the
+    verdict cannot disagree. Costs about four tokens per handle — a hundred for
+    a household with one intolerance, against three attempts of thirty seconds
+    each when the model has to guess.
+    """
+    if safety is None or allowed is None:
+        return []
+
+    lines: list[str] = []
+    for alias, excluded in sorted(safety.excluded_by_eater.items()):
+        if not excluded:
+            continue
+        barred = sorted(
+            handle
+            for handle in allowed
+            if safety.allergens_by_recipe.get(handle, frozenset()) & excluded
+        )
+        if barred:
+            lines.append(f"{alias} ({', '.join(sorted(excluded))}): {', '.join(barred)}")
+    return lines
 
 
 def build_graph(llm: LLMClient, catalogue: CataloguePort) -> Any:
@@ -181,6 +216,7 @@ def build_graph(llm: LLMClient, catalogue: CataloguePort) -> Any:
                 user_constraints=request.user_constraints,
                 candidate_lines=state.get("candidate_lines", []),
                 catalogue_signals=state.get("catalogue_signals", []),
+                forbidden=_forbidden_lines(request.safety, state.get("allowed_recipe_ids")),
                 recent_meals=request.recent_meals,
             ),
             "attempt": 0,
@@ -211,15 +247,33 @@ def build_graph(llm: LLMClient, catalogue: CataloguePort) -> Any:
         }
 
     def validate(state: PlanState) -> PlanState:
-        """Re-validation. The output is checked, never trusted."""
+        """Re-validation. The output is checked, never trusted.
+
+        Keeps the BEST attempt, not the latest, and that is not a refinement.
+        The retry raises the temperature on purpose — replaying an identical
+        prompt at temperature 0 returns an identical answer — but a hotter
+        model can answer worse. Measured: an attempt with two violations was
+        followed by one with eighteen, every eater served twice, and the graph
+        returned the second because it came last. Retrying may now only
+        improve the outcome.
+        """
         request = state["request"]
-        return {
-            "violations": validate_proposal(
-                state.get("proposal", []),
-                request.spec,
-                state.get("allowed_recipe_ids"),
-            )
-        }
+        violations = validate_proposal(
+            state.get("proposal", []),
+            request.spec,
+            state.get("allowed_recipe_ids"),
+            request.safety,
+        )
+
+        proposal = state.get("proposal", [])
+        best = state.get("best_violations")
+        if best is None or len(violations) < len(best):
+            return {
+                "violations": violations,
+                "best_violations": violations,
+                "best_proposal": proposal,
+            }
+        return {"violations": violations}
 
     def should_retry(state: PlanState) -> str:
         if not state.get("violations"):
@@ -257,9 +311,10 @@ def run_plan(
     compiled = build_graph(llm, catalogue or EmptyCatalogue())
     final: PlanState = compiled.invoke({"request": request})
 
+    # The best attempt, which is the last one only when it never got worse.
     return PlanOutcome(
-        proposal=final.get("proposal", []),
-        violations=final.get("violations", []),
+        proposal=final.get("best_proposal", final.get("proposal", [])),
+        violations=final.get("best_violations") or [],
         attempts=final.get("attempt", 0),
         llm_results=final.get("llm_results", []),
     )

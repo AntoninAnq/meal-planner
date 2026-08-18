@@ -314,6 +314,10 @@ class SqlCatalogue:
 
     # -- Beyond the port --------------------------------------------------
 
+    def candidate_handles(self) -> list[str]:
+        """The handles shown to the model, in the order they were shown."""
+        return [candidate.handle for candidate in self._chosen]
+
     def resolve(self, handle: str) -> uuid.UUID | None:
         """Handle -> the real recipe. What `_persist` writes."""
         candidate = self._by_handle.get(handle)

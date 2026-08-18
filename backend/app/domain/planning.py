@@ -55,6 +55,32 @@ class ProposedDish:
 
 
 @dataclass(frozen=True)
+class EaterSafety:
+    """What the deterministic side must check about WHO eats WHAT.
+
+    Pure data, keyed by the same handles the model was shown and the same
+    aliases it was given (I5) — no member entity crosses into this module.
+
+    It exists because step 4 of the §6.2 pipeline was specified and never
+    written. The pre-filter removes a SEVERE allergen from the whole pool, so
+    those are safe; an INTOLERANCE is member-scoped and deliberately left in
+    the pool, because a dish one member cannot have is still a candidate for
+    the others. That makes the per-assignment check the only thing standing
+    between an intolerant eater and their allergen — and leaving it to the
+    model is exactly what I1 forbids.
+    """
+
+    #: recipe handle -> the allergen codes it carries.
+    allergens_by_recipe: Mapping[str, frozenset[str]] = field(default_factory=dict)
+    #: eater alias -> the codes that eater must not be served.
+    excluded_by_eater: Mapping[str, frozenset[str]] = field(default_factory=dict)
+    #: recipe handle -> the life stages it is a real meal for.
+    stages_by_recipe: Mapping[str, frozenset[str]] = field(default_factory=dict)
+    #: eater alias -> their life stage.
+    stage_by_eater: Mapping[str, str] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
 class ProposedSlot:
     day_of_week: int
     meal_type: MealType
@@ -114,12 +140,22 @@ ALLERGEN_ON_PLANNED_DISH = "allergen_on_planned_dish"
 #: household that now declares an allergen constraint. Not a violation of a
 #: known allergen — a violation of the guarantee itself (I3).
 UNVERIFIED_ON_PLANNED_DISH = "unverified_on_planned_dish"
+#: A member is assigned to a dish carrying an allergen they cannot have.
+#: Step 4 of the §6.2 pipeline, and the one the model cannot be trusted
+#: with: measured on the harness, an 8B served gluten to a gluten-intolerant
+#: eater on 6 slots out of 9, reproducibly, and nothing complained.
+ALLERGEN_FOR_EATER = "allergen_for_eater"
+#: The dish does not suit the life stage of a member assigned to it. §4.3
+#: read literally: an assignment is valid IFF the stage is in
+#: `suitable_stages`, and a serving variant can never make it valid (§4.9).
+STAGE_FOR_EATER = "stage_for_eater"
 
 
 def validate_proposal(
     proposal: Sequence[ProposedSlot],
     spec: Sequence[SlotSpec],
     allowed_recipe_ids: frozenset[str] | None = None,
+    safety: EaterSafety | None = None,
 ) -> list[Violation]:
     """Re-validation step. Returns every violation found, never raises.
 
@@ -140,7 +176,7 @@ def validate_proposal(
         expected = by_key.get(slot.key)
         if expected is None:
             continue  # already reported as UNKNOWN_SLOT
-        _check_slot(slot, expected, allowed_recipe_ids, violations)
+        _check_slot(slot, expected, allowed_recipe_ids, safety, violations)
 
     _check_not_degenerate(proposal, violations)
 
@@ -225,6 +261,7 @@ def _check_slot(
     slot: ProposedSlot,
     expected: SlotSpec,
     allowed_recipe_ids: frozenset[str] | None,
+    safety: EaterSafety | None,
     violations: list[Violation],
 ) -> None:
     key = slot.key
@@ -251,7 +288,7 @@ def _check_slot(
     served: Counter[str] = Counter()
 
     for dish in slot.dishes:
-        _check_dish(dish, key, allowed_eaters, allowed_recipe_ids, violations)
+        _check_dish(dish, key, allowed_eaters, allowed_recipe_ids, safety, violations)
         served.update(dish.eater_aliases)
 
     for alias in expected.eater_aliases:
@@ -272,6 +309,7 @@ def _check_dish(
     key: tuple[int, MealType],
     allowed_eaters: set[str],
     allowed_recipe_ids: frozenset[str] | None,
+    safety: EaterSafety | None,
     violations: list[Violation],
 ) -> None:
     where = f"day {key[0]} {key[1]}"
@@ -290,6 +328,8 @@ def _check_dish(
             violations.append(
                 Violation(UNKNOWN_EATER, f"{where}: '{alias}' does not eat at this slot", *key)
             )
+
+    _check_eaters_can_eat(dish, key, safety, violations)
 
     # THE envelope check. Inactive in V0 (allowed_recipe_ids is None) because the
     # pre-filter is stubbed, active and load-bearing from V1 on.
@@ -322,3 +362,55 @@ def repair_hint(violations: Sequence[Violation]) -> str:
     """Turn violations into something a model can act on."""
     lines = "\n".join(f"- {violation}" for violation in violations)
     return "Your previous plan was rejected for the following reasons. Fix all of them:\n" + lines
+
+
+def _check_eaters_can_eat(
+    dish: ProposedDish,
+    key: tuple[int, MealType],
+    safety: EaterSafety | None,
+    violations: list[Violation],
+) -> None:
+    """Step 4 of §6.2, per assignment. The check the model must never own.
+
+    Two rules, both from §4.3 and §4.9, and both read literally:
+
+    * an eater is never assigned a dish carrying an allergen they exclude;
+    * an assignment is valid IFF the eater's life stage is in the dish's
+      `suitable_stages` — and a serving variant describes only HOW to serve,
+      never whether one may.
+
+    Reported per assignment rather than per dish: the repair hint has to say
+    WHO cannot eat it, or the model's only available fix is to drop the dish
+    for everyone.
+
+    Silent when `safety` is None — V0, where no catalogue means no tags to read
+    (I2 reads verifiable data or nothing at all).
+    """
+    if safety is None or dish.recipe_id is None:
+        return
+
+    where = f"day {key[0]} {key[1]}"
+    carried = safety.allergens_by_recipe.get(dish.recipe_id, frozenset())
+    suitable = safety.stages_by_recipe.get(dish.recipe_id)
+
+    for alias in dish.eater_aliases:
+        clashing = sorted(carried & safety.excluded_by_eater.get(alias, frozenset()))
+        if clashing:
+            violations.append(
+                Violation(
+                    ALLERGEN_FOR_EATER,
+                    f"{where}: '{alias}' cannot eat {dish.recipe_id} — it carries "
+                    f"{', '.join(clashing)}",
+                    *key,
+                )
+            )
+
+        stage = safety.stage_by_eater.get(alias)
+        if suitable is not None and stage is not None and stage not in suitable:
+            violations.append(
+                Violation(
+                    STAGE_FOR_EATER,
+                    f"{where}: {dish.recipe_id} is not a meal for a {stage} eater",
+                    *key,
+                )
+            )

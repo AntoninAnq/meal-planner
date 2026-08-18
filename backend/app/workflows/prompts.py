@@ -98,6 +98,7 @@ def build_context(
     user_constraints: Sequence[str] = (),
     candidate_lines: Sequence[str] = (),
     catalogue_signals: Sequence[str] = (),
+    forbidden: Sequence[str] = (),
     recent_meals: Sequence[str] = (),
 ) -> str:
     """Assemble the per-request half of the prompt."""
@@ -152,6 +153,23 @@ def build_context(
         blocks.append(
             "CANDIDATES — you may ONLY choose from these\n"
             + "\n".join(f"- {line}" for line in candidate_lines)
+        )
+
+    # NOT a signal — a hard fact, and the model is told it plainly because it
+    # cannot derive it. The eater list says "m3 is gluten-intolerant" and the
+    # candidate list shows five ingredients per dish; nothing connects the two,
+    # so the model was being asked to respect a constraint whose data it did
+    # not have. Measured before this block existed: gluten served to a
+    # gluten-intolerant eater on 6 slots out of 9, reproducibly.
+    #
+    # The deterministic check still runs afterwards (§6.2 step 4). This only
+    # gives the model a chance to be right the first time; it never replaces
+    # the verdict.
+    if forbidden:
+        blocks.append(
+            "MUST NOT BE SERVED — these eaters cannot eat these dishes. This is "
+            "not a preference: a plan that breaks it is rejected.\n"
+            + "\n".join(f"- {line}" for line in forbidden)
         )
 
     # A soft signal, and the block says so in as many words. Overlap is worth

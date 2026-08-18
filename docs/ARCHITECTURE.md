@@ -364,6 +364,23 @@ Ce projet est **délibérément agentic**. La frontière ci-dessous préserve le
 >
 > Deux règles portent le reste : le type le plus **restrictif** gagne quand une recette porte plusieurs rubriques — rater un plat coûte un candidat sur plusieurs centaines, servir un gâteau au dîner coûte la confiance ; et **`component` doit exister** — une vinaigrette ou un roux blanc est une recette du catalogue qui n'est un repas à aucun moment, et sans ce membre les 221 concernées tombaient dans « pas étiqueté dessert », donc dans les candidats du dîner.
 
+> **L'étape 4 était spécifiée et n'existait pas.** Découvert par le banc d'essai, et c'est le meilleur argument pour son existence : sur le cas `intolerance_forcing_two_dishes`, un `qwen3:8b` a servi du gluten à un mangeur intolérant **sur 6 créneaux sur 9, de façon reproductible, sans qu'aucune violation ne soit levée**. `validate_proposal` vérifiait la structure — chaque créneau rempli, chaque mangeur servi une fois, chaque plat dans l'enveloppe — mais jamais qu'un mangeur pouvait manger ce qu'on lui donnait.
+>
+> Les allergies **sévères** n'étaient pas concernées : le pré-filtre les exclut du pool à l'échelle du foyer, et le banc mesure 0 violation sur 25 exécutions. Le trou portait sur les **intolérances**, de portée membre, que le pré-filtre laisse volontairement passer — précisément parce que la vérification devait se faire ici.
+>
+> Trois corrections, dans cet ordre, chacune mesurée :
+>
+> | | Effet sur 3 exécutions |
+> |---|---|
+> | Départ | 6 manquements, **silencieux** |
+> | `allergen_for_eater` en re-validation | 4 à 7 manquements, **signalés**, 3 tentatives |
+> | Bloc `MUST NOT BE SERVED` dans le prompt | 0 à 4 |
+> | Retour de la **meilleure** tentative | **0, 1, 0** |
+>
+> Le bloc du prompt méritait d'exister : la liste des mangeurs disait « m3 est intolérant au gluten » et la liste des candidats montrait cinq ingrédients par plat, mais **rien ne reliait les deux**. On demandait au modèle de respecter une contrainte dont il n'avait pas la donnée. Il reçoit maintenant, par mangeur, les identifiants qui lui sont interdits — une centaine de tokens. Ça ne remplace pas le verdict déterministe, ça lui donne une chance d'avoir raison du premier coup.
+>
+> La dernière correction est structurelle et vaut au-delà de ce cas : **le graphe rendait la dernière tentative, pas la meilleure.** Le rejeu monte la température délibérément, donc une tentative plus chaude peut répondre plus mal — mesuré, une tentative à 2 violations suivie d'une à 18, tous les mangeurs servis deux fois, et c'est la seconde qui sortait. Rejouer ne peut plus dégrader le résultat.
+
 ### 6.3 La règle de répartition
 
 > **Contrainte dure** → SQL, filtre l'ensemble de candidats

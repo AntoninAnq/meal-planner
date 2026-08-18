@@ -34,6 +34,7 @@ from app.domain.planning import (
     NO_CANDIDATES,
     STAGE_NOT_PLANNED,
     UNVERIFIED_ON_PLANNED_DISH,
+    EaterSafety,
     ProposedSlot,
     SlotSpec,
     Violation,
@@ -348,6 +349,7 @@ def generate_plan(
     )
 
     request = PlanRequest(
+        safety=_eater_safety(db, catalogue, inputs, alias_to_member),
         spec=spec,
         prompt_context=_with_guests(prompt_context, guests, guest_aliases),
         language=language,
@@ -402,6 +404,65 @@ def generate_plan(
         ),
     )
     return plan, outcome
+
+
+def _eater_safety(
+    db: Session,
+    catalogue: SqlCatalogue,
+    inputs: Sequence[MemberInput],
+    alias_to_member: dict[str, uuid.UUID],
+) -> EaterSafety:
+    """Assemble step 4's inputs, in ALIASES — no member entity crosses over (I5).
+
+    Both severities are excluded per eater, not only intolerances. A severe
+    allergen is already gone from the pool, so listing it here costs nothing
+    and means the check does not depend on the pre-filter having done its job:
+    two independent barriers rather than one, on the data where that matters.
+    """
+    by_member = {entry.member_id: entry for entry in inputs}
+    excluded: dict[str, frozenset[str]] = {}
+    stage_by_eater: dict[str, str] = {}
+    for alias, member_id in alias_to_member.items():
+        entry = by_member.get(member_id)
+        if entry is None:
+            continue
+        excluded[alias] = frozenset(entry.severe_allergens | entry.intolerances)
+        stage_by_eater[alias] = entry.life_stage.value
+
+    handles = catalogue.candidate_handles()
+    recipe_ids = [catalogue.resolve(handle) for handle in handles]
+    known = [recipe_id for recipe_id in recipe_ids if recipe_id is not None]
+
+    allergens: dict[uuid.UUID, set[str]] = {}
+    stages: dict[uuid.UUID, set[str]] = {}
+    if known:
+        for recipe_id, code in db.execute(
+            select(RecipeAllergen.recipe_id, RecipeAllergen.allergen_code).where(
+                RecipeAllergen.recipe_id.in_(known)
+            )
+        ).all():
+            allergens.setdefault(recipe_id, set()).add(code.value)
+        for recipe_id, stage in db.execute(
+            select(RecipeSuitableStage.recipe_id, RecipeSuitableStage.life_stage).where(
+                RecipeSuitableStage.recipe_id.in_(known)
+            )
+        ).all():
+            stages.setdefault(recipe_id, set()).add(stage.value)
+
+    return EaterSafety(
+        allergens_by_recipe={
+            handle: frozenset(allergens.get(recipe_id, set()))
+            for handle, recipe_id in zip(handles, recipe_ids, strict=True)
+            if recipe_id is not None
+        },
+        excluded_by_eater=excluded,
+        stages_by_recipe={
+            handle: frozenset(stages.get(recipe_id, set()))
+            for handle, recipe_id in zip(handles, recipe_ids, strict=True)
+            if recipe_id is not None
+        },
+        stage_by_eater=stage_by_eater,
+    )
 
 
 def _guest_aliases(guests: Sequence[GuestGroup]) -> list[str]:
