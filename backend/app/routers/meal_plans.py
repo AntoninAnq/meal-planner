@@ -97,11 +97,15 @@ def _serialise(db: Session, plan: MealPlan) -> MealPlanOut:
     # later correction to the catalogue could no longer reach. Read here, in the
     # one place that serialises, rather than denormalised at write time.
     recipe_ids = [dish.recipe_id for dish in dishes if dish.recipe_id]
-    titles: dict[uuid.UUID, str] = (
-        dict(db.execute(select(Recipe.id, Recipe.title).where(Recipe.id.in_(recipe_ids))).all())
-        if recipe_ids
-        else {}
-    )
+    meta: dict[uuid.UUID, tuple[str, int | None, int | None]] = {}
+    if recipe_ids:
+        for recipe_id, title, prep, cook, complexity in db.execute(
+            select(
+                Recipe.id, Recipe.title, Recipe.prep_minutes, Recipe.cook_minutes, Recipe.complexity
+            ).where(Recipe.id.in_(recipe_ids))
+        ).all():
+            minutes = (prep or 0) + (cook or 0) if (prep is not None or cook is not None) else None
+            meta[recipe_id] = (title, minutes, complexity)
 
     slots: dict[tuple[int, str], PlanSlotOut] = {}
     for dish in dishes:
@@ -121,8 +125,11 @@ def _serialise(db: Session, plan: MealPlan) -> MealPlanOut:
         slot.dishes.append(
             DishOut(
                 id=dish.id,
-                label=dish.free_text_label or titles.get(dish.recipe_id),
+                label=dish.free_text_label or _title_of(meta, dish.recipe_id),
                 recipe_id=dish.recipe_id,
+                source=dish.source,
+                minutes=_effort(meta, dish.recipe_id)[0],
+                complexity=_effort(meta, dish.recipe_id)[1],
                 derived_from_dish_id=dish.derived_from_dish_id,
                 eaters=[
                     DishEaterOut(
@@ -235,6 +242,20 @@ def read_plan(
     """
     plan = load_plan(db, household_id, week_start)
     return _serialise(db, plan) if plan else None
+
+
+def _title_of(
+    meta: dict[uuid.UUID, tuple[str, int | None, int | None]], recipe_id: uuid.UUID | None
+) -> str | None:
+    entry = meta.get(recipe_id) if recipe_id else None
+    return entry[0] if entry else None
+
+
+def _effort(
+    meta: dict[uuid.UUID, tuple[str, int | None, int | None]], recipe_id: uuid.UUID | None
+) -> tuple[int | None, int | None]:
+    entry = meta.get(recipe_id) if recipe_id else None
+    return (entry[1], entry[2]) if entry else (None, None)
 
 
 def _load_dish(db: Session, plan_id: uuid.UUID, dish_id: uuid.UUID, household_id: uuid.UUID):  # type: ignore[no-untyped-def]

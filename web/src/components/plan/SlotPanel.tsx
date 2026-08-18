@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { WaitingState } from "@/components/plan/WaitingState";
 import { Button } from "@/components/ui/Button";
@@ -9,21 +9,24 @@ import { Dialog } from "@/components/ui/Dialog";
 import { Field, SelectField } from "@/components/ui/Field";
 import { ListRow } from "@/components/ui/ListRow";
 import { useRouter } from "@/i18n/navigation";
-import { apiPost, apiPut } from "@/lib/api/client";
+import { apiGet, apiPost, apiPut } from "@/lib/api/client";
 import { ApiError } from "@/lib/api/error";
-import type { Dish, GuestGroup, LifeStage, MealType } from "@/lib/api/types";
+import type { Alternative, Dish, GuestGroup, LifeStage, MealType } from "@/lib/api/types";
 
 const LIFE_STAGES: LifeStage[] = ["teen_adult", "young_child", "baby"];
 
 /**
  * Screen 5, in a native `<dialog>` driven by the URL.
  *
- * Ordered cheapest first, which is the reverse of what V1 will do: editing the
- * title by hand is instant, asking for something else costs an LLM call on one
- * slot. The instant alternatives that §6 calls the most frequent case do not
- * exist without a catalogue, and are not shown at all — a disabled section
- * with an excuse teaches that the feature is broken, and people stop looking
- * at it even once it works.
+ * Ordered cheapest first, and V1 reorders it. The alternatives that §6 calls
+ * the most frequent case now exist and come first: they are a read, a few tens
+ * of milliseconds, no model call. Editing the title by hand comes next, and
+ * asking for something else — which costs an LLM call on one slot — last.
+ *
+ * They are fetched when the panel opens rather than travelling with the plan.
+ * A week carries nine slots and nobody opens nine panels; embedding them would
+ * make every page load pay for a list almost nobody reads, and the list would
+ * go stale on the plan anyway.
  */
 export function SlotPanel({
   open,
@@ -62,6 +65,27 @@ export function SlotPanel({
   const [startedAt, setStartedAt] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [alternatives, setAlternatives] = useState<Alternative[] | null>(null);
+
+  const firstDishId = dishes[0]?.id ?? null;
+
+  // Read on open, and abandoned if the panel closes first. The request is
+  // cheap, but a response landing after the user moved on would set state on a
+  // panel that is no longer theirs.
+  useEffect(() => {
+    if (!open || !planId || !firstDishId) {
+      setAlternatives(null);
+      return;
+    }
+    const controller = new AbortController();
+    apiGet<Alternative[]>(
+      `/meal-plans/${planId}/dishes/${firstDishId}/alternatives`,
+      controller.signal,
+    )
+      .then(setAlternatives)
+      .catch(() => setAlternatives([]));
+    return () => controller.abort();
+  }, [open, planId, firstDishId]);
 
   function close() {
     router.push({ pathname: "/", query: { week: weekStart } });
@@ -90,6 +114,16 @@ export function SlotPanel({
   const saveLabel = (dish: Dish) =>
     act(async () => {
       await apiPut(`/meal-plans/${planId}/dishes/${dish.id}`, { label: labels[dish.id] });
+      refresh();
+    });
+
+  // No model call: the candidate was already cleared by the pre-filter, so
+  // choosing it is a write and a reload.
+  const choose = (dish: Dish, alternative: Alternative) =>
+    act(async () => {
+      await apiPut(`/meal-plans/${planId}/dishes/${dish.id}`, {
+        recipe_id: alternative.recipe_id,
+      });
       refresh();
     });
 
@@ -183,6 +217,46 @@ export function SlotPanel({
                         </ListRow>
                       ))}
                     </ul>
+                  )}
+
+                  {/* First, because it is the cheapest and §6 measured it as
+                      the most frequent request: "not that one, show me
+                      something else". */}
+                  {alternatives !== null && (
+                    <section className="flex flex-col gap-2">
+                      <div>
+                        <h3 className="text-sm font-semibold">{t("alternativesHeading")}</h3>
+                        <p className="text-xs text-ink-muted">{t("alternativesHint")}</p>
+                      </div>
+                      {alternatives.length === 0 ? (
+                        <p className="text-sm text-ink-muted">{t("alternativesEmpty")}</p>
+                      ) : (
+                        <ul className="flex flex-col gap-1.5">
+                          {alternatives.map((alternative) => (
+                            <ListRow
+                              key={alternative.recipe_id}
+                              action={
+                                <Button
+                                  size="sm"
+                                  disabled={busy}
+                                  onClick={() => choose(dish, alternative)}
+                                >
+                                  {t("choose")}
+                                </Button>
+                              }
+                            >
+                              <span className="text-sm">{alternative.title}</span>
+                              {alternative.minutes !== null && (
+                                <span className="text-xs text-ink-faint">
+                                  {" "}
+                                  — {alternative.minutes} min
+                                </span>
+                              )}
+                            </ListRow>
+                          ))}
+                        </ul>
+                      )}
+                    </section>
                   )}
 
                   <div className="flex items-center gap-2">

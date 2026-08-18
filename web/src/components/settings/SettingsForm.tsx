@@ -3,7 +3,6 @@
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 
-import { AllergenNotice } from "@/components/constraints/AllergenNotice";
 import { Button } from "@/components/ui/Button";
 import { Field, SelectField } from "@/components/ui/Field";
 import { ListRow } from "@/components/ui/ListRow";
@@ -221,7 +220,6 @@ export function SettingsForm({
           <p className="text-sm text-ink-muted">{t("constraintsHint")}</p>
         </div>
 
-        <AllergenNotice />
 
         <ul className="flex flex-col gap-2">
           {constraints.map((constraint) => (

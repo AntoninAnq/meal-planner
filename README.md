@@ -8,9 +8,17 @@ chose** — typiquement de jeunes enfants qui ne mangent pas le plat des adultes
 > non négociables. Une décision qui contredit ce document doit d'abord modifier
 > ce document.
 
-**Statut : phase 1 — catalogue.** La V0 tourne (les six écrans du `UX-V0.md` §14
-et le graphe agentic complet) ; ce qu'elle propose n'est vérifié par personne, ce
-que l'interface dit elle-même.
+**Statut : phase 2 — V1.** Le catalogue alimente réellement la planification :
+pré-filtre SQL, trois signaux souples, arbitrage sur identifiants, re-validation.
+Une semaine complète prend **~28 s** sur `qwen3:8b` en local, contre 182 s avant
+le branchement — le catalogue a supprimé la boucle de rejeu, il ne l'a pas
+alourdie (`docs/ARCHITECTURE.md` §14.6).
+
+La mention « les allergies ne sont pas filtrées » a disparu de l'interface, parce
+que le filtre est devenu réel. Ce qui la remplace n'est pas un bandeau reformulé :
+déclarer une contrainte **re-valide le plan en cours** et marque les créneaux
+concernés. Seul un plat écrit à la main garde une marque — c'est le seul qu'aucun
+filtre ne peut couvrir.
 
 ## Démarrer
 

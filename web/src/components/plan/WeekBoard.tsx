@@ -59,6 +59,11 @@ export function WeekBoard({
 
   const busy = startedAt !== null;
   const { slot: slotViolations, plan: planViolations } = splitViolations(violations);
+  // Not a failure and not shown in red: the catalogue simply holds nothing for
+  // this life stage (§6.4), and the honest move is to say it once rather than
+  // to mark every slot. Split out here so the alert below never counts it.
+  const notPlanned = planViolations.filter((v) => v.code === "stage_not_planned");
+  const otherPlanViolations = planViolations.filter((v) => v.code !== "stage_not_planned");
 
   function chooseView(next: WeekView) {
     setView(next);
@@ -156,7 +161,14 @@ export function WeekBoard({
 
       <Composer hasPlan={hasPlan} busy={busy} onGenerate={generate} />
 
-      {violations.length > 0 && !busy && (
+      {notPlanned.length > 0 && !busy && (
+        <div role="note" className="rounded-card border border-border bg-surface-sunken px-4 py-3">
+          <p className="text-sm font-semibold">{t("notPlannedHeading")}</p>
+          <p className="mt-1 text-sm text-ink-muted">{t("notPlannedBody")}</p>
+        </div>
+      )}
+
+      {(slotViolations.length > 0 || otherPlanViolations.length > 0) && !busy && (
         <div role="alert" className="rounded-card border border-danger/30 bg-danger-soft px-4 py-3">
           {/* Two different failures, two different sentences. A plan-level
               violation points at no meal, so counting it as "a meal could not
@@ -170,9 +182,14 @@ export function WeekBoard({
               <p className="mt-1 text-sm text-ink">{t("violationsBody")}</p>
             </>
           )}
-          {planViolations.length > 0 && (
+          {otherPlanViolations.length > 0 && (
             <>
-              <p className={cx("text-sm font-semibold text-danger", slotViolations.length > 0 && "mt-3")}>
+              <p
+                className={cx(
+                  "text-sm font-semibold text-danger",
+                  slotViolations.length > 0 && "mt-3",
+                )}
+              >
                 {t("planViolationHeading")}
               </p>
               <p className="mt-1 text-sm text-ink">{t("planViolationBody")}</p>

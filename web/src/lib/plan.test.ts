@@ -18,6 +18,9 @@ function dish(overrides: Partial<Dish> = {}): Dish {
     recipe_id: null,
     derived_from_dish_id: null,
     eaters: [{ member_id: "m1", serving_variant: null }],
+    source: "catalog",
+    minutes: null,
+    complexity: null,
     ...overrides,
   };
 }

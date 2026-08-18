@@ -12,7 +12,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.domain.enums import AllergenCode, ConstraintSeverity, LifeStage, MealType
+from app.domain.enums import AllergenCode, ConstraintSeverity, DishSource, LifeStage, MealType
 
 
 class HouseholdOut(BaseModel):
@@ -199,6 +199,15 @@ class DishOut(BaseModel):
     eaters: list[DishEaterOut]
     #: Always null in V0: overlap is not computable without ingredients.
     derived_from_dish_id: uuid.UUID | None = None
+    #: Where the dish came from. The interface needs it for one reason: a dish
+    #: someone typed themselves is the only one no filter can vouch for, and
+    #: `UX-V0.md` §15 keeps a mark on it after the global notice disappears.
+    source: DishSource = DishSource.LLM_SUGGESTION
+    #: Declared prep + cooking, and the computed 1..3 rating. Null on the fifth
+    #: of the catalogue that declares neither — the card then says nothing
+    #: rather than implying a recipe is quick.
+    minutes: int | None = None
+    complexity: int | None = None
 
 
 class SlotGuestsOut(BaseModel):

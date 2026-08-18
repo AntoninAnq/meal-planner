@@ -94,6 +94,8 @@ export type DishEater = {
   serving_variant: string | null;
 };
 
+export type DishSource = "catalog" | "llm_suggestion" | "user";
+
 export type Dish = {
   id: string;
   label: string | null;
@@ -101,6 +103,27 @@ export type Dish = {
   /** Always null in V0: overlap is not computable without ingredients. */
   derived_from_dish_id: string | null;
   eaters: DishEater[];
+  /** Where it came from. The interface needs it for one thing: a dish someone
+   * typed themselves is the only one no filter can vouch for, so it keeps a
+   * mark after the global allergen notice disappears (UX §15). */
+  source: DishSource;
+  /** Declared prep + cooking, and the computed 1..3 rating. Null on the fifth
+   * of the catalogue that declares neither — the card then says nothing rather
+   * than implying a recipe is quick. */
+  minutes: number | null;
+  complexity: number | null;
+};
+
+/** A candidate the pre-filter produced and the model passed over.
+ *
+ * Carries everything the card shows, so choosing one costs no second request.
+ * Reading them is free: the ranking is rebuilt from its seed, not stored. */
+export type Alternative = {
+  recipe_id: string;
+  title: string;
+  minutes: number | null;
+  complexity: number | null;
+  ingredients: string[];
 };
 
 /** An anonymous count, never an entity. Guests stay transitory — storing them

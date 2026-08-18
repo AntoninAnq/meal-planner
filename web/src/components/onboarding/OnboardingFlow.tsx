@@ -3,7 +3,6 @@
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 
-import { AllergenNotice } from "@/components/constraints/AllergenNotice";
 import { Button } from "@/components/ui/Button";
 import { Field, SelectField } from "@/components/ui/Field";
 import { ListRow } from "@/components/ui/ListRow";
@@ -235,7 +234,6 @@ export function OnboardingFlow({
 
             {showAllergyForm && (
               <div className="flex flex-col gap-3">
-                <AllergenNotice />
 
                 {allergies.length > 0 && (
                   <ul className="flex flex-col gap-2">

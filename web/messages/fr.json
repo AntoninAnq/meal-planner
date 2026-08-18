@@ -42,10 +42,6 @@
     "lupin": "Lupin",
     "molluscs": "Mollusques"
   },
-  "allergenNotice": {
-    "heading": "Les allergies ne sont pas encore filtrées",
-    "body": "Cette version propose des idées de repas à partir de simples titres, sans base de recettes ni liste d'ingrédients. Ce que vous déclarez ici est transmis au modèle comme une consigne, mais rien ne le vérifie. Relisez chaque plat avant de cuisiner."
-  },
   "onboarding": {
     "heading": "Bienvenue",
     "intro": "Trois questions, puis on passe à la semaine. Vous pourrez tout modifier ensuite.",
@@ -105,7 +101,16 @@
     "settings": "Réglages",
     "planViolationHeading": "Le plan manque de variété",
     "planViolationBody": "Le modèle a proposé trop souvent le même plat. Relancez la génération, ou remplacez les répétitions vous-même.",
-    "guests": "{count, plural, one {+1 invité} other {+# invités}}"
+    "guests": "{count, plural, one {+1 invité} other {+# invités}}",
+    "minutes": "{count} min",
+    "complexity": {
+      "1": "simple",
+      "2": "moyen",
+      "3": "long"
+    },
+    "handWritten": "écrit à la main — non vérifié",
+    "notPlannedHeading": "Certains repas ne sont pas planifiés",
+    "notPlannedBody": "Le catalogue ne contient aucune recette adaptée à un bébé de moins de 18 mois. Ses repas restent à votre main."
   },
   "composer": {
     "collapsed": "Une précision pour cette semaine ?",
@@ -155,7 +160,11 @@
     "guestStage": "Groupe d'âge",
     "guestCount": "Combien",
     "guestsNoGuarantee": "Pour ce repas, rien n'est garanti au-delà de ce que vous avez déclaré. Demandez à vos invités.",
-    "generateWithGuests": "Générer avec les invités"
+    "generateWithGuests": "Générer avec les invités",
+    "alternativesHeading": "Autre chose ?",
+    "alternativesHint": "Des candidats que le pré-filtre a retenus et que le modèle n'a pas choisis. Aucun appel de modèle, réponse immédiate.",
+    "alternativesEmpty": "Aucune autre recette ne convient à ce créneau.",
+    "choose": "Choisir"
   },
   "settings": {
     "heading": "Réglages",

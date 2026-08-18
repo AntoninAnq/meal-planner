@@ -42,10 +42,6 @@
     "lupin": "Lupin",
     "molluscs": "Molluscs"
   },
-  "allergenNotice": {
-    "heading": "Allergies are not filtered yet",
-    "body": "This version suggests meal ideas from plain titles, with no recipe database and no ingredient list. What you declare here is passed to the model as an instruction, but nothing verifies it. Read every dish before you cook."
-  },
   "onboarding": {
     "heading": "Welcome",
     "intro": "Three questions, then on to the week. You can change everything afterwards.",
@@ -105,7 +101,16 @@
     "settings": "Settings",
     "planViolationHeading": "The plan lacks variety",
     "planViolationBody": "The model suggested the same dish too often. Generate again, or replace the repeats yourself.",
-    "guests": "{count, plural, one {+1 guest} other {+# guests}}"
+    "guests": "{count, plural, one {+1 guest} other {+# guests}}",
+    "minutes": "{count} min",
+    "complexity": {
+      "1": "simple",
+      "2": "medium",
+      "3": "long"
+    },
+    "handWritten": "hand-written — unchecked",
+    "notPlannedHeading": "Some meals are not planned",
+    "notPlannedBody": "The catalogue holds no recipe suited to a baby under 18 months. Those meals stay yours to make."
   },
   "composer": {
     "collapsed": "Anything to note for this week?",
@@ -155,7 +160,11 @@
     "guestStage": "Age group",
     "guestCount": "How many",
     "guestsNoGuarantee": "For this meal nothing is guaranteed beyond what you declared. Ask your guests.",
-    "generateWithGuests": "Generate with guests"
+    "generateWithGuests": "Generate with guests",
+    "alternativesHeading": "Something else?",
+    "alternativesHint": "Candidates the pre-filter kept and the model passed over. No model call, instant.",
+    "alternativesEmpty": "No other recipe fits this slot.",
+    "choose": "Choose"
   },
   "settings": {
     "heading": "Settings",
