@@ -237,6 +237,12 @@ class RunResult:
     dishes: int
     distinct_dishes: int
     max_dishes_per_slot: int
+    #: How many candidates survived the pre-filter. Reported because a case can
+    #: pass every assertion while having almost nothing to choose from.
+    pool_size: int = 0
+    #: Slots carrying more than one dish. The product's whole premise, and the
+    #: only way to see whether it ever happens.
+    slots_with_two_dishes: int = 0
     violations: list[str] = field(default_factory=list)
     allergen_violations: int = 0
     outside_candidates: int = 0
@@ -274,6 +280,8 @@ def one_run(session_factory: sessionmaker[Session], household_id: uuid.UUID) -> 
         for dish in dishes:
             key = (dish.day_of_week, dish.meal_type)
             per_slot[key] = per_slot.get(key, 0) + 1
+
+        pool = ps.catalogue_for(db, household_id=household_id, week_start=WEEK).pool_size
 
         # The safety check, done independently of the pipeline that produced the
         # plan: this is the one number that must be zero, so it is not read back
@@ -317,6 +325,8 @@ def one_run(session_factory: sessionmaker[Session], household_id: uuid.UUID) -> 
             violations=codes,
             allergen_violations=breaches,
             outside_candidates=codes.count("dish_outside_candidates"),
+            pool_size=pool,
+            slots_with_two_dishes=sum(1 for count in per_slot.values() if count > 1),
         )
 
 
@@ -370,6 +380,7 @@ def report(case: str, runs: list[RunResult], golden: dict[str, Any]) -> None:
         f"  tokens               in {statistics.mean(r.input_tokens for r in ok):.0f}"
         f" / out {statistics.mean(r.output_tokens for r in ok):.0f}"
     )
+    print(f"  candidats            {ok[0].pool_size}")
 
     # The two that are not rates, checked against the golden rather than
     # against a constant written here.
@@ -385,6 +396,11 @@ def report(case: str, runs: list[RunResult], golden: dict[str, Any]) -> None:
     if "distinct_dishes" in expected:
         _check("plats distincts", expected["distinct_dishes"],
                statistics.mean(run.distinct_dishes for run in ok))
+    if "candidates_minimum" in expected:
+        _check("candidats", f">= {expected['candidates_minimum']}", ok[0].pool_size)
+    if "slots_with_two_dishes" in expected:
+        _check("créneaux à 2 plats", expected["slots_with_two_dishes"],
+               statistics.mean(run.slots_with_two_dishes for run in ok))
 
     counts: dict[str, int] = {}
     for run in ok:

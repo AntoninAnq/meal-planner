@@ -115,3 +115,23 @@ Score composite sur trois distances déterministes :
 Le **LLM-juge est repoussé** : du non-déterministe qui évalue du
 non-déterministe, à valider lui-même, et qui demande un modèle plus gros que
 celui testé — donc plus cher que ce qu'il évalue.
+
+## Deux goldens rouges, volontairement
+
+La première passe à 5 exécutions est passée au vert sur les cinq cas. C'était
+faux, et le banc l'a montré dès qu'on lui a demandé les bons chiffres.
+
+**`severe_milk_allergy` : 5 candidats.** Le §6.2 en veut 15 à 25 par créneau.
+En dessous, l'arbitrage n'arbitre plus — le modèle recopie le peu qu'on lui
+donne, et le plan « passe » parce que rien ne vérifiait qu'il y avait de quoi
+choisir. `candidates_minimum: 15` échoue aujourd'hui, et c'est l'information.
+
+**`intolerance_forcing_two_dishes` : jamais deux plats.** Sur 25 exécutions,
+aucun créneau n'a porté plus d'un plat — y compris dans le cas écrit pour ça.
+Le golden n'avait qu'un plafond (`<= 3`), qui passait pendant que le contraire
+de l'intention se produisait. `slots_with_two_dishes: ">= 1"` échoue aussi.
+
+Ces deux lignes rouges restent. Le banc est **hors CI** : une attente non tenue
+y est une mesure, pas une build cassée, et la retirer pour retrouver du vert
+serait exactement le « golden qu'on relance jusqu'au vert » que le §14.3
+interdit.

@@ -13,6 +13,11 @@ expected_properties:
   # Deux mangeurs, deux stades servis par le catalogue : un plat par créneau
   # suffit, et en proposer deux serait cuisiner deux fois pour rien.
   max_dishes_per_slot: "<= 2"
+  # §6.2 veut 15-25 candidats par créneau. En dessous, l'arbitrage n'arbitre
+  # plus : le modèle recopie le peu qu'on lui donne. Ajouté après la première
+  # passe à 5 exécutions, où tout était vert avec CINQ recettes disponibles —
+  # un banc qui ne mesure pas la largeur du pool valide un plan impossible.
+  candidates_minimum: 15
 
 human_reference:
   note: >-

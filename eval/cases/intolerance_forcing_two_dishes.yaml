@@ -14,6 +14,11 @@ expected_properties:
   # Un créneau peut légitimement porter deux plats ici. C'est la raison d'être
   # du produit, pas un défaut, et la limite douce ne doit pas l'interdire.
   max_dishes_per_slot: "<= 3"
+  # Et surtout une borne BASSE. Sur 25 exécutions de la première passe, aucun
+  # créneau n'a jamais porté deux plats — y compris ici, où c'est la raison
+  # d'être du cas. La borne haute passait pendant que le contraire de
+  # l'intention se produisait : un golden qui n'a qu'un plafond ne mesure rien.
+  slots_with_two_dishes: ">= 1"
 
 human_reference:
   note: >-
