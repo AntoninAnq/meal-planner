@@ -286,15 +286,25 @@ def one_run(session_factory: sessionmaker[Session], household_id: uuid.UUID) -> 
         # The safety check, done independently of the pipeline that produced the
         # plan: this is the one number that must be zero, so it is not read back
         # from the code under test.
-        severe: dict[uuid.UUID, set[str]] = {}
+        #
+        # BOTH severities. A first version counted only severe allergies and
+        # reported "0, OK" on a run where the pipeline had itself raised ten
+        # `allergen_for_eater` violations — the harness's most load-bearing
+        # number, wrong by omission. A severe allergy is excluded from the pool
+        # by the pre-filter, so counting it alone measures the easy half.
+        excluded: dict[uuid.UUID, set[str]] = {}
         for constraint in db.scalars(
             select(DietaryConstraint).where(
                 DietaryConstraint.household_id == household_id,
-                DietaryConstraint.severity == ConstraintSeverity.SEVERE_ALLERGY,
+                DietaryConstraint.severity.in_(
+                    [ConstraintSeverity.SEVERE_ALLERGY, ConstraintSeverity.INTOLERANCE]
+                ),
             )
         ):
             if constraint.allergen_code and constraint.member_id:
-                severe.setdefault(constraint.member_id, set()).add(constraint.allergen_code.value)
+                excluded.setdefault(constraint.member_id, set()).add(
+                    constraint.allergen_code.value
+                )
 
         carried: dict[uuid.UUID, set[str]] = {}
         for row in db.scalars(select(RecipeAllergen)):
@@ -310,7 +320,7 @@ def one_run(session_factory: sessionmaker[Session], household_id: uuid.UUID) -> 
             dish = by_dish.get(assignment.planned_dish_id)
             if dish is None or dish.recipe_id is None:
                 continue
-            if carried.get(dish.recipe_id, set()) & severe.get(assignment.member_id, set()):
+            if carried.get(dish.recipe_id, set()) & excluded.get(assignment.member_id, set()):
                 breaches += 1
 
         codes = [violation.code for violation in outcome.violations]
