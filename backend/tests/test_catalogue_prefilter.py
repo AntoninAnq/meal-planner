@@ -268,3 +268,42 @@ def test_a_missing_signal_does_not_make_a_recipe_look_easy() -> None:
     from app.catalog.complexity import score
 
     assert score(minutes=120, steps=None, ingredients=14) == 3
+
+
+# ---------------------------------------------------------------------------
+# Rotation — the fourth signal, and the reason it was deferred was wrong
+# ---------------------------------------------------------------------------
+
+
+def test_a_household_with_no_history_gets_no_rotation_block() -> None:
+    """Twelve lines of "jamais" is noise, not a signal.
+
+    The prompt already carries sixty candidates; describing an empty history at
+    that price teaches the model nothing. The block reappears by itself once a
+    week has been eaten.
+    """
+    from app.services.planning_service import render_rotation
+
+    assert render_rotation({}, before=date(2026, 12, 14)) == []
+
+
+def test_the_gaps_are_reported_in_days_and_agree_in_french() -> None:
+    """It goes into a French prompt and is read by a model that writes French."""
+    from app.services.planning_service import render_rotation
+
+    lines = render_rotation(
+        {"fish": date(2026, 12, 13), "red_meat": date(2026, 12, 9)},
+        before=date(2026, 12, 14),
+    )
+
+    assert "fish: 1 jour" in lines
+    assert "red_meat: 5 jours" in lines
+
+
+def test_a_category_never_eaten_is_named_once_others_exist() -> None:
+    """Then it IS informative: everything else has a number to compare it to."""
+    from app.services.planning_service import render_rotation
+
+    lines = render_rotation({"cheese": date(2026, 12, 12)}, before=date(2026, 12, 14))
+
+    assert "fish: jamais" in lines

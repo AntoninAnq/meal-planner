@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import json
 import uuid
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 
@@ -18,6 +18,7 @@ from sqlalchemy.orm import Session
 
 from app.db.models import (
     DietaryConstraint,
+    FoodCategory,
     HouseholdSettings,
     MealPlan,
     MealSlotConfig,
@@ -26,6 +27,7 @@ from app.db.models import (
     PlannedDishMember,
     Recipe,
     RecipeAllergen,
+    RecipeFoodCategory,
     RecipeSuitableStage,
 )
 from app.domain.enums import ConstraintSeverity, DishSource, LifeStage, MealType
@@ -127,6 +129,78 @@ def _member_inputs(
             )
         )
     return inputs
+
+
+#: The categories worth rotating on. Deliberately NOT every category the
+#: derivation writes: `fat_oil`, `condiment` and `herb_spice` appear in more
+#: than half the catalogue, and a signal that fires everywhere carries nothing —
+#: the same trap the overlap signal fell into. `dairy` and `nuts_seeds` are out
+#: for the same reason; `fruit` because it is not a rotation axis for dinner.
+ROTATION_CATEGORIES = (
+    "red_meat", "white_meat", "charcuterie", "fish", "seafood", "legumes_secs",
+    "egg", "cheese", "green_vegetable", "root_vegetable", "vegetable", "cereal",
+)
+
+#: How far back to look. Beyond this, "not for a long time" and "never" are the
+#: same statement to a household, and reporting 140 days would only make the
+#: line longer.
+ROTATION_WINDOW_DAYS = 60
+
+
+def render_rotation(last_seen: Mapping[str, date], *, before: date) -> list[str]:
+    """Format the gaps. Pure, so the wording is testable without a database.
+
+    Silent when nothing has been eaten: twelve lines of "jamais" is not a
+    signal, it is noise in a prompt that already carries sixty candidates, and
+    "you have never had fish" describes an empty history rather than advising
+    anything. The block reappears by itself after the first week.
+    """
+    if not last_seen:
+        return []
+
+    lines: list[str] = []
+    for code in ROTATION_CATEGORIES:
+        eaten = last_seen.get(code)
+        if eaten is None:
+            lines.append(f"{code}: jamais")
+        else:
+            days = (before - eaten).days
+            lines.append(f"{code}: {days} jour{'s' if days > 1 else ''}")
+    return lines
+
+
+def rotation_signal(db: Session, household_id: uuid.UUID, *, before: date) -> list[str]:
+    """Days since each food category was last on the table.
+
+    The fourth soft signal of §6.2, and the one that was deferred. It was
+    deferred on a condition I set and got wrong twice: it counted desserts in
+    the denominator, and it read "contains meat" where the signal needs "is
+    made of". Measured on the 196 verified mains and starters, 83 % carry a
+    vegetable and 72 % a protein once eggs and cheese are counted — the
+    composition was there all along; nothing derived it.
+
+    Soft by construction (§6.3): it is passed to the prompt as context and
+    filters nothing. "Some pulses would be good this week" must yield to a
+    teenager who hates lentils.
+    """
+    since = before - timedelta(days=ROTATION_WINDOW_DAYS)
+    rows = db.execute(
+        select(MealPlan.week_start, PlannedDish.day_of_week, FoodCategory.code)
+        .join(PlannedDish, PlannedDish.meal_plan_id == MealPlan.id)
+        .join(RecipeFoodCategory, RecipeFoodCategory.recipe_id == PlannedDish.recipe_id)
+        .join(FoodCategory, FoodCategory.id == RecipeFoodCategory.food_category_id)
+        .where(MealPlan.household_id == household_id, MealPlan.week_start >= since)
+    ).all()
+
+    last_seen: dict[str, date] = {}
+    for week_start, day_of_week, code in rows:
+        eaten = week_start + timedelta(days=day_of_week)
+        if eaten >= before:
+            continue  # planned, not yet eaten
+        if code not in last_seen or eaten > last_seen[code]:
+            last_seen[code] = eaten
+
+    return render_rotation(last_seen, before=before)
 
 
 def catalogue_for(
@@ -350,6 +424,7 @@ def generate_plan(
 
     request = PlanRequest(
         safety=_eater_safety(db, catalogue, inputs, alias_to_member),
+        rotation=rotation_signal(db, household_id, before=week_start),
         spec=spec,
         prompt_context=_with_guests(prompt_context, guests, guest_aliases),
         language=language,

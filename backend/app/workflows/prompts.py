@@ -99,6 +99,7 @@ def build_context(
     candidate_lines: Sequence[str] = (),
     catalogue_signals: Sequence[str] = (),
     forbidden: Sequence[str] = (),
+    rotation: Sequence[str] = (),
     recent_meals: Sequence[str] = (),
 ) -> str:
     """Assemble the per-request half of the prompt."""
@@ -170,6 +171,17 @@ def build_context(
             "MUST NOT BE SERVED — these eaters cannot eat these dishes. This is "
             "not a preference: a plan that breaks it is rejected.\n"
             + "\n".join(f"- {line}" for line in forbidden)
+        )
+
+    # Soft, and worded so. §6.3 is explicit that nutritional rotation is a wish,
+    # not a constraint: "some pulses would be good this week" must yield to a
+    # teenager who hates lentils and a vegetarian dish already on the plan.
+    # Forcing it in SQL would produce mechanical menus.
+    if rotation:
+        blocks.append(
+            "ROTATION — how long since each kind of food was last eaten here. "
+            "A long gap is worth filling, but variety and what the household "
+            "actually likes come first.\n" + " · ".join(rotation)
         )
 
     # A soft signal, and the block says so in as many words. Overlap is worth

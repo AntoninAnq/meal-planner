@@ -86,6 +86,14 @@ def build_parser() -> argparse.ArgumentParser:
         "--report", action="store_true", help="change nothing; print the distribution"
     )
 
+    cats = sub.add_parser(
+        "food-categories",
+        help="derive recipe_food_category from the resolved ingredients (idempotent)",
+    )
+    cats.add_argument(
+        "--report", action="store_true", help="change nothing; print the distribution"
+    )
+
     review = sub.add_parser("review", help="confirm the proposed referential entries (I1, I3)")
     review.add_argument(
         "--bulk-safe",
@@ -219,6 +227,16 @@ def _complexity(args) -> int:
     return 0
 
 
+def _food_categories(args) -> int:
+    from app.catalog.food_categories import derive
+    from app.db.session import get_session_factory
+
+    with get_session_factory()() as db:
+        report = derive(db, report_only=args.report)
+    print(report.render())
+    return 0
+
+
 def _review(args) -> int:
     from app.catalog.review import ReadOnlyConfirmations, run_review
     from app.db.session import get_session_factory
@@ -240,6 +258,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         "resolve": _resolve,
         "dish-types": _dish_types,
         "complexity": _complexity,
+        "food-categories": _food_categories,
         "review": _review,
     }
     return handlers[args.command](args)

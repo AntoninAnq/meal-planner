@@ -109,6 +109,9 @@ class PlanRequest:
     #: None in V0: no catalogue means no tags, and I2 reads verifiable data or
     #: nothing at all.
     safety: EaterSafety | None = None
+    #: Days since each food category was last eaten. Soft (§6.3): context for
+    #: the model, never a filter.
+    rotation: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -217,6 +220,7 @@ def build_graph(llm: LLMClient, catalogue: CataloguePort) -> Any:
                 candidate_lines=state.get("candidate_lines", []),
                 catalogue_signals=state.get("catalogue_signals", []),
                 forbidden=_forbidden_lines(request.safety, state.get("allowed_recipe_ids")),
+                rotation=request.rotation,
                 recent_meals=request.recent_meals,
             ),
             "attempt": 0,

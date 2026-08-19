@@ -110,9 +110,10 @@ docker compose run --rm catalog resolve          # rejouable, idempotent
 docker compose run --rm catalog review           # les propositions I4, à confirmer
 docker compose run --rm catalog dish-types       # rubrique source → moment du repas
 docker compose run --rm catalog complexity       # temps + étapes + ingrédients → 1..3
+docker compose run --rm catalog food-categories  # composition, pour le signal de rotation
 ```
 
-`review` est le seul de ces six qui demande un humain, et c'est voulu : il porte
+`review` est le seul de ces sept qui demande un humain, et c'est voulu : il porte
 sur des allergènes (I1). `dish-types` n'en porte aucun — sa relecture est celle
 du diff de `db/dish_types.yaml`.
 
