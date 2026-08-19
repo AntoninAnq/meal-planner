@@ -17,11 +17,17 @@ from __future__ import annotations
 
 from collections.abc import Callable, Iterator
 from datetime import UTC, datetime
+from pathlib import Path
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.catalog.confirmations import load_confirmations, record, save_confirmations
+from app.catalog.confirmations import (
+    confirmations_file,
+    load_confirmations,
+    record,
+    save_confirmations,
+)
 from app.db.models import (
     FoodCategory,
     Ingredient,
@@ -30,6 +36,24 @@ from app.db.models import (
     IngredientFoodCategory,
     RecipeIngredient,
 )
+
+
+class ReadOnlyConfirmations(RuntimeError):
+    """The approvals file cannot be written, so the review must not start."""
+
+
+def _refuse_if_unwritable(path: Path) -> None:
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("a", encoding="utf-8"):
+            pass
+    except OSError as exc:
+        raise ReadOnlyConfirmations(
+            f"{path} n'est pas accessible en écriture ({exc.strerror}).\n"
+            "La revue s'exécute sur le service `catalog`, pas sur `api` — "
+            "seul le premier monte db/ en écriture :\n"
+            "    docker compose run --rm catalog review --bulk-safe"
+        ) from exc
 
 
 def pending(db: Session) -> list[tuple[Ingredient, list[str], list[str], int]]:
@@ -123,6 +147,13 @@ def run_review(
     reading them one by one is what makes someone abandon the queue before
     reaching `sauce soja`.
     """
+    # Checked BEFORE anything is read or written. The `api` service mounts
+    # `db/` read-only and only `catalog` mounts it writable, so running this on
+    # the wrong service used to commit the database and then fail on the file —
+    # leaving entries confirmed in one place and absent from the other, which
+    # is the exact drift this file exists to prevent.
+    _refuse_if_unwritable(confirmations_file())
+
     queue = pending(db)
     if not queue:
         say("rien à confirmer.")
@@ -141,8 +172,11 @@ def run_review(
         for ingredient, allergens, *_ in plain:
             confirm(db, ingredient, allergens, records)
             confirmed += 1
-        db.commit()
+        # File first, database second. The file is the durable record and the
+        # database is derived from it; committing first would claim a
+        # confirmation that nothing outside a Docker volume remembers.
         save_confirmations(records)
+        db.commit()
         say(f"{confirmed} entrées sans allergène confirmées en bloc.")
         queue = risky
 
@@ -155,10 +189,11 @@ def run_review(
         if answer == "o":
             confirm(db, ingredient, allergens, records)
             confirmed += 1
-            db.commit()
-            # Written after every answer, not at the end: a review interrupted
-            # by Ctrl-C keeps what was already decided.
+            # Written after every answer rather than at the end, so a review
+            # interrupted by Ctrl-C keeps what was already decided — and file
+            # first, for the same reason as above.
             save_confirmations(records)
+            db.commit()
         say("")
 
     say(

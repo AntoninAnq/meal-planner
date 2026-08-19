@@ -220,11 +220,15 @@ def _complexity(args) -> int:
 
 
 def _review(args) -> int:
-    from app.catalog.review import run_review
+    from app.catalog.review import ReadOnlyConfirmations, run_review
     from app.db.session import get_session_factory
 
     with get_session_factory()() as db:
-        run_review(db, bulk_safe=args.bulk_safe)
+        try:
+            run_review(db, bulk_safe=args.bulk_safe)
+        except ReadOnlyConfirmations as exc:
+            print(exc, file=sys.stderr)
+            return 2
     return 0
 
 

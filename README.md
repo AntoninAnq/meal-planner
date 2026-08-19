@@ -116,6 +116,11 @@ docker compose run --rm catalog complexity       # temps + étapes + ingrédient
 sur des allergènes (I1). `dish-types` n'en porte aucun — sa relecture est celle
 du diff de `db/dish_types.yaml`.
 
+> **Ces commandes tournent sur le service `catalog`, pas sur `api`.** Le second
+> monte `db/` en lecture seule, parce que l'API n'a aucune raison d'écrire dans
+> le référentiel. `review` le vérifie avant de commencer et refuse avec la bonne
+> commande plutôt que d'écrire à moitié.
+
 La whitelist **n'est pas dans le dépôt** (`docs/ARCHITECTURE.md` §11.5) : elle
 est montée depuis `./sources.yaml`, et son absence est une erreur explicite,
 jamais un repli silencieux sur le modèle.
