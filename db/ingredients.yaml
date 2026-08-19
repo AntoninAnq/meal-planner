@@ -81,11 +81,13 @@ ingredients:
   - name: Poivre
     aliases: [poivre, poivre noir, poivre blanc, poivre du moulin, poivre au moulin,
               poivre en grain, grain de poivre, grain de poivre noir, poivre noir moulu,
-              poivre noir au moulin, quelque grain de poivre, poivre de cayenne]
+              poivre noir au moulin, quelque grain de poivre, poivre de cayenne,
+              poivre baie]
     allergens: []
     categories: [herb_spice]
   - name: Eau
-    aliases: [eau, eau froide, eau tiede, eau chaude, eau bouillante, glacon]
+    aliases: [eau, eau froide, eau tiede, eau chaude, eau bouillante, glacon,
+              eau gazeuse, glace pilee]
     allergens: []
     categories: [other]
 
@@ -128,12 +130,14 @@ ingredients:
     allergens: []
     categories: [cereal]
   - name: Riz
-    aliases: [riz, riz rond]
+    aliases: [riz, riz rond,
+              riz arborio, riz basmati, riz blanc]
     allergens: []
     categories: [cereal]
   - name: Semoule
     aliases: [semoule, semoule fine, semoule moyenne, semoule de ble dur,
-              semoule fine de ble dur, semoule a couscous, couscous]
+              semoule fine de ble dur, semoule a couscous, couscous,
+              semoule fine de couscous]
     allergens: [gluten]
     categories: [cereal]
   - name: Boulgour
@@ -158,7 +162,8 @@ ingredients:
   # que la requête atteint en premier.
   - name: Pâtes alimentaires
     aliases: [pate seche, coquillette, macaroni, penne, tagliatelle, spaghetti,
-              farfalle, fusilli, rigatoni, linguine, orecchiette]
+              farfalle, fusilli, rigatoni, linguine, orecchiette,
+              nouille soba, nouille]
     allergens: [gluten]
     categories: [cereal]
   - name: Pâte à lasagne
@@ -187,7 +192,8 @@ ingredients:
     allergens: [gluten]
     categories: [cereal]
   - name: Pain
-    aliases: [pain, pain rassis, mie de pain, pain de mie]
+    aliases: [pain, pain rassis, mie de pain, pain de mie,
+              grande tranche de pain de mie, tranche de pain de mie]
     allergens: [gluten]
     categories: [cereal]
   - name: Pain d'épices
@@ -211,7 +217,8 @@ ingredients:
     allergens: [gluten, milk]
     categories: [cereal]
   - name: Pâte sablée
-    aliases: [pate sablee]
+    aliases: [pate sablee,
+              pate sablee sucree]
     allergens: [gluten, milk]
     categories: [cereal]
   - name: Pâte à pizza
@@ -247,7 +254,8 @@ ingredients:
   # alimentaires, pâte de fruits. Laissé sans allergène ET signalé — c'est
   # typiquement une entrée à trancher à la relecture.
   - name: Pâte (non qualifiée)
-    aliases: [pate]
+    aliases: [pate,
+              pate filo]
     allergens: [gluten]
     categories: [cereal]
 
@@ -258,7 +266,8 @@ ingredients:
     allergens: [eggs]
     categories: [egg]
   - name: Jaune d'œuf
-    aliases: [jaune d'oeuf, jaune oeuf, jaune]
+    aliases: [jaune d'oeuf, jaune oeuf, jaune,
+              oeuf jaune, oeuf entier jaune]
     allergens: [eggs]
     categories: [egg]
   - name: Blanc d'œuf
@@ -268,7 +277,8 @@ ingredients:
 
   # ── Produits laitiers ─────────────────────────────────────────────────────
   - name: Lait
-    aliases: [lait, lait entier, lait demi ecreme, lait tiede, lait frais entier]
+    aliases: [lait, lait entier, lait demi ecreme, lait tiede, lait frais entier,
+              lait ecreme, poudre de lait, lait en poudre entier, lait concentre, peu de lait]
     allergens: [milk]
     categories: [dairy]
   - name: Lait fermenté
@@ -290,13 +300,15 @@ ingredients:
     allergens: [milk]
     categories: [fat_oil, dairy]
   - name: Beurre demi-sel
-    aliases: [beurre demi sel, beurre sale, beurre demi sel fondu]
+    aliases: [beurre demi sel, beurre sale, beurre demi sel fondu,
+              beurre sel]
     allergens: [milk]
     categories: [fat_oil, dairy]
   - name: Crème liquide
     aliases: [creme liquide, creme liquide entiere, creme fleurette, creme fleurette entiere,
               creme entiere, creme entiere liquide, creme liquide entiere bien froide,
-              creme legere, creme]
+              creme legere, creme,
+              creme liquide allegee]
     allergens: [milk]
     categories: [dairy]
   - name: Crème fraîche
@@ -305,11 +317,13 @@ ingredients:
     allergens: [milk]
     categories: [dairy]
   - name: Yaourt
-    aliases: [yaourt, yaourt nature, yaourt grec]
+    aliases: [yaourt, yaourt nature, yaourt grec,
+              yahourt nature]
     allergens: [milk]
     categories: [dairy]
   - name: Fromage blanc
-    aliases: [fromage blanc]
+    aliases: [fromage blanc,
+              faisselle]
     allergens: [milk]
     categories: [dairy]
   - name: Mascarpone
@@ -321,7 +335,8 @@ ingredients:
     allergens: [milk]
     categories: [cheese]
   - name: Parmesan
-    aliases: [parmesan, parmesan rape, parmesan fraichement rape]
+    aliases: [parmesan, parmesan rape, parmesan fraichement rape,
+              grana padano]
     allergens: [milk]
     categories: [cheese]
   - name: Pecorino
@@ -360,7 +375,8 @@ ingredients:
     allergens: [milk]
     categories: [cheese, dairy]
   - name: Chèvre frais
-    aliases: [chevre frais, fromage de chevre frais]
+    aliases: [chevre frais, fromage de chevre frais,
+              buche de chevre]
     allergens: [milk]
     categories: [cheese]
   - name: Reblochon
@@ -402,7 +418,8 @@ ingredients:
     categories: [fat_oil]
   - name: Huile neutre
     aliases: [huile, huile neutre, huile vegetale, huile de friture, huile pour friture,
-              huile de tournesol, huile de colza, huile de pepin de raisin]
+              huile de tournesol, huile de colza, huile de pepin de raisin,
+              huile pour la friture]
     allergens: []
     categories: [fat_oil]
   - name: Huile d'arachide
@@ -422,7 +439,8 @@ ingredients:
     allergens: []
     categories: [fat_oil]
   - name: Graisse de canard
-    aliases: [graisse de canard]
+    aliases: [graisse de canard,
+              graisse d'oie ou de canard, graisse d'oie]
     allergens: []
     categories: [fat_oil]
 
@@ -430,12 +448,14 @@ ingredients:
   - name: Oignon
     aliases: [oignon, gros oignon, petit oignon, oignon moyen, oignon emince, oignon hache,
               oignon jaune, oignon blanc, oignon rouge, oignon nouveau, petit oignon nouveau,
-              oignon vert, ciboule, ciboule chinoise]
+              oignon vert, ciboule, ciboule chinoise,
+              oignon grelot, oignon frit]
     allergens: []
     categories: [vegetable]
   - name: Ail
     aliases: [ail, gousse d'ail, petite gousse d'ail, petite gousse ail, a gousse d'ail,
-              tete d'ail, ail hachee, ail ecrasee, ail degermee, ail en poudre]
+              tete d'ail, ail hachee, ail ecrasee, ail degermee, ail en poudre,
+              ail pressee, ail presse]
     allergens: []
     categories: [vegetable]
   - name: Échalote
@@ -476,7 +496,8 @@ ingredients:
     allergens: []
     categories: [root_vegetable]
   - name: Radis
-    aliases: [radis]
+    aliases: [radis,
+              fane d'une botte de radis, fane de radis]
     allergens: []
     categories: [vegetable]
   # Le céleri est l'un des 14 allergènes INCO, branche comme rave.
@@ -503,7 +524,8 @@ ingredients:
     allergens: []
     categories: [vegetable]
   - name: Poivron
-    aliases: [poivron, poivron rouge, poivron vert, poivron jaune]
+    aliases: [poivron, poivron rouge, poivron vert, poivron jaune,
+              poivron rouge et vert]
     allergens: []
     categories: [vegetable]
   - name: Concombre
@@ -515,11 +537,13 @@ ingredients:
     allergens: []
     categories: [vegetable]
   - name: Épinard
-    aliases: [epinard, epinard frais]
+    aliases: [epinard, epinard frais,
+              pousse epinard, pousse d'epinard]
     allergens: []
     categories: [green_vegetable]
   - name: Brocoli
-    aliases: [brocoli]
+    aliases: [brocoli,
+              brocolis]
     allergens: []
     categories: [green_vegetable]
   - name: Chou-fleur
@@ -527,7 +551,8 @@ ingredients:
     allergens: []
     categories: [green_vegetable]
   - name: Chou
-    aliases: [chou, chou blanc, chou rouge, choux de bruxelle]
+    aliases: [chou, chou blanc, chou rouge, choux de bruxelle,
+              chou vert frise]
     allergens: []
     categories: [green_vegetable]
   - name: Haricot vert
@@ -539,7 +564,8 @@ ingredients:
     allergens: []
     categories: [green_vegetable]
   - name: Asperge
-    aliases: [asperge, asperge verte]
+    aliases: [asperge, asperge verte,
+              asperge blanche]
     allergens: []
     categories: [green_vegetable]
   - name: Fenouil
@@ -555,7 +581,8 @@ ingredients:
     allergens: []
     categories: [green_vegetable]
   - name: Salade
-    aliases: [salade verte, laitue, roquette, mache]
+    aliases: [salade verte, laitue, roquette, mache,
+              salade frisee]
     allergens: []
     categories: [green_vegetable]
   - name: Avocat
@@ -563,7 +590,8 @@ ingredients:
     allergens: []
     categories: [vegetable]
   - name: Courge
-    aliases: [potimarron, potiron, courge butternut, courge spaghetti]
+    aliases: [potimarron, potiron, courge butternut, courge spaghetti,
+              chair de potiron, puree de citrouille, courge kabocha, citrouille]
     allergens: []
     categories: [vegetable]
   - name: Fève
@@ -633,7 +661,8 @@ ingredients:
   - name: Citron
     aliases: [citron, citron jaune, citron presse, citron bio, citron non traite,
               jus de citron, jus citron, jus d'un citron,
-              jus d'un demi citron, zeste d'un citron]
+              jus d'un demi citron, zeste d'un citron,
+              citron jaune non traite, citron bio non traite, zeste d'un demi citron]
     allergens: []
     categories: [fruit]
   - name: Citron vert
@@ -654,7 +683,8 @@ ingredients:
     allergens: []
     categories: [fruit]
   - name: Pomme
-    aliases: [pomme, petite pomme, jus de pomme]
+    aliases: [pomme, petite pomme, jus de pomme,
+              pomme golden]
     allergens: []
     categories: [fruit]
   - name: Poire
@@ -710,7 +740,8 @@ ingredients:
     allergens: []
     categories: [fruit]
   - name: Ananas
-    aliases: [ananas]
+    aliases: [ananas,
+              jus d'ananas]
     allergens: []
     categories: [fruit]
   - name: Kiwi
@@ -764,7 +795,8 @@ ingredients:
     allergens: [sulphites]
     categories: [fruit]
   - name: Marron
-    aliases: [marron]
+    aliases: [marron,
+              chataigne]
     allergens: []
     categories: [other]
 
@@ -773,7 +805,8 @@ ingredients:
   # (`peanuts`), et les confondre est une erreur classique.
   - name: Amande
     aliases: [amande, amande effilee, amande emondee, amande mondee, amande entiere,
-              quelque amande, poudre d'amande, amande en poudre, extrait d'amande amere]
+              quelque amande, poudre d'amande, amande en poudre, extrait d'amande amere,
+              pate d'amande, arome amande amere]
     allergens: [nuts]
     categories: [nuts_seeds]
   - name: Noisette
@@ -793,7 +826,8 @@ ingredients:
     allergens: [nuts]
     categories: [nuts_seeds]
   - name: Pistache
-    aliases: [pistache, pate de pistache]
+    aliases: [pistache, pate de pistache,
+              pistache non salee]
     allergens: [nuts]
     categories: [nuts_seeds]
   - name: Pignon de pin
@@ -805,15 +839,16 @@ ingredients:
     allergens: [nuts]
     categories: [nuts_seeds]
   - name: Cacahuète
-    aliases: [cacahuete grillee, cacahouete, beurre de cacahuete]
+    aliases: [cacahuete grillee, cacahouete, beurre de cacahuete,
+              cacahuete grillee non salee]
     allergens: [peanuts]
     categories: [nuts_seeds]
   - name: Graine de sésame
-    aliases: [graine de sesame, graine sesame]
+    aliases: [graine de sesame, graine sesame, sesame]
     allergens: [sesame]
     categories: [nuts_seeds]
   - name: Tahini
-    aliases: [tahine]
+    aliases: [tahine, tahin]
     allergens: [sesame]
     categories: [condiment]
   - name: Graine de tournesol
@@ -835,7 +870,8 @@ ingredients:
     allergens: []
     categories: [red_meat]
   - name: Poulet
-    aliases: [poulet, blanc de poulet, cuisse de poulet]
+    aliases: [poulet, blanc de poulet, cuisse de poulet,
+              poulet fermier, haut de cuisse de poulet, blanc poulet, escalope de poulet, filet de poulet, aiguillette de poulet]
     allergens: []
     categories: [white_meat]
   - name: Magret de canard
@@ -851,7 +887,8 @@ ingredients:
     allergens: []
     categories: [charcuterie]
   - name: Chorizo
-    aliases: [chorizo]
+    aliases: [chorizo,
+              chorizo en batonnet]
     allergens: []
     categories: [charcuterie]
   - name: Saucisse
@@ -905,7 +942,8 @@ ingredients:
     categories: [red_meat]
   - name: Dinde
     aliases: [dinde, escalope de dinde, blanc de dinde, roti de dinde, dinde hachee,
-              filet de dinde]
+              filet de dinde,
+              saute de dinde]
     allergens: []
     categories: [white_meat]
   - name: Canard
@@ -1078,7 +1116,8 @@ ingredients:
   # ── Sucres et sucrants ────────────────────────────────────────────────────
   - name: Sucre
     aliases: [sucre, sucre en poudre, sucre semoule, sucre blanc, sucre cristallise,
-              sucre de canne, g sucre]
+              sucre de canne, g sucre,
+              sucre fin, sucre perle, golden syrup, sirop de sucre]
     allergens: []
     categories: [sweetener]
   - name: Sucre glace
@@ -1123,11 +1162,13 @@ ingredients:
   # le chocolat au lait en contient par définition. Le doute penche vers
   # l'allergène (règle 1).
   - name: Chocolat noir
-    aliases: [chocolat noir, chocolat, chocolat noir a, chocolat noir a patisser]
+    aliases: [chocolat noir, chocolat, chocolat noir a, chocolat noir a patisser,
+              carre de chocolat noir, chocolat noir patissier]
     allergens: [milk]
     categories: [sweetener]
   - name: Chocolat au lait
-    aliases: [chocolat au lait]
+    aliases: [chocolat au lait,
+              bon chocolat au lait]
     allergens: [milk]
     categories: [sweetener]
   - name: Chocolat blanc
@@ -1135,7 +1176,8 @@ ingredients:
     allergens: [milk]
     categories: [sweetener]
   - name: Pépites de chocolat
-    aliases: [pepite de chocolat]
+    aliases: [pepite de chocolat,
+              pepite de chocolat noir, pepite de chocolat blanc]
     allergens: [milk]
     categories: [sweetener]
   - name: Cacao en poudre
@@ -1148,7 +1190,8 @@ ingredients:
     categories: [fat_oil]
   - name: Vanille
     aliases: [vanille, vanille en poudre, poudre de vanille, vanille liquide,
-              extrait de vanille, extrait de vanille liquide, sucre vanille]
+              extrait de vanille, extrait de vanille liquide, sucre vanille,
+              essence de vanille]
     allergens: []
     categories: [herb_spice]
 
@@ -1161,7 +1204,8 @@ ingredients:
     categories: [leavening]
   - name: Levure de boulanger
     aliases: [levure, levure de boulanger, levure de boulanger deshydratee,
-              levure de boulangerie deshydratee, levure fraiche, levure fraiche de boulanger]
+              levure de boulangerie deshydratee, levure fraiche, levure fraiche de boulanger,
+              levure boulangere, levure seche de boulanger, levure de boulanger seche]
     allergens: []
     categories: [leavening]
   - name: Bicarbonate de soude
@@ -1169,11 +1213,13 @@ ingredients:
     allergens: []
     categories: [leavening]
   - name: Gélatine
-    aliases: [gelatine, feuille de gelatine]
+    aliases: [gelatine, feuille de gelatine,
+              gelatine en feuille]
     allergens: []
     categories: [other]
   - name: Agar-agar
-    aliases: [agar agar]
+    aliases: [agar agar,
+              gelatine vegetale]
     allergens: []
     categories: [other]
   - name: Poudre à crème
@@ -1185,11 +1231,13 @@ ingredients:
   - name: Persil
     aliases: [persil, persil plat, persil hache, persil frais, persil frais hache,
               persil plat hache, persil plat cisele, bouquet de persil, bouquet de persil plat,
-              quelque feuille persil]
+              quelque feuille persil,
+              persil frise]
     allergens: []
     categories: [herb_spice]
   - name: Coriandre fraîche
-    aliases: [coriandre, coriandre fraiche, bouquet de coriandre, bouquet de coriandre fraiche]
+    aliases: [coriandre, coriandre fraiche, bouquet de coriandre, bouquet de coriandre fraiche,
+              petit bouquet coriandre, bouquet coriandre]
     allergens: []
     categories: [herb_spice]
   # `coriandre moulue` est la GRAINE, pas l'herbe. Sans cet alias la relaxation
@@ -1199,7 +1247,8 @@ ingredients:
     allergens: []
     categories: [herb_spice]
   - name: Basilic
-    aliases: [basilic, basilic frais, quelque feuille basilic, quelque feuille de basilic]
+    aliases: [basilic, basilic frais, quelque feuille basilic, quelque feuille de basilic,
+              bouquet de basilic]
     allergens: []
     categories: [herb_spice]
   - name: Ciboulette
@@ -1215,7 +1264,8 @@ ingredients:
     allergens: []
     categories: [herb_spice]
   - name: Romarin
-    aliases: [romarin]
+    aliases: [romarin,
+              romarin seche]
     allergens: []
     categories: [herb_spice]
   - name: Laurier
@@ -1223,7 +1273,8 @@ ingredients:
     allergens: []
     categories: [herb_spice]
   - name: Sauge
-    aliases: [sauge, quelque feuille sauge]
+    aliases: [sauge, quelque feuille sauge,
+              sauge sechee]
     allergens: []
     categories: [herb_spice]
   - name: Estragon
@@ -1282,12 +1333,14 @@ ingredients:
     categories: [herb_spice]
   - name: Gingembre
     aliases: [gingembre, gingembre frais, gingembre en poudre, gingembre moulu,
-              cm gingembre, petit morceau de gingembre]
+              cm gingembre, petit morceau de gingembre,
+              gingembre confit]
     allergens: []
     categories: [herb_spice]
   - name: Piment
     aliases: [piment, piment oiseau, petit piment oiseau, piment rouge, piment vert,
-              piment en poudre, piment d'espelette]
+              piment en poudre, piment d'espelette,
+              piment de cayenne, piment fort]
     allergens: []
     categories: [herb_spice]
   - name: Safran
@@ -1339,7 +1392,8 @@ ingredients:
   # La sauce soja classique est brassée avec du BLÉ. La version sans est le
   # tamari, l'exception. Deux allergènes, et un seul se devine au nom.
   - name: Sauce soja
-    aliases: [sauce soja, sauce de soja, sauce de soja claire]
+    aliases: [sauce soja, sauce de soja, sauce de soja claire,
+              tamari, sauce soja tamari]
     allergens: [soybeans, gluten]
     categories: [condiment]
   - name: Sauce hoisin
@@ -1382,7 +1436,8 @@ ingredients:
     allergens: [sulphites]
     categories: [condiment]
   - name: Vinaigre balsamique
-    aliases: [vinaigre balsamique]
+    aliases: [vinaigre balsamique,
+              vinaigre balsamique blanc]
     allergens: [sulphites]
     categories: [condiment]
   - name: Vinaigre de cidre
@@ -1403,7 +1458,8 @@ ingredients:
   # souvent du gluten. C'est l'exemple canonique d'un allergène invisible dans
   # le nom (I2).
   - name: Bouillon de légumes
-    aliases: [bouillon de legume, bouillon]
+    aliases: [bouillon de legume, bouillon,
+              bouillon vegetal]
     allergens: [celery, gluten]
     categories: [broth]
   - name: Bouillon de volaille
