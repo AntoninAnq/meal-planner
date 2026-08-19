@@ -87,6 +87,13 @@ reasoning — a separate call handles that.
 
 #: Instructions are stable and cacheable, so the language cannot be baked into
 #: them: it travels with the request instead.
+#: Days as the household names them. The model writes dish titles in this
+#: language already (§ `PlanRequest.language`); it must read the week in it too.
+DAY_NAMES = {
+    "fr": ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"],
+    "en": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
+}
+
 LANGUAGE_NAMES = {"fr": "French", "en": "English"}
 
 
@@ -119,8 +126,29 @@ def build_context(
         excluded = ", ".join(prompt_context.household_excluded_allergens)
         blocks.append(f"EXCLUDED FOR EVERYONE (hard)\n{excluded}")
 
+    # The DAY IS NAMED, in the household's language. It used to read `day 1
+    # dinner`, and the free-text intent reads "je rentre tard du mardi au
+    # vendredi" — nothing in the prompt connected the two, so the model was
+    # asked to honour a request about Tuesday without being told which slot
+    # Tuesday was. Measured: the effort it put into weeknights and weekends was
+    # identical, 1.85 against 2.02 on a scale of three.
+    # BOTH the name and the index, and the honest history of this line is worth
+    # keeping. The household writes "je rentre tard du mardi au vendredi" and
+    # the prompt read `day 1 dinner`, so the hypothesis was that nothing
+    # connected the two. Naming the day INSTEAD of numbering it was a
+    # regression — the output schema wants `day_of_week` as an integer, so the
+    # model had to guess it: three attempts every run, `duplicate_slot`,
+    # `missing_slot` and `unknown_slot` on five runs out of five.
+    #
+    # Naming it AS WELL fixed the regression and changed nothing else: the
+    # effort gap stayed at zero. The hypothesis was wrong — this model does not
+    # honour a free-text preference about the SHAPE of the week, and it is not
+    # for want of knowing which day is Tuesday. Kept anyway, because it is
+    # strictly more information for ten tokens, and a better model may use it.
+    names = DAY_NAMES.get(language, DAY_NAMES["en"])
     slots = "\n".join(
-        f"- day {slot.day_of_week} {slot.meal_type}: {', '.join(slot.eater_aliases)}"
+        f"- day {slot.day_of_week} = {names[slot.day_of_week]}, {slot.meal_type}: "
+        f"{', '.join(slot.eater_aliases)}"
         for slot in spec
     )
     blocks.append(f"SLOTS TO FILL\n{slots}")

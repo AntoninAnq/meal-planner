@@ -4,6 +4,20 @@
 case: founder
 runs: 5
 
+# L'intention du foyer, en texte libre, telle qu'elle serait tapée dans le
+# champ de l'écran 3. C'est le cœur de ce que le produit vend — le §6.4 appelle
+# ça « l'amont : intention floue », et aucun formulaire ne capte ça.
+#
+# Elle est ici plutôt que dans un réglage parce que la répétition n'est PAS un
+# défaut souhaitable : un foyer qui n'a rien demandé recevrait le même gratin
+# deux fois par semaine, indéfiniment. Le §14.6 le dit déjà — réutiliser un plat
+# est une fonctionnalité liée à une phrase de l'utilisateur (« il reste du
+# poulet »), pas un objectif permanent.
+intent: >-
+  Cette semaine je rentre tard du mardi au vendredi, il me faut des choses
+  rapides. Le lundi et le week-end j'ai le temps de cuisiner. J'aimerais un
+  plat en grande quantité, cuisiné une fois et servi deux fois.
+
 expected_exact:
   # Deux adultes et un enfant de 6 ans qui mange ce qu'ils mangent. Aucune
   # contrainte ne force un second plat.
@@ -24,9 +38,9 @@ expected_properties:
   # peuvent être vertes pendant que la distinction qu'elles décrivent n'existe
   # pas, ce qui est la troisième fois aujourd'hui que ce piège se referme.
   complexity_gap: ">= 0.4"
-  # « Une répétition d'un repas facile à faire en grande quantité, par exemple
-  # lasagnes ou gratin. » C'est la douleur du §2.3 prise à l'envers : répéter
-  # n'est pas un échec de variété, c'est une préparation économisée.
+  # Demandé dans l'intention ci-dessus, donc mesurable. Sans la demande, cette
+  # attente n'aurait aucun sens : elle exigerait un comportement que rien ne
+  # réclame.
   repeated_dishes: ">= 1"
 
 # ── Référence humaine ──────────────────────────────────────────────────────
@@ -35,6 +49,8 @@ expected_properties:
 # qui n'en partage aucune avec celle-ci peut être tout aussi bonne. C'est la
 # FORME qui est l'étalon.
 human_reference:
+  # Décrit la semaine idéale AVEC l'intention ci-dessus, pas la semaine par
+  # défaut. C'est ce que le foyer voudrait quand il le demande.
   shape:
     lundi_soir: "plus long — préparé le week-end, réchauffé"
     mardi_soir: "rapide"

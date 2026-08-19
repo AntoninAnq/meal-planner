@@ -258,7 +258,11 @@ class RunResult:
     failed: str | None = None
 
 
-def one_run(session_factory: sessionmaker[Session], household_id: uuid.UUID) -> RunResult:
+def one_run(
+    session_factory: sessionmaker[Session],
+    household_id: uuid.UUID,
+    intent: str | None = None,
+) -> RunResult:
     from app.db.models import DietaryConstraint, PlannedDish, PlannedDishMember, RecipeAllergen
     from app.domain.enums import ConstraintSeverity
     from app.llm.factory import get_llm_client
@@ -268,7 +272,13 @@ def one_run(session_factory: sessionmaker[Session], household_id: uuid.UUID) -> 
         started = time.monotonic()
         try:
             plan, outcome = ps.generate_plan(
-                db, household_id=household_id, llm=get_llm_client(), week_start=WEEK
+                db,
+                household_id=household_id,
+                llm=get_llm_client(),
+                week_start=WEEK,
+                # The free-text intent, as the household would type it. It goes
+                # through the same path a real request does.
+                user_constraints=[intent] if intent else (),
             )
         except Exception as exc:  # noqa: BLE001 — a failed run is a datum
             return RunResult(
@@ -503,7 +513,10 @@ def main() -> None:
             if golden_path.is_file()
             else {}
         )
-        runs = [one_run(session_factory, household_id) for _ in range(args.runs)]
+        runs = [
+            one_run(session_factory, household_id, golden.get("intent"))
+            for _ in range(args.runs)
+        ]
         report(key, runs, golden)
 
 
