@@ -11,13 +11,8 @@ from fractions import Fraction
 
 import pytest
 
-from app.catalog.ingredient_lines import (
-    fold,
-    normalise,
-    parse_line,
-    singularise,
-    variants,
-)
+from app.catalog.ingredient_lines import parse_line
+from app.domain.ingredient_names import fold, normalise, singularise, variants
 
 
 @pytest.mark.parametrize(

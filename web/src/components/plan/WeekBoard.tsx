@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/Button";
 import { useRouter } from "@/i18n/navigation";
 import { apiGet, apiPost } from "@/lib/api/client";
 import { ApiError } from "@/lib/api/error";
-import type { MealPlan, Violation } from "@/lib/api/types";
+import type { InterpretedConstraint, MealPlan, Violation } from "@/lib/api/types";
 import { cx } from "@/lib/cx";
 import { slotsInViolation, splitViolations } from "@/lib/plan";
 import { viewCookie, type ViewMode, type WeekView } from "@/lib/week-view";
@@ -81,7 +81,7 @@ export function WeekBoard({
   }, [router]);
 
   const generate = useCallback(
-    async (constraints: string[]) => {
+    async (constraints: InterpretedConstraint[]) => {
       setError(null);
       setStartedAt(Date.now());
       const controller = new AbortController();

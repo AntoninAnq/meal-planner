@@ -371,7 +371,7 @@ def generate_plan(
     targets: Sequence[SlotTarget] | None = None,
     member_ids: Sequence[uuid.UUID] | None = None,
     guests: Sequence[GuestGroup] = (),
-    user_constraints: Sequence[str] = (),
+    user_constraints: Sequence[Intent | str] = (),
     language: str = "fr",
     exclude_recipe_ids: Sequence[uuid.UUID] = (),
 ) -> tuple[MealPlan, PlanOutcome]:
@@ -381,6 +381,13 @@ def generate_plan(
     parallel one: the plan is a suggestion bank, and regenerating Saturday
     dinner with guests should change Saturday, not fork the week.
     """
+    # A bare string still works — the slot-level repair sends one reason and
+    # has no interpretation step behind it.
+    intents = [
+        entry if isinstance(entry, Intent) else Intent(kind="other", label=str(entry))
+        for entry in user_constraints
+    ]
+
     members = _members_of(db, household_id)
     if member_ids is not None:
         keep = set(member_ids)
@@ -430,6 +437,8 @@ def generate_plan(
         # scope). What changes is what the model sees at the top of a list it
         # was measured walking in order.
         prefer_free_of=_excluded_allergens(inputs),
+        wanted_ingredients=_named_ingredients(intents, WANTED_KINDS),
+        unwanted_ingredients=_named_ingredients(intents, UNWANTED_KINDS),
     )
 
     request = PlanRequest(
@@ -438,7 +447,7 @@ def generate_plan(
         spec=spec,
         prompt_context=_with_guests(prompt_context, guests, guest_aliases),
         language=language,
-        user_constraints=list(user_constraints),
+        user_constraints=[intent.phrase() for intent in intents],
         recent_meals=recent_meals(db, household_id, before=week_start),
         with_catalogue=True,
     )
@@ -481,7 +490,7 @@ def generate_plan(
         catalogue=catalogue,
         generation_input=json.dumps(
             {
-                "constraints": list(user_constraints),
+                "constraints": [intent.phrase() for intent in intents],
                 "guests": [
                     {"life_stage": group.life_stage, "count": group.count} for group in guests
                 ],
@@ -489,6 +498,44 @@ def generate_plan(
         ),
     )
     return plan, outcome
+
+
+#: Which interpreted `kind` the pre-filter can act on, and how. The rest —
+#: `time_budget`, `skip_slot`, `other` — stay prose for the model: they are
+#: about the SHAPE of the week, which is not a property of a recipe.
+WANTED_KINDS = ("leftover", "prefer")
+UNWANTED_KINDS = ("avoid",)
+
+
+@dataclass(frozen=True)
+class Intent:
+    """A confirmed constraint, as the interpretation structured it.
+
+    Kept structured all the way here rather than flattened to a label. The
+    front used to send `"il reste du jambon: jambon"` and the model was asked
+    to find, among sixty candidates, the ones containing ham — a search §6.3
+    puts on the deterministic side.
+    """
+
+    kind: str
+    label: str
+    detail: str | None = None
+
+    def phrase(self) -> str:
+        return f"{self.label}: {self.detail}" if self.detail else self.label
+
+
+def _named_ingredients(intents: Sequence[Intent], kinds: Sequence[str]) -> frozenset[str]:
+    """The ingredient a constraint names, when it names one.
+
+    `detail` is where the interpretation puts the specific value — an
+    ingredient, a day, a duration. Only the ones the referential recognises
+    will match anything, and a word it does not know matches nothing rather
+    than matching wrongly.
+    """
+    return frozenset(
+        intent.detail for intent in intents if intent.kind in kinds and intent.detail
+    )
 
 
 def _excluded_allergens(inputs: Sequence[MemberInput]) -> frozenset[str]:

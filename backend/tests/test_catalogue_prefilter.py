@@ -346,3 +346,51 @@ def test_no_preference_leaves_the_ranking_untouched() -> None:
     assert rank(eligible, last_planned={}, seed="s") == rank(
         eligible, last_planned={}, seed="s", preferred=[]
     )
+
+
+def test_a_named_ingredient_ranks_its_recipes_first() -> None:
+    """« J'ai du jambon dans le frigo » — a search, done in SQL.
+
+    The interpretation already produces `{kind: leftover, detail: jambon}`; the
+    front used to flatten it to prose one line before this. The model was then
+    handed a sentence and asked to find, among sixty candidates, the ones
+    containing ham — which §6.3 puts squarely on the deterministic side.
+    """
+    eligible = _ids(20)
+    with_ham = {eligible[15], eligible[16]}
+
+    ordered = rank(eligible, last_planned={}, seed="s", wanted=with_ham)
+
+    assert set(ordered[:2]) == with_ham
+
+
+def test_an_avoided_ingredient_goes_last_and_is_not_removed() -> None:
+    """« Pas de poisson cette semaine » is a preference, not a filter.
+
+    Deleting a third of the catalogue on a preference is a filter wearing a
+    disguise — and it would make the dish unavailable to the members who never
+    objected.
+    """
+    eligible = _ids(10)
+    fishy = {eligible[0], eligible[1]}
+
+    ordered = rank(eligible, last_planned={}, seed="s", unwanted=fishy)
+
+    assert set(ordered[-2:]) == fishy
+    assert sorted(ordered, key=str) == sorted(eligible, key=str)
+
+
+def test_wanted_and_safe_beats_wanted_alone() -> None:
+    """Both preferences apply, and safety orders first within the wanted band."""
+    eligible = _ids(10)
+
+    ordered = rank(
+        eligible,
+        last_planned={},
+        seed="s",
+        preferred={eligible[5]},
+        wanted={eligible[5], eligible[6]},
+    )
+
+    assert ordered[0] == eligible[5]
+    assert ordered[1] == eligible[6]

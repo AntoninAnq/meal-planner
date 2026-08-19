@@ -180,7 +180,15 @@ class GeneratePlanRequest(BaseModel):
     scope: WeekScope | SlotScope = Field(discriminator="type")
     member_ids: list[uuid.UUID] | None = None
     guests: list[GuestGroupIn] = Field(default_factory=list)
-    constraints: list[str] = Field(default_factory=list)
+    #: The INTERPRETED constraints, structured — not their labels.
+    #:
+    #: They used to arrive as `list[str]`: the front received `{kind, label,
+    #: detail}`, showed it, had it confirmed, then flattened it to prose one
+    #: line before the only place the structure is useful. The model was then
+    #: handed "j'ai du jambon dans le frigo" and asked to find, among sixty
+    #: candidates, the ones containing ham — a search the pre-filter does in
+    #: SQL. §6.3 draws that line: what can be computed is computed.
+    constraints: list[InterpretedConstraint] = Field(default_factory=list)
     #: Language of the dish titles the model writes. Sent by the frontend,
     #: which knows the active locale.
     language: str = "fr"

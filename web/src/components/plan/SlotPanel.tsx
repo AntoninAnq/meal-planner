@@ -152,7 +152,9 @@ export function SlotPanel({
       await apiPost("/meal-plans", {
         scope: { type: "slot", day: date, meal_type: mealType },
         guests,
-        constraints: reason ? [reason] : [],
+        // A bare reason, with no interpretation step behind it — the API
+        // accepts it as an `other` constraint.
+        constraints: reason ? [{ kind: "other", label: reason, detail: null }] : [],
         language: locale,
       });
       refresh();

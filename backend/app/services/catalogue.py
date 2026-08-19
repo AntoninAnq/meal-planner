@@ -40,6 +40,7 @@ from sqlalchemy.orm import Session
 
 from app.db.models import (
     Ingredient,
+    IngredientAlias,
     MealPlan,
     PlannedDish,
     Recipe,
@@ -48,6 +49,7 @@ from app.db.models import (
     RecipeSuitableStage,
 )
 from app.domain.enums import DishType, LifeStage
+from app.domain.ingredient_names import normalise, variants
 from app.domain.planning import SlotSpec
 
 #: Dish types a meal slot never accepts. `main` and `starter` pass, and so does
@@ -160,6 +162,8 @@ def rank(
     last_planned: Mapping[uuid.UUID, date],
     seed: str,
     preferred: Collection[uuid.UUID] = (),
+    wanted: Collection[uuid.UUID] = (),
+    unwanted: Collection[uuid.UUID] = (),
 ) -> list[uuid.UUID]:
     """Safe for everyone first, then never served, then least recently served.
 
@@ -196,10 +200,27 @@ def rank(
     # deriving `complexity` had rewritten the table and Postgres handed the
     # rows back in a new physical order. The whole "the reserve is recomputed,
     # never stored" design rests on this line.
-    wanted = set(preferred)
-    safe = [recipe_id for recipe_id in eligible if recipe_id in wanted]
-    rest = [recipe_id for recipe_id in eligible if recipe_id not in wanted]
-    return _by_staleness(safe, last_planned, seed) + _by_staleness(rest, last_planned, seed)
+    safe, asked, refused = set(preferred), set(wanted), set(unwanted)
+
+    def tier(recipe_id: uuid.UUID) -> int:
+        """Five bands, most wanted first. Ordering only — nothing is removed.
+
+        `unwanted` lands last rather than being dropped: the household said
+        "pas de poisson cette semaine", which is a preference, and a preference
+        that silently deletes a third of the catalogue is a filter wearing a
+        disguise.
+        """
+        if recipe_id in refused:
+            return 4
+        if recipe_id in asked:
+            return 0 if recipe_id in safe else 1
+        return 2 if recipe_id in safe else 3
+
+    ordered: list[uuid.UUID] = []
+    for band in range(5):
+        group = [recipe_id for recipe_id in eligible if tier(recipe_id) == band]
+        ordered += _by_staleness(group, last_planned, seed)
+    return ordered
 
 
 def _by_staleness(
@@ -283,6 +304,8 @@ class SqlCatalogue:
         limit: int,
         exclude: frozenset[uuid.UUID] = frozenset(),
         prefer_free_of: frozenset[str] = frozenset(),
+        wanted_ingredients: frozenset[str] = frozenset(),
+        unwanted_ingredients: frozenset[str] = frozenset(),
     ) -> None:
         self._db = db
         self._household = household
@@ -296,6 +319,11 @@ class SqlCatalogue:
         #: of them are ranked first — see `rank`. NOT a filter: the others stay
         #: in the pool for a second dish.
         self._prefer_free_of = prefer_free_of
+        #: Ingredient names the household named this week — `leftover: jambon`
+        #: ranks its recipes first, `avoid: poisson` ranks them last. Normalised
+        #: names, resolved through the referential like any other line.
+        self._wanted_ingredients = wanted_ingredients
+        self._unwanted_ingredients = unwanted_ingredients
         self._ranked = self._rank(household_id, week_start)
         self._chosen = self._decorate(self._ranked[:limit])
         self._by_handle = {candidate.handle: candidate for candidate in self._chosen}
@@ -459,7 +487,54 @@ class SqlCatalogue:
             last_planned=self._last_planned(household_id),
             seed=f"{household_id}:{week_start.isoformat()}",
             preferred=self._free_of(eligible, self._prefer_free_of),
+            wanted=self._containing(eligible, self._wanted_ingredients),
+            unwanted=self._containing(eligible, self._unwanted_ingredients),
         )
+
+    def _containing(self, recipe_ids: list[uuid.UUID], names: frozenset[str]) -> set[uuid.UUID]:
+        """Recipes holding any of these ingredients, resolved through the referential.
+
+        The household writes `jambon`; the catalogue holds an ingredient id.
+        The same normalisation the resolution pass uses does the mapping, so a
+        request lands on exactly the recipes a human would say contain it — and
+        a word the referential does not know matches nothing, silently and
+        correctly.
+        """
+        if not names or not recipe_ids:
+            return set()
+
+        # A local index rather than the pipeline's: `app.catalog` is off limits
+        # to anything served over HTTP (`tests/test_catalog_boundaries.py`), and
+        # this is three lines of the same two tables.
+        index: dict[str, uuid.UUID] = {}
+        for ingredient in self._db.scalars(select(Ingredient)):
+            index[ingredient.normalized_name] = ingredient.id
+        for alias in self._db.scalars(select(IngredientAlias)):
+            index.setdefault(alias.normalized_name, alias.ingredient_id)
+
+        ingredient_ids: set[uuid.UUID] = set()
+        for name in names:
+            spelling = normalise(name)
+            # Exact first, then the same relaxation resolution uses — someone
+            # typing `courgettes` must land on `courgette`.
+            found = index.get(spelling) or next(
+                (index[candidate] for candidate in variants(spelling) if candidate in index),
+                None,
+            )
+            if found is not None:
+                ingredient_ids.add(found)
+        if not ingredient_ids:
+            return set()
+
+        return {
+            recipe_id
+            for (recipe_id,) in self._db.execute(
+                select(RecipeIngredient.recipe_id).where(
+                    RecipeIngredient.recipe_id.in_(recipe_ids),
+                    RecipeIngredient.ingredient_id.in_(sorted(ingredient_ids)),
+                )
+            ).all()
+        }
 
     def _free_of(
         self, recipe_ids: list[uuid.UUID], codes: frozenset[str]

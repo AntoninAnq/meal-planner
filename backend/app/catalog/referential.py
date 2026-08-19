@@ -21,7 +21,6 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.catalog.confirmations import approves, load_confirmations
-from app.catalog.ingredient_lines import normalise, variants
 from app.db.models import (
     FoodCategory,
     Ingredient,
@@ -30,6 +29,7 @@ from app.db.models import (
     IngredientFoodCategory,
 )
 from app.domain.enums import AllergenCode
+from app.domain.ingredient_names import normalise, variants
 
 
 def referential_file() -> Path:

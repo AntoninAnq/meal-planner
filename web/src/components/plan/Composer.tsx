@@ -28,7 +28,7 @@ export function Composer({
 }: {
   hasPlan: boolean;
   busy: boolean;
-  onGenerate: (constraints: string[]) => void;
+  onGenerate: (constraints: InterpretedConstraint[]) => void;
 }) {
   const t = useTranslations("composer");
   const tCommon = useTranslations("common");
@@ -56,11 +56,11 @@ export function Composer({
   }
 
   function generate() {
-    onGenerate(
-      (constraints ?? []).map((constraint) =>
-        constraint.detail ? `${constraint.label}: ${constraint.detail}` : constraint.label,
-      ),
-    );
+    // Sent STRUCTURED, not flattened to `label: detail`. The reading produced
+    // `{kind, label, detail}` and the user just confirmed it; throwing the
+    // shape away here is what forced the model to search sixty candidates for
+    // "du jambon" instead of letting the pre-filter rank them.
+    onGenerate(constraints ?? []);
   }
 
   // Editing the text invalidates the reading of it: generating against chips
