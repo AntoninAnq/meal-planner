@@ -24,7 +24,19 @@ where the pre-filter has to be right, which is where a harness earns its keep.
 Three hundred would bury that case; eighty keeps the file readable, and a
 fixture nobody can read explains no failure.
 
-Deterministic: same seed, same file, so regenerating produces an empty diff.
+Deterministic for a GIVEN referential: same seed and same `ingredients.yaml`
+produce the same file. But `db/ingredients.yaml` grows — sixty entries and
+ninety aliases were added in one afternoon — and the draw is taken from it, so
+regenerating after a referential change yields a DIFFERENT catalogue.
+
+**That is why regenerating is a deliberate act, not a reflex.** §14.1 wants the
+dataset frozen precisely so October's score can be compared with December's; a
+fixture rebuilt whenever the referential moves would mean believing the model
+changed when the data did. Every score recorded before a regeneration becomes
+incomparable with every score after it.
+
+So: regenerate when you intend to reset the baseline, and say so in the commit.
+Not because the referential grew.
 
     docker compose run --rm --no-deps -v "$PWD/eval:/eval" -v "$PWD/db:/db:ro" \\
         -w / api python /eval/generate_fixtures.py
@@ -300,7 +312,13 @@ HOUSEHOLDS: list[dict[str, Any]] = [
 ]
 
 HEADER = """\
-# ENGENDRÉ — ne pas éditer à la main. Régénérer avec `eval/generate_fixtures.py`.
+# ENGENDRÉ — ne pas éditer à la main.
+#
+# ⚠️  NE PAS RÉGÉNÉRER par réflexe. Le tirage vient de `db/ingredients.yaml`, qui
+# grossit : régénérer après une modification du référentiel produit un AUTRE
+# catalogue, et remet donc à zéro le repère du §14.1. Tous les scores mesurés
+# avant deviennent incomparables avec ceux d'après. On régénère quand on veut
+# délibérément changer de référence, et on l'écrit dans le message de commit.
 #
 # Composé depuis `db/ingredients.yaml`, notre propre fichier. Aucun contenu
 # externe, aucun modèle : ni I9 ni I7 ne sont en jeu. Ce que le banc d'essai

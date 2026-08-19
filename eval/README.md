@@ -65,6 +65,13 @@ de production ne permet aucune comparaison dans le temps : le catalogue grossit,
 l'historique change, et le score d'octobre n'est pas comparable à celui de
 décembre. On croirait avoir changé de modèle alors qu'on a changé de données.
 
+> **« Figées » veut dire qu'on ne les régénère pas.** Le tirage vient de
+> `db/ingredients.yaml`, qui grossit — soixante entrées et quatre-vingt-dix alias
+> en une après-midi. Relancer `generate_fixtures.py` après chaque évolution du
+> référentiel reproduirait exactement le défaut que ce paragraphe décrit, en
+> croyant bien faire. **Régénérer remet le repère à zéro** : c'est un acte
+> délibéré, qui s'annonce dans le message de commit, pas un réflexe.
+
 **5 runs minimum par cas, des taux jamais un booléen.** Un run par cas ne mesure
 rien sur un système stochastique. Un golden qui passe une fois sur deux et qu'on
 relance jusqu'au vert est pire que pas de golden — il donne une confiance fausse.
