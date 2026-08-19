@@ -231,6 +231,12 @@ def catalogue_for(
             slots=max(len(slots), 1), dishes_per_slot=_dishes_per_slot(db, household_id)
         ),
         exclude=exclude,
+        # The same preference, or rebuilding the ranking here would produce a
+        # different order from the one the generation used — and the reserve is
+        # recomputed rather than stored precisely because the two must match.
+        prefer_free_of=_excluded_allergens(
+            _member_inputs(db, household_id, served or members)
+        ),
     )
 
 
@@ -420,6 +426,10 @@ def generate_plan(
             slots=len(spec), dishes_per_slot=_dishes_per_slot(db, household_id)
         ),
         exclude=frozenset(exclude_recipe_ids),
+        # Ranked first, never filtered out (§6.2 keeps an intolerance at member
+        # scope). What changes is what the model sees at the top of a list it
+        # was measured walking in order.
+        prefer_free_of=_excluded_allergens(inputs),
     )
 
     request = PlanRequest(
@@ -479,6 +489,14 @@ def generate_plan(
         ),
     )
     return plan, outcome
+
+
+def _excluded_allergens(inputs: Sequence[MemberInput]) -> frozenset[str]:
+    """Every allergen anyone at the table excludes, whatever the severity."""
+    codes: set[str] = set()
+    for entry in inputs:
+        codes |= {str(code) for code in entry.severe_allergens | entry.intolerances}
+    return frozenset(codes)
 
 
 def _eater_safety(

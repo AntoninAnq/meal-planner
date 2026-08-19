@@ -31,7 +31,7 @@ from __future__ import annotations
 
 import random
 import uuid
-from collections.abc import Mapping, Sequence
+from collections.abc import Collection, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import date
 
@@ -159,8 +159,24 @@ def rank(
     *,
     last_planned: Mapping[uuid.UUID, date],
     seed: str,
+    preferred: Collection[uuid.UUID] = (),
 ) -> list[uuid.UUID]:
-    """Never served first, then least recently served. Pure, so it is testable.
+    """Safe for everyone first, then never served, then least recently served.
+
+    `preferred` holds the recipes that carry no allergen anyone at the table
+    excludes. They are ranked FIRST — not filtered, ranked. Nothing is
+    forbidden: a recipe one member cannot eat stays in the pool and remains
+    choosable as a second dish, which is the product's whole premise (§4.9).
+
+    Why ordering is a real lever and not a decoration: the model was observed
+    walking the candidate list in order, taking `r_008, r_007, r_005…` down the
+    page. On the real catalogue the pool holds 390 recipes and only 60 reach
+    the prompt, so putting the safe ones in front makes what the model sees
+    mostly safe — and measured, it served an intolerant eater their allergen on
+    9 assignments out of 45 when it was not.
+
+    The deterministic check still runs afterwards (§6.2 step 4). This gives it
+    less to do; it does not replace it.
 
     The seed is `household_id` + `week_start`, and it buys two properties that
     pull in opposite directions. Replaying the same week yields the same
@@ -180,11 +196,20 @@ def rank(
     # deriving `complexity` had rewritten the table and Postgres handed the
     # rows back in a new physical order. The whole "the reserve is recomputed,
     # never stored" design rests on this line.
+    wanted = set(preferred)
+    safe = [recipe_id for recipe_id in eligible if recipe_id in wanted]
+    rest = [recipe_id for recipe_id in eligible if recipe_id not in wanted]
+    return _by_staleness(safe, last_planned, seed) + _by_staleness(rest, last_planned, seed)
+
+
+def _by_staleness(
+    recipe_ids: Sequence[uuid.UUID], last_planned: Mapping[uuid.UUID, date], seed: str
+) -> list[uuid.UUID]:
     fresh = sorted(
-        (recipe_id for recipe_id in eligible if recipe_id not in last_planned), key=str
+        (recipe_id for recipe_id in recipe_ids if recipe_id not in last_planned), key=str
     )
     served = sorted(
-        (recipe_id for recipe_id in eligible if recipe_id in last_planned),
+        (recipe_id for recipe_id in recipe_ids if recipe_id in last_planned),
         key=lambda recipe_id: (last_planned[recipe_id], str(recipe_id)),
     )
 
@@ -257,6 +282,7 @@ class SqlCatalogue:
         household: HouseholdFilter,
         limit: int,
         exclude: frozenset[uuid.UUID] = frozenset(),
+        prefer_free_of: frozenset[str] = frozenset(),
     ) -> None:
         self._db = db
         self._household = household
@@ -266,6 +292,10 @@ class SqlCatalogue:
         #: proposes the dish someone just said no to is the one answer that
         #: makes the feature useless.
         self._exclude = exclude
+        #: Allergen codes someone at the table excludes. Recipes carrying none
+        #: of them are ranked first — see `rank`. NOT a filter: the others stay
+        #: in the pool for a second dish.
+        self._prefer_free_of = prefer_free_of
         self._ranked = self._rank(household_id, week_start)
         self._chosen = self._decorate(self._ranked[:limit])
         self._by_handle = {candidate.handle: candidate for candidate in self._chosen}
@@ -423,11 +453,30 @@ class SqlCatalogue:
         return {recipe_id: last for recipe_id, last in rows}
 
     def _rank(self, household_id: uuid.UUID, week_start: date) -> list[uuid.UUID]:
+        eligible = self._eligible()
         return rank(
-            self._eligible(),
+            eligible,
             last_planned=self._last_planned(household_id),
             seed=f"{household_id}:{week_start.isoformat()}",
+            preferred=self._free_of(eligible, self._prefer_free_of),
         )
+
+    def _free_of(
+        self, recipe_ids: list[uuid.UUID], codes: frozenset[str]
+    ) -> set[uuid.UUID]:
+        """Recipes carrying none of the allergens anyone at the table excludes."""
+        if not codes or not recipe_ids:
+            return set()
+        carriers = {
+            recipe_id
+            for (recipe_id,) in self._db.execute(
+                select(RecipeAllergen.recipe_id).where(
+                    RecipeAllergen.recipe_id.in_(recipe_ids),
+                    RecipeAllergen.allergen_code.in_(sorted(codes)),
+                )
+            ).all()
+        }
+        return {recipe_id for recipe_id in recipe_ids if recipe_id not in carriers}
 
     def _decorate(self, shown: list[uuid.UUID]) -> list[Candidate]:
         """Titles and ingredients for the candidates that reach the prompt.

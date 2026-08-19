@@ -381,6 +381,21 @@ Ce projet est **délibérément agentic**. La frontière ci-dessous préserve le
 >
 > La dernière correction est structurelle et vaut au-delà de ce cas : **le graphe rendait la dernière tentative, pas la meilleure.** Le rejeu monte la température délibérément, donc une tentative plus chaude peut répondre plus mal — mesuré, une tentative à 2 violations suivie d'une à 18, tous les mangeurs servis deux fois, et c'est la seconde qui sortait. Rejouer ne peut plus dégrader le résultat.
 
+> **Une intolérance est préférée au classement, jamais exclue du pool.** La comparaison entre deux cas du banc a posé la question : `severe_milk_allergy` était à zéro manquement parce que le pré-filtre retire le lait de l'enveloppe, quand `member_intolerance` en comptait 9 sur 45 parce que le gluten y reste et que le modèle doit s'en souvenir.
+>
+> L'exclure aurait garanti le zéro et coûté trop cher : un enfant intolérant au gluten, et plus personne au foyer ne voit de pâtes — alors que les adultes peuvent en manger. Le §6.2 range l'intolérance en portée membre pour cette raison, et elle y reste.
+>
+> Ce qui change est **l'ordre**, pas ce qui est permis : les recettes ne portant aucun allergène exclu à cette table sont classées en tête. Le levier est réel parce que le mécanisme d'échec l'était : **le modèle a été observé parcourant la liste de candidats dans l'ordre**, et sur le vrai catalogue le pool fait 390 recettes dont 60 seulement atteignent le prompt.
+>
+> | | avant | après |
+> |---|---|---|
+> | manquements sur 45 assignations | 9 | **0** |
+> | tentatives moyennes | 3,00 | **1,40** |
+> | latence médiane | 90,3 s | **30,3 s** |
+> | créneaux à deux plats | 0 | 0,4 |
+>
+> La dernière ligne est ce qu'une exclusion aurait tué : le second plat reste possible, puisque rien n'a été retiré du pool. Et le contrôle déterministe de l'étape 4 tourne toujours — le classement lui donne moins de travail, il ne le remplace pas.
+
 ### 6.3 La règle de répartition
 
 > **Contrainte dure** → SQL, filtre l'ensemble de candidats
@@ -1227,7 +1242,7 @@ Un modèle qui note le plan généré face à la référence capte des choses qu
 | `pgvector` / recherche sémantique | Option future |
 | Désactivation de membres par créneau à la génération | Échappatoire connue, sans nouvelle table, non retenue au MVP |
 | LLM-juge dans le banc d'essai | Phase ultérieure |
-| **Réparation déterministe d'une assignation** | Non retenu pour l'instant. Quand `allergen_for_eater` survit aux trois tentatives, le code pourrait remplacer le plat par le meilleur candidat sûr plutôt que de rendre le plan avec ses violations. Mesuré : 6 manquements sur 45 assignations, contre 30 avant les corrections du §6.2 — signalés, jamais silencieux, et la sécurité **dure** (allergie sévère) est à 0 par exclusion du pool. Le §6.2 prescrit le rejeu, pas la réparation, et faire composer une partie du plan par le côté déterministe est une décision à part entière. **À rouvrir après la comparaison de modèles** (§14.6) : la latence est passée de 28 s à 87 s parce que le rejeu part 2,6 fois sur 3, ce qui désigne le modèle comme sujet — câbler une réparation avant de savoir si un meilleur modèle règle le problème, c'est ajouter une pièce qu'on retirerait peut-être. |
+| **Réparation déterministe d'une assignation** | **Devenu sans objet.** Le problème qu'elle devait corriger a été réglé par le classement (voir l'encadré du §6.2 sur la préférence), qui met les manquements à 0. À rouvrir seulement si un catalogue ou un foyer futur les fait réapparaître. Historique : non retenu pour l'instant, Quand `allergen_for_eater` survit aux trois tentatives, le code pourrait remplacer le plat par le meilleur candidat sûr plutôt que de rendre le plan avec ses violations. Mesuré : 6 manquements sur 45 assignations, contre 30 avant les corrections du §6.2 — signalés, jamais silencieux, et la sécurité **dure** (allergie sévère) est à 0 par exclusion du pool. Le §6.2 prescrit le rejeu, pas la réparation, et faire composer une partie du plan par le côté déterministe est une décision à part entière. **À rouvrir après la comparaison de modèles** (§14.6) : la latence est passée de 28 s à 87 s parce que le rejeu part 2,6 fois sur 3, ce qui désigne le modèle comme sujet — câbler une réparation avant de savoir si un meilleur modèle règle le problème, c'est ajouter une pièce qu'on retirerait peut-être. |
 | Passage en asynchrone (job + polling) | **Non retenu — mesuré.** Une semaine complète prend ~28 s sur `qwen3:8b` en local une fois le pré-filtre branché (§14.6), contre 182 s sans catalogue. L'endpoint synchrone tient. À rouvrir si le rejeu à trois tentatives devient fréquent. |
 | Facturation, multi-foyer réel, gestion de comptes | Après validation du wedge |
 | Version anglaise du produit | Demande un catalogue distinct, pas seulement des libellés |

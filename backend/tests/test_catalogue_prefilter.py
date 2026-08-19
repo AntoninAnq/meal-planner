@@ -307,3 +307,42 @@ def test_a_category_never_eaten_is_named_once_others_exist() -> None:
     lines = render_rotation({"cheese": date(2026, 12, 12)}, before=date(2026, 12, 14))
 
     assert "fish: jamais" in lines
+
+
+def test_safe_candidates_are_ranked_first_not_filtered_out() -> None:
+    """The decision that replaced excluding an intolerance from the pool.
+
+    Ranked, not removed: a dish one member cannot eat stays choosable as a
+    second dish, which is the product's premise (§4.9). What changes is what
+    the model sees at the top of a list it was measured walking in order.
+    """
+    eligible = _ids(10)
+    safe = {eligible[7], eligible[8], eligible[9]}
+
+    ordered = rank(eligible, last_planned={}, seed="s", preferred=safe)
+
+    assert set(ordered[:3]) == safe
+    # Nothing was lost — that is the whole difference with a filter.
+    assert sorted(ordered, key=str) == sorted(eligible, key=str)
+
+
+def test_freshness_still_applies_inside_each_group() -> None:
+    """Preference orders the groups; staleness still orders within them."""
+    eligible = _ids(6)
+    safe = {eligible[0], eligible[1], eligible[2]}
+    served = {eligible[0]: date(2026, 8, 10), eligible[3]: date(2026, 8, 10)}
+
+    ordered = rank(eligible, last_planned=served, seed="s", preferred=safe)
+
+    # The safe-but-already-served one closes its group rather than opening it.
+    assert ordered[2] == eligible[0]
+    assert ordered[5] == eligible[3]
+
+
+def test_no_preference_leaves_the_ranking_untouched() -> None:
+    """A household with no allergen constraint must see exactly what it saw."""
+    eligible = _ids(20)
+
+    assert rank(eligible, last_planned={}, seed="s") == rank(
+        eligible, last_planned={}, seed="s", preferred=[]
+    )
