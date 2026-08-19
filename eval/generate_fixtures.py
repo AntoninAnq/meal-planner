@@ -300,6 +300,21 @@ HOUSEHOLDS: list[dict[str, Any]] = [
         "constraints": [],
     },
     {
+        "key": "founder",
+        "why": "The household the product is built for, described by its own "
+               "member: two adults and a six-year-old who eats what they eat. "
+               "It carries the only human reference plan (§14.4), so it is the "
+               "only case whose weeks are judged on quality and not merely on "
+               "validity. The baby of that household is missing on purpose — "
+               "see `docs/ARCHITECTURE.md` §15 on derived dishes.",
+        "members": [
+            {"alias": "m1", "life_stage": "teen_adult"},
+            {"alias": "m2", "life_stage": "teen_adult"},
+            {"alias": "m3", "life_stage": "young_child"},
+        ],
+        "constraints": [],
+    },
+    {
         "key": "no_constraint",
         "why": "The baseline. Nothing is filtered, `allergens_verified` is not "
                "required, and the pool is at its widest.",
@@ -328,7 +343,30 @@ HEADER = """\
 
 
 def main() -> None:
+    import argparse
+
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--households-only",
+        action="store_true",
+        help="rewrite households.yaml and LEAVE the catalogue alone — the "
+        "catalogue is the frozen baseline (§14.1) and regenerating it after a "
+        "referential change silently makes every past score incomparable",
+    )
+    args = parser.parse_args()
+
     FIXTURES.mkdir(exist_ok=True)
+
+    if args.households_only:
+        (FIXTURES / "households.yaml").write_text(
+            HEADER
+            + "\n"
+            + yaml.safe_dump({"households": HOUSEHOLDS}, allow_unicode=True, sort_keys=False),
+            encoding="utf-8",
+        )
+        print(f"{len(HOUSEHOLDS)} foyers — catalogue inchangé")
+        return
+
     recipes = build_catalogue()
 
     (FIXTURES / "catalogue.yaml").write_text(

@@ -243,6 +243,14 @@ class RunResult:
     #: Slots carrying more than one dish. The product's whole premise, and the
     #: only way to see whether it ever happens.
     slots_with_two_dishes: int = 0
+    #: Mean declared complexity, split the way a week is actually lived: the
+    #: nights someone comes home late, and the days there is time.
+    weeknight_complexity: float = 0.0
+    weekend_complexity: float = 0.0
+    #: Dishes appearing on more than one slot. Repetition is a FEATURE here —
+    #: one preparation served twice is the §2.3 objective, not a variety
+    #: failure.
+    repeated_dishes: int = 0
     violations: list[str] = field(default_factory=list)
     allergen_violations: int = 0
     outside_candidates: int = 0
@@ -282,6 +290,34 @@ def one_run(session_factory: sessionmaker[Session], household_id: uuid.UUID) -> 
             per_slot[key] = per_slot.get(key, 0) + 1
 
         pool = ps.catalogue_for(db, household_id=household_id, week_start=WEEK).pool_size
+
+        # Effort, read where the household actually feels it. Tuesday to Friday
+        # are the nights nobody has time; Monday and the weekend are when
+        # cooking is possible — Monday because it gets cooked on Sunday.
+        from app.db.models import Recipe
+
+        complexity = dict(
+            db.execute(
+                select(Recipe.id, Recipe.complexity).where(
+                    Recipe.id.in_([d.recipe_id for d in dishes if d.recipe_id] or [None])
+                )
+            ).all()
+        )
+        weeknight = [
+            complexity[d.recipe_id]
+            for d in dishes
+            if d.recipe_id and 1 <= d.day_of_week <= 4 and complexity.get(d.recipe_id)
+        ]
+        weekend = [
+            complexity[d.recipe_id]
+            for d in dishes
+            if d.recipe_id and d.day_of_week in (0, 5, 6) and complexity.get(d.recipe_id)
+        ]
+
+        occurrences: dict[object, int] = {}
+        for dish in dishes:
+            key = dish.recipe_id or dish.free_text_label
+            occurrences[key] = occurrences.get(key, 0) + 1
 
         # The safety check, done independently of the pipeline that produced the
         # plan: this is the one number that must be zero, so it is not read back
@@ -337,6 +373,9 @@ def one_run(session_factory: sessionmaker[Session], household_id: uuid.UUID) -> 
             outside_candidates=codes.count("dish_outside_candidates"),
             pool_size=pool,
             slots_with_two_dishes=sum(1 for count in per_slot.values() if count > 1),
+            weeknight_complexity=statistics.mean(weeknight) if weeknight else 0.0,
+            weekend_complexity=statistics.mean(weekend) if weekend else 0.0,
+            repeated_dishes=sum(1 for count in occurrences.values() if count > 1),
         )
 
 
@@ -408,6 +447,25 @@ def report(case: str, runs: list[RunResult], golden: dict[str, Any]) -> None:
                statistics.mean(run.distinct_dishes for run in ok))
     if "candidates_minimum" in expected:
         _check("candidats", f">= {expected['candidates_minimum']}", ok[0].pool_size)
+    print(
+        f"  complexité mar-ven   {statistics.mean(r.weeknight_complexity for r in ok):.2f}"
+        f"   ·   lun+we {statistics.mean(r.weekend_complexity for r in ok):.2f}"
+    )
+    if "complexity_gap" in expected:
+        # The GAP, not two bounds. Two independent thresholds were both green
+        # on 1.92 and 1.98 — the same number, and no distinction at all.
+        _check(
+            "écart d'effort",
+            expected["complexity_gap"],
+            statistics.mean(r.weekend_complexity - r.weeknight_complexity for r in ok),
+        )
+    if "repeated_dishes" in expected:
+        _check(
+            "plats répétés",
+            expected["repeated_dishes"],
+            statistics.mean(r.repeated_dishes for r in ok),
+        )
+
     # Reported, never asserted. §2.3 makes minimising preparations the
     # objective, so a threshold on the number of two-dish slots would be a
     # number nobody can justify — in either direction.

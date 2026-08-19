@@ -1,0 +1,59 @@
+# Le foyer pour lequel le produit est écrit, décrit par son propre membre.
+# C'est le seul cas qui porte une référence humaine, donc le seul dont les
+# semaines sont jugées sur la QUALITÉ et pas seulement sur la validité.
+case: founder
+runs: 5
+
+expected_exact:
+  # Deux adultes et un enfant de 6 ans qui mange ce qu'ils mangent. Aucune
+  # contrainte ne force un second plat.
+  eaters: 3
+
+expected_properties:
+  allergen_violations: 0
+  dishes_outside_candidates: 0
+  # « L'enfant de 6 ans mange comme les adultes. » Un second plat n'est donc
+  # pas interdit — le §4.2 refuse d'en faire une contrainte dure — mais en
+  # produire un ici serait cuisiner deux fois sans raison.
+  max_dishes_per_slot: "<= 1"
+  # « Des recettes rapides du mardi au vendredi, un peu plus long le week-end
+  # et le lundi. » Ce qui compte est l'ÉCART, pas deux bornes séparées.
+  #
+  # Première version : `weeknight <= 2` et `weekend >= 1.5`. Les deux passaient
+  # — avec 1,92 et 1,98, c'est-à-dire le même nombre. Deux bornes indépendantes
+  # peuvent être vertes pendant que la distinction qu'elles décrivent n'existe
+  # pas, ce qui est la troisième fois aujourd'hui que ce piège se referme.
+  complexity_gap: ">= 0.4"
+  # « Une répétition d'un repas facile à faire en grande quantité, par exemple
+  # lasagnes ou gratin. » C'est la douleur du §2.3 prise à l'envers : répéter
+  # n'est pas un échec de variété, c'est une préparation économisée.
+  repeated_dishes: ">= 1"
+
+# ── Référence humaine ──────────────────────────────────────────────────────
+# Ne fait échouer aucun test (§14.2). Sert d'étalon aux trois distances du
+# §14.4 — et le §14.4 interdit de scorer l'IDENTITÉ des recettes : une semaine
+# qui n'en partage aucune avec celle-ci peut être tout aussi bonne. C'est la
+# FORME qui est l'étalon.
+human_reference:
+  shape:
+    lundi_soir: "plus long — préparé le week-end, réchauffé"
+    mardi_soir: "rapide"
+    mercredi_soir: "rapide"
+    jeudi_soir: "rapide — idéalement la répétition du plat du lundi"
+    vendredi_soir: "rapide"
+    samedi_midi: "rapide"
+    samedi_soir: "plus long — on a le temps"
+    dimanche_midi: "plus long"
+    dimanche_soir: "rapide, ou le reste de midi"
+  batch:
+    note: >-
+      Un plat facile en grande quantité — lasagnes, gratin — cuisiné une fois
+      et servi deux. C'est la fonction objectif du §2.3 rendue concrète :
+      minimiser les préparations, pas les plats.
+  absent:
+    note: >-
+      Le bébé de 16 mois de ce foyer ne figure pas ici. Il mange des choses
+      extraites du plat familial — pâtes ou riz bien cuits oui, concombre non
+      — ce qui est le niveau 2 du §4.9 et que le système ne sait pas encore
+      produire. Sa place dans cette référence attend cette capacité, elle
+      n'est pas oubliée.
