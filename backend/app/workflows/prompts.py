@@ -156,13 +156,6 @@ def build_context(
     if user_constraints:
         blocks.append("THIS WEEK\n" + "\n".join(f"- {line}" for line in user_constraints))
 
-    if prompt_context.rotation_signals:
-        signals = "\n".join(
-            f"- {category}: {days} days since last time"
-            for category, days in sorted(prompt_context.rotation_signals.items())
-        )
-        blocks.append(f"SOFT SIGNALS\n{signals}")
-
     if recent_meals:
         # Stated as an exclusion, not as a preference. Measured on qwen3:8b:
         # presented as a soft signal, a second week reused 7 of its 7 dishes

@@ -87,8 +87,26 @@ def test_intolerances_stay_member_scoped() -> None:
     assert AllergenCode.MILK not in context.household_excluded_allergens
 
 
-def test_rotation_signals_are_passed_as_context() -> None:
-    """Rotation is a SIGNAL, never a filter."""
-    context, _ = build_prompt_context(MEMBERS, rotation_signals={"legumes": 23, "fish": 4})
+def test_rotation_reaches_the_prompt_as_a_signal_and_not_a_rule() -> None:
+    """Rotation is a SIGNAL, never a filter (§6.3).
 
-    assert context.rotation_signals == {"legumes": 23, "fish": 4}
+    It used to travel on `PromptContext`, drawn in V0 and fed by nobody. When
+    the signal was actually built it went through `PlanRequest` instead, and
+    the two seams coexisted with the older one dead. This checks the live one —
+    and that its wording still yields to what the household wants, because a
+    block that reads as an instruction would make a wish into a constraint.
+    """
+    from app.workflows.prompts import build_context
+
+    context, _ = build_prompt_context(MEMBERS)
+    text = build_context(
+        spec=[],
+        prompt_context=context,
+        rotation=["legumes_secs: 23 jours", "fish: 4 jours"],
+    )
+
+    assert "legumes_secs: 23 jours" in text
+    assert "ROTATION" in text
+    # Worded as an opportunity. `SOFT SIGNALS` said nothing about how binding
+    # it was, and a model reads a bare list as an instruction.
+    assert "come first" in text

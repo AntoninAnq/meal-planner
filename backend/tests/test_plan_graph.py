@@ -34,7 +34,7 @@ MEMBERS = [
 
 
 def _request(**kwargs: Any) -> PlanRequest:
-    context, _ = build_prompt_context(MEMBERS, rotation_signals={"legumes": 23})
+    context, _ = build_prompt_context(MEMBERS)
     return PlanRequest(spec=SPEC, prompt_context=context, **kwargs)
 
 
@@ -144,12 +144,24 @@ def test_no_member_identifier_reaches_the_prompt() -> None:
 
 
 def test_soft_signals_reach_the_prompt_as_context() -> None:
-    """Rotation is a SIGNAL, never a filter — so it belongs in the prompt."""
+    """Rotation is a SIGNAL, never a filter — so it belongs in the prompt.
+
+    This asserted `"legumes" in context` while feeding a `rotation_signals`
+    field that nothing in production ever populated. It passed for years and
+    was the only thing keeping a dead seam alive — which is how a duplicate
+    mechanism survives: a test exercises the one nobody uses.
+    """
     llm = FakeLLMClient([GOOD])
-    run_plan(_request(recent_meals=["Gratin de courgettes"]), llm=llm)
+    run_plan(
+        _request(
+            recent_meals=["Gratin de courgettes"],
+            rotation=["legumes_secs: 23 jours"],
+        ),
+        llm=llm,
+    )
 
     context = llm.calls[0]["context"]
-    assert "legumes" in context
+    assert "legumes_secs: 23 jours" in context
     assert "Gratin de courgettes" in context
 
 

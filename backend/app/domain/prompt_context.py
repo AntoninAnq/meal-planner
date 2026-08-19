@@ -15,7 +15,7 @@ This module is pure: no database, no I/O. It is the seam that makes I5 testable.
 from __future__ import annotations
 
 import uuid
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from app.domain.enums import AllergenCode, ConstraintSeverity, LifeStage
 
@@ -47,8 +47,6 @@ class PromptContext:
     #: Severe allergies are excluded household-wide, so they are stated
     #: once for the whole prompt rather than per member.
     household_excluded_allergens: tuple[AllergenCode, ...]
-    #: Days since the last occurrence, per food category.
-    rotation_signals: dict[str, int] = field(default_factory=dict)
 
     def aliases(self) -> tuple[str, ...]:
         return tuple(member.alias for member in self.members)
@@ -56,10 +54,15 @@ class PromptContext:
 
 def build_prompt_context(
     members: list[MemberInput],
-    *,
-    rotation_signals: dict[str, int] | None = None,
 ) -> tuple[PromptContext, dict[str, uuid.UUID]]:
-    """Return the DTO and the alias -> member_id mapping the caller keeps."""
+    """Return the DTO and the alias -> member_id mapping the caller keeps.
+
+    It used to carry a `rotation_signals` field, drawn in V0 and never fed by
+    anyone. When the rotation signal was actually built it went through
+    `PlanRequest` instead — leaving two seams for one idea, one of them dead.
+    Removed rather than wired up: the live one reads `recipe_food_category`,
+    which did not exist when this was drawn.
+    """
     contexts: list[MemberContext] = []
     mapping: dict[str, uuid.UUID] = {}
     household_severe: set[AllergenCode] = set()
@@ -80,7 +83,6 @@ def build_prompt_context(
     context = PromptContext(
         members=tuple(contexts),
         household_excluded_allergens=tuple(sorted(household_severe)),
-        rotation_signals=dict(rotation_signals or {}),
     )
     return context, mapping
 
