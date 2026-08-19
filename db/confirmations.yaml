@@ -18,6 +18,9 @@ confirmations:
 - name: Agar-agar
   allergens: []
   at: '2026-08-17T14:03:59+00:00'
+- name: Agneau
+  allergens: []
+  at: '2026-08-19T08:36:36+00:00'
 - name: Ail
   allergens: []
   at: '2026-08-17T14:03:59+00:00'
@@ -32,6 +35,9 @@ confirmations:
   allergens:
   - fish
   at: '2026-08-17T14:07:29+00:00'
+- name: Andouille
+  allergens: []
+  at: '2026-08-19T08:36:36+00:00'
 - name: Aneth
   allergens: []
   at: '2026-08-17T14:03:59+00:00'
@@ -50,6 +56,10 @@ confirmations:
 - name: Banane
   allergens: []
   at: '2026-08-17T14:03:59+00:00'
+- name: Bar
+  allergens:
+  - fish
+  at: '2026-08-19T08:37:40+00:00'
 - name: Basilic
   allergens: []
   at: '2026-08-17T14:03:59+00:00'
@@ -86,6 +96,9 @@ confirmations:
 - name: Blette
   allergens: []
   at: '2026-08-17T14:03:59+00:00'
+- name: Boudin noir
+  allergens: []
+  at: '2026-08-19T08:36:36+00:00'
 - name: Bouillon de bœuf
   allergens:
   - celery
@@ -101,6 +114,10 @@ confirmations:
   - celery
   - gluten
   at: '2026-08-17T14:05:23+00:00'
+- name: Boulgour
+  allergens:
+  - gluten
+  at: '2026-08-19T08:37:01+00:00'
 - name: Bouquet garni
   allergens:
   - celery
@@ -129,6 +146,16 @@ confirmations:
 - name: Café
   allergens: []
   at: '2026-08-17T14:03:59+00:00'
+- name: Caille
+  allergens: []
+  at: '2026-08-19T08:36:36+00:00'
+- name: Calamar
+  allergens:
+  - molluscs
+  at: '2026-08-19T08:37:46+00:00'
+- name: Canard
+  allergens: []
+  at: '2026-08-19T08:36:36+00:00'
 - name: Canneberge séchée
   allergens:
   - sulphites
@@ -208,6 +235,10 @@ confirmations:
   allergens:
   - sulphites
   at: '2026-08-17T14:07:23+00:00'
+- name: Colin
+  allergens:
+  - fish
+  at: '2026-08-19T08:37:02+00:00'
 - name: Concentré de tomate
   allergens: []
   at: '2026-08-17T14:03:59+00:00'
@@ -217,6 +248,10 @@ confirmations:
 - name: Confiture
   allergens: []
   at: '2026-08-17T14:03:59+00:00'
+- name: Coquille Saint-Jacques
+  allergens:
+  - molluscs
+  at: '2026-08-19T08:37:15+00:00'
 - name: Coriandre en poudre
   allergens: []
   at: '2026-08-17T14:03:59+00:00'
@@ -233,6 +268,10 @@ confirmations:
 - name: Courgette
   allergens: []
   at: '2026-08-17T14:03:59+00:00'
+- name: Crabe
+  allergens:
+  - crustaceans
+  at: '2026-08-19T08:37:10+00:00'
 - name: Cream cheese
   allergens:
   - milk
@@ -278,6 +317,13 @@ confirmations:
 - name: Datte
   allergens: []
   at: '2026-08-17T14:03:59+00:00'
+- name: Dinde
+  allergens: []
+  at: '2026-08-19T08:36:36+00:00'
+- name: Dorade
+  allergens:
+  - fish
+  at: '2026-08-19T08:38:09+00:00'
 - name: Eau
   allergens: []
   at: '2026-08-17T14:03:59+00:00'
@@ -294,6 +340,10 @@ confirmations:
 - name: Endive
   allergens: []
   at: '2026-08-17T14:03:59+00:00'
+- name: Espadon
+  allergens:
+  - fish
+  at: '2026-08-19T08:38:17+00:00'
 - name: Estragon
   allergens: []
   at: '2026-08-17T14:03:59+00:00'
@@ -335,10 +385,21 @@ confirmations:
   allergens:
   - sulphites
   at: '2026-08-17T14:08:10+00:00'
+- name: Flageolet
+  allergens: []
+  at: '2026-08-19T08:36:36+00:00'
 - name: Flocons d'avoine
   allergens:
   - gluten
   at: '2026-08-17T14:06:50+00:00'
+- name: Foie de volaille
+  allergens: []
+  at: '2026-08-19T08:36:36+00:00'
+- name: Fond de veau
+  allergens:
+  - celery
+  - gluten
+  at: '2026-08-19T08:36:49+00:00'
 - name: Fraise
   allergens: []
   at: '2026-08-17T14:03:59+00:00'
@@ -349,6 +410,10 @@ confirmations:
   allergens:
   - milk
   at: '2026-08-17T14:07:14+00:00'
+- name: Fromage frais
+  allergens:
+  - milk
+  at: '2026-08-19T08:36:57+00:00'
 - name: Fromage râpé
   allergens:
   - milk
@@ -359,6 +424,12 @@ confirmations:
 - name: Fruits rouges
   allergens: []
   at: '2026-08-17T14:03:59+00:00'
+- name: Fumet de poisson
+  allergens:
+  - celery
+  - fish
+  - gluten
+  at: '2026-08-19T08:36:46+00:00'
 - name: Fève
   allergens: []
   at: '2026-08-17T14:03:59+00:00'
@@ -371,6 +442,10 @@ confirmations:
 - name: Gingembre
   allergens: []
   at: '2026-08-17T14:03:59+00:00'
+- name: Gnocchi
+  allergens:
+  - gluten
+  at: '2026-08-19T08:37:33+00:00'
 - name: Gorgonzola
   allergens:
   - milk
@@ -384,6 +459,10 @@ confirmations:
 - name: Graine de pavot
   allergens: []
   at: '2026-08-17T14:03:59+00:00'
+- name: Graine de soja
+  allergens:
+  - soybeans
+  at: '2026-08-19T08:37:03+00:00'
 - name: Graine de sésame
   allergens:
   - sesame
@@ -407,9 +486,25 @@ confirmations:
 - name: Gélatine
   allergens: []
   at: '2026-08-17T14:03:59+00:00'
+- name: Hareng
+  allergens:
+  - fish
+  at: '2026-08-19T08:37:05+00:00'
+- name: Haricot blanc
+  allergens: []
+  at: '2026-08-19T08:36:36+00:00'
+- name: Haricot mungo
+  allergens: []
+  at: '2026-08-19T08:36:36+00:00'
+- name: Haricot noir
+  allergens: []
+  at: '2026-08-19T08:36:36+00:00'
 - name: Haricot rouge
   allergens: []
   at: '2026-08-17T14:03:59+00:00'
+- name: Haricot tarbais
+  allergens: []
+  at: '2026-08-19T08:36:36+00:00'
 - name: Haricot vert
   allergens: []
   at: '2026-08-17T14:03:59+00:00'
@@ -419,6 +514,10 @@ confirmations:
 - name: Herbes de Provence
   allergens: []
   at: '2026-08-17T14:03:59+00:00'
+- name: Homard
+  allergens:
+  - crustaceans
+  at: '2026-08-19T08:38:23+00:00'
 - name: Huile d'arachide
   allergens:
   - peanuts
@@ -437,6 +536,10 @@ confirmations:
 - name: Huile neutre
   allergens: []
   at: '2026-08-17T14:03:59+00:00'
+- name: Huître
+  allergens:
+  - molluscs
+  at: '2026-08-19T08:38:21+00:00'
 - name: Jambon
   allergens: []
   at: '2026-08-17T14:03:59+00:00'
@@ -473,6 +576,13 @@ confirmations:
   allergens:
   - milk
   at: '2026-08-17T14:07:18+00:00'
+- name: Langoustine
+  allergens:
+  - crustaceans
+  at: '2026-08-19T08:36:56+00:00'
+- name: Lapin
+  allergens: []
+  at: '2026-08-19T08:36:36+00:00'
 - name: Lardon
   allergens: []
   at: '2026-08-17T14:03:59+00:00'
@@ -491,12 +601,20 @@ confirmations:
 - name: Limoncello
   allergens: []
   at: '2026-08-17T14:03:59+00:00'
+- name: Lotte
+  allergens:
+  - fish
+  at: '2026-08-19T08:38:14+00:00'
 - name: Magret de canard
   allergens: []
   at: '2026-08-17T14:03:59+00:00'
 - name: Mangue
   allergens: []
   at: '2026-08-17T14:03:59+00:00'
+- name: Maquereau
+  allergens:
+  - fish
+  at: '2026-08-19T08:37:35+00:00'
 - name: Margarine
   allergens: []
   at: '2026-08-17T14:03:59+00:00'
@@ -518,17 +636,38 @@ confirmations:
 - name: Menthe
   allergens: []
   at: '2026-08-17T14:03:59+00:00'
+- name: Merguez
+  allergens: []
+  at: '2026-08-19T08:36:36+00:00'
+- name: Merlan
+  allergens:
+  - fish
+  at: '2026-08-19T08:37:38+00:00'
 - name: Miel
   allergens: []
   at: '2026-08-17T14:03:59+00:00'
+- name: Millet
+  allergens: []
+  at: '2026-08-19T08:36:36+00:00'
 - name: Mirin
   allergens:
   - sulphites
   at: '2026-08-17T14:07:16+00:00'
+- name: Morue
+  allergens:
+  - fish
+  at: '2026-08-19T08:37:04+00:00'
+- name: Moule
+  allergens:
+  - molluscs
+  at: '2026-08-19T08:37:07+00:00'
 - name: Moutarde
   allergens:
   - mustard
   at: '2026-08-17T14:06:32+00:00'
+- name: Mouton
+  allergens: []
+  at: '2026-08-19T08:36:36+00:00'
 - name: Mozzarella
   allergens:
   - milk
@@ -574,6 +713,10 @@ confirmations:
 - name: Orange
   allergens: []
   at: '2026-08-17T14:03:59+00:00'
+- name: Orge
+  allergens:
+  - gluten
+  at: '2026-08-19T08:37:12+00:00'
 - name: Origan
   allergens: []
   at: '2026-08-17T14:03:59+00:00'
@@ -585,9 +728,16 @@ confirmations:
   allergens:
   - gluten
   at: '2026-08-17T14:07:45+00:00'
+- name: Palourde
+  allergens:
+  - molluscs
+  at: '2026-08-19T08:37:53+00:00'
 - name: Panais
   allergens: []
   at: '2026-08-17T14:03:59+00:00'
+- name: Pancetta
+  allergens: []
+  at: '2026-08-19T08:36:36+00:00'
 - name: Paprika
   allergens: []
   at: '2026-08-17T14:03:59+00:00'
@@ -605,6 +755,12 @@ confirmations:
 - name: Persil
   allergens: []
   at: '2026-08-17T14:03:59+00:00'
+- name: Petit-beurre
+  allergens:
+  - eggs
+  - gluten
+  - milk
+  at: '2026-08-19T08:36:48+00:00'
 - name: Petits pois
   allergens: []
   at: '2026-08-17T14:03:59+00:00'
@@ -615,6 +771,9 @@ confirmations:
 - name: Piment
   allergens: []
   at: '2026-08-17T14:03:59+00:00'
+- name: Pintade
+  allergens: []
+  at: '2026-08-19T08:36:36+00:00'
 - name: Pistache
   allergens:
   - nuts
@@ -625,9 +784,16 @@ confirmations:
 - name: Poireau
   allergens: []
   at: '2026-08-17T14:03:59+00:00'
+- name: Pois cassé
+  allergens: []
+  at: '2026-08-19T08:36:36+00:00'
 - name: Pois chiche
   allergens: []
   at: '2026-08-17T14:03:59+00:00'
+- name: Poisson
+  allergens:
+  - fish
+  at: '2026-08-19T08:37:06+00:00'
 - name: Poivre
   allergens: []
   at: '2026-08-17T14:03:59+00:00'
@@ -643,6 +809,9 @@ confirmations:
 - name: Pomme de terre
   allergens: []
   at: '2026-08-17T14:03:59+00:00'
+- name: Porc
+  allergens: []
+  at: '2026-08-19T08:36:36+00:00'
 - name: Porto
   allergens:
   - sulphites
@@ -653,6 +822,10 @@ confirmations:
 - name: Poulet
   allergens: []
   at: '2026-08-17T14:03:59+00:00'
+- name: Poulpe
+  allergens:
+  - molluscs
+  at: '2026-08-19T08:37:20+00:00'
 - name: Praliné
   allergens:
   - nuts
@@ -680,10 +853,18 @@ confirmations:
   - gluten
   - milk
   at: '2026-08-17T14:05:31+00:00'
+- name: Pâte à lasagne
+  allergens:
+  - gluten
+  at: '2026-08-19T08:37:24+00:00'
 - name: Pâte à pizza
   allergens:
   - gluten
   at: '2026-08-17T14:08:15+00:00'
+- name: Pâtes alimentaires
+  allergens:
+  - gluten
+  at: '2026-08-19T08:36:54+00:00'
 - name: Pépites de chocolat
   allergens:
   - milk
@@ -697,6 +878,10 @@ confirmations:
 - name: Radis
   allergens: []
   at: '2026-08-17T14:03:59+00:00'
+- name: Raie
+  allergens:
+  - fish
+  at: '2026-08-19T08:38:16+00:00'
 - name: Raisin
   allergens: []
   at: '2026-08-17T14:03:59+00:00'
@@ -727,6 +912,10 @@ confirmations:
 - name: Romarin
   allergens: []
   at: '2026-08-17T14:03:59+00:00'
+- name: Rouget
+  allergens:
+  - fish
+  at: '2026-08-19T08:37:36+00:00'
 - name: Safran
   allergens: []
   at: '2026-08-17T14:03:59+00:00'
@@ -736,6 +925,10 @@ confirmations:
 - name: Salade
   allergens: []
   at: '2026-08-17T14:03:59+00:00'
+- name: Sardine
+  allergens:
+  - fish
+  at: '2026-08-19T08:37:13+00:00'
 - name: Sauce d'huître
   allergens:
   - molluscs
@@ -753,6 +946,9 @@ confirmations:
 - name: Saucisse
   allergens: []
   at: '2026-08-17T14:03:59+00:00'
+- name: Saucisson
+  allergens: []
+  at: '2026-08-19T08:36:36+00:00'
 - name: Sauge
   allergens: []
   at: '2026-08-17T14:03:59+00:00'
@@ -760,6 +956,14 @@ confirmations:
   allergens:
   - fish
   at: '2026-08-17T14:07:06+00:00'
+- name: Seiche
+  allergens:
+  - molluscs
+  at: '2026-08-19T08:37:48+00:00'
+- name: Seitan
+  allergens:
+  - gluten
+  at: '2026-08-19T08:37:58+00:00'
 - name: Sel
   allergens: []
   at: '2026-08-17T14:03:59+00:00'
@@ -776,6 +980,10 @@ confirmations:
 - name: Sirop de glucose
   allergens: []
   at: '2026-08-17T14:03:59+00:00'
+- name: Sole
+  allergens:
+  - fish
+  at: '2026-08-19T08:37:42+00:00'
 - name: Spéculoos
   allergens:
   - gluten
@@ -790,6 +998,10 @@ confirmations:
   allergens:
   - sesame
   at: '2026-08-17T14:07:36+00:00'
+- name: Tempeh
+  allergens:
+  - soybeans
+  at: '2026-08-19T08:37:56+00:00'
 - name: Thon
   allergens:
   - fish
@@ -797,15 +1009,26 @@ confirmations:
 - name: Thym
   allergens: []
   at: '2026-08-17T14:03:59+00:00'
+- name: Tofu
+  allergens:
+  - soybeans
+  at: '2026-08-19T08:36:51+00:00'
 - name: Tomate
   allergens: []
   at: '2026-08-17T14:03:59+00:00'
 - name: Topinambour
   allergens: []
   at: '2026-08-17T14:03:59+00:00'
+- name: Truite
+  allergens:
+  - fish
+  at: '2026-08-19T08:37:29+00:00'
 - name: Vanille
   allergens: []
   at: '2026-08-17T14:03:59+00:00'
+- name: Veau
+  allergens: []
+  at: '2026-08-19T08:36:36+00:00'
 - name: Vergeoise
   allergens: []
   at: '2026-08-17T14:03:59+00:00'
@@ -853,6 +1076,14 @@ confirmations:
 - name: Échalote
   allergens: []
   at: '2026-08-17T14:03:59+00:00'
+- name: Églefin
+  allergens:
+  - fish
+  at: '2026-08-19T08:37:45+00:00'
+- name: Épeautre
+  allergens:
+  - gluten
+  at: '2026-08-19T08:37:31+00:00'
 - name: Épices (non qualifiées)
   allergens: []
   at: '2026-08-17T14:03:59+00:00'
