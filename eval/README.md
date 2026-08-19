@@ -72,7 +72,13 @@ décembre. On croirait avoir changé de modèle alors qu'on a changé de donnée
 > croyant bien faire. **Régénérer remet le repère à zéro** : c'est un acte
 > délibéré, qui s'annonce dans le message de commit, pas un réflexe.
 
-**5 runs minimum par cas, des taux jamais un booléen.** Un run par cas ne mesure
+**5 runs minimum par cas, des taux jamais un booléen — et cinq ne suffisent
+pas pour tout.** La règle a été écrite pour des TAUX : une proportion d'échecs
+sur des dizaines d'assignations se stabilise vite. Une moyenne continue sur
+neuf créneaux, non — l'écart d'effort du cas `founder` a fait −0,08 puis +0,53
+puis +0,32 sur trois passes, dont deux sans aucun changement entre elles. Les
+deux mesures concernées sont rapportées sans seuil jusqu'à ce qu'on sache
+combien d'exécutions il leur faut. Un run par cas ne mesure
 rien sur un système stochastique. Un golden qui passe une fois sur deux et qu'on
 relance jusqu'au vert est pire que pas de golden — il donne une confiance fausse.
 

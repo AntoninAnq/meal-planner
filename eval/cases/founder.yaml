@@ -30,18 +30,29 @@ expected_properties:
   # pas interdit — le §4.2 refuse d'en faire une contrainte dure — mais en
   # produire un ici serait cuisiner deux fois sans raison.
   max_dishes_per_slot: "<= 1"
-  # « Des recettes rapides du mardi au vendredi, un peu plus long le week-end
-  # et le lundi. » Ce qui compte est l'ÉCART, pas deux bornes séparées.
-  #
-  # Première version : `weeknight <= 2` et `weekend >= 1.5`. Les deux passaient
-  # — avec 1,92 et 1,98, c'est-à-dire le même nombre. Deux bornes indépendantes
-  # peuvent être vertes pendant que la distinction qu'elles décrivent n'existe
-  # pas, ce qui est la troisième fois aujourd'hui que ce piège se referme.
-  complexity_gap: ">= 0.4"
-  # Demandé dans l'intention ci-dessus, donc mesurable. Sans la demande, cette
-  # attente n'aurait aucun sens : elle exigerait un comportement que rien ne
-  # réclame.
-  repeated_dishes: ">= 1"
+
+# ── Deux mesures RAPPORTÉES, sans seuil, et pourquoi ───────────────────────
+#
+# L'écart d'effort (« rapide du mardi au vendredi ») et le nombre de plats
+# répétés ont porté des seuils — `complexity_gap: ">= 0.4"` et
+# `repeated_dishes: ">= 1"`. Trois passes de cinq exécutions, dont deux SANS
+# aucun changement pertinent entre elles :
+#
+#     écart d'effort   -0,08 ÉCHEC  ·  +0,53 OK     ·  +0,32 ÉCHEC
+#     plats répétés     0    ÉCHEC  ·   0    ÉCHEC  ·   2,2   OK
+#
+# Les deux traversent leur seuil d'une passe à l'autre. Ce ne sont pas des
+# mesures, ce sont des tirages.
+#
+# Le §14.3 fixe cinq exécutions **pour un taux** — une proportion d'échecs sur
+# des dizaines d'assignations, qui se stabilise vite. Une moyenne continue sur
+# neuf créneaux ne se stabilise pas du tout au même rythme, et la règle ne
+# couvrait pas ce cas. Les garder verts aurait été « le golden qu'on relance
+# jusqu'au vert » que ce même paragraphe interdit — sauf qu'ici je n'ai même
+# pas eu à relancer, le chiffre a bougé tout seul.
+#
+# Elles restent AFFICHÉES à chaque exécution. Elles redeviendront assertables
+# le jour où on saura combien d'exécutions il faut pour qu'elles se tiennent.
 
 # ── Référence humaine ──────────────────────────────────────────────────────
 # Ne fait échouer aucun test (§14.2). Sert d'étalon aux trois distances du

@@ -461,20 +461,15 @@ def report(case: str, runs: list[RunResult], golden: dict[str, Any]) -> None:
         f"  complexité mar-ven   {statistics.mean(r.weeknight_complexity for r in ok):.2f}"
         f"   ·   lun+we {statistics.mean(r.weekend_complexity for r in ok):.2f}"
     )
-    if "complexity_gap" in expected:
-        # The GAP, not two bounds. Two independent thresholds were both green
-        # on 1.92 and 1.98 — the same number, and no distinction at all.
-        _check(
-            "écart d'effort",
-            expected["complexity_gap"],
-            statistics.mean(r.weekend_complexity - r.weeknight_complexity for r in ok),
-        )
-    if "repeated_dishes" in expected:
-        _check(
-            "plats répétés",
-            expected["repeated_dishes"],
-            statistics.mean(r.repeated_dishes for r in ok),
-        )
+    # Reported, never asserted. Both crossed their threshold between two passes
+    # with no relevant change: -0.08 / +0.53 / +0.32 for the gap, 0 / 0 / 2.2
+    # for the repetitions. §14.3's five runs were written for a RATE, which
+    # settles quickly; a continuous mean over nine slots does not.
+    gap = statistics.mean(r.weekend_complexity - r.weeknight_complexity for r in ok)
+    print(
+        f"  écart d'effort       {gap:+.2f}"
+        f"   ·   plats répétés {statistics.mean(r.repeated_dishes for r in ok):g}"
+    )
 
     # Reported, never asserted. §2.3 makes minimising preparations the
     # objective, so a threshold on the number of two-dish slots would be a
