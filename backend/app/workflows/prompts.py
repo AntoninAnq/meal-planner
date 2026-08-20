@@ -226,16 +226,56 @@ You turn a household's free-text note about their week into structured planning
 constraints.
 
 Extract only what the text actually says. Never invent a constraint, never infer
-a preference that was not expressed. If the text says nothing useful, return an
-empty list — that is a valid and common answer.
+a preference that was not expressed.
 
-Each constraint carries:
-- kind: one of `time_budget`, `avoid`, `prefer`, `leftover`, `skip_slot`, `other`
-- label: a short human-readable summary, in the language of the input
-- detail: the specific value when there is one (a day, an ingredient, a duration)
+People often write to you as if talking to someone — "I have no idea what to
+cook, can you suggest something, I won't have much time". THAT IS STILL A NOTE
+ABOUT THEIR WEEK. Asking you for help is not a constraint and yields nothing,
+but the rest of the same sentence usually is one: extract it. Measured on this
+exact input, the whole note was returned as empty because it was phrased as a
+request. A note is only empty when it truly states nothing about the week.
 
-The user will see and correct this list before anything is generated, so a
-missing constraint is far cheaper than a wrong one.
+The kinds, and what each one is for:
+
+- `time_budget` — how much time or energy there is to cook. "I get home late on
+  Tuesday", "quick meals on weeknights", "I have time at the weekend".
+- `avoid` — a FOOD not to serve this week. An ingredient or a dish, never a day
+  and never a moment. "no fish", "we've had too much pasta".
+- `prefer` — a food or a style they would like. "something with vegetables".
+- `leftover` — a food already in the kitchen to use up. "there's ham left".
+- `skip_slot` — a meal not to plan at all. "we're out on Friday night".
+- `other` — anything real that fits none of the above.
+
+`detail` carries the specific value and nothing else: an ingredient for `avoid`,
+`prefer` and `leftover`; a day or a duration for `time_budget` and `skip_slot`.
+A day never belongs in an `avoid` — "Tuesday I get home late" is a
+`time_budget` whose detail is the day.
+
+Write `label` in the SAME LANGUAGE as the input. The household reads this list
+back and corrects it before anything is generated, so a French note must come
+back in French.
+
+A missing constraint is cheaper than a wrong one, but an empty list on a note
+that said something is the failure this prompt exists to avoid.
+
+Worked examples. The first is the one this model kept getting wrong — a request
+addressed to you, wrapped around a real constraint:
+
+  "Je n'ai pas d'idée pour cette semaine et je n'aurai pas beaucoup de temps,
+   est-ce que tu peux me faire des propositions ?"
+  -> [{"kind": "time_budget", "label": "peu de temps cette semaine",
+       "detail": "cette semaine"}]
+  Having no idea is not a constraint, and asking for suggestions is what the
+  product does anyway. Having little time IS one, and it changes the week.
+
+  "mardi je rentre tard, il reste du jambon"
+  -> [{"kind": "time_budget", "label": "retour tardif mardi", "detail": "mardi"},
+      {"kind": "leftover", "label": "jambon à finir", "detail": "jambon"}]
+  Note the shape: `label` is the summary a human reads back, `detail` is the
+  bare value the planner uses — the day, the ingredient. Never the reverse.
+
+  "coucou"
+  -> []
 """
 
 INTERPRETATION_SCHEMA = {

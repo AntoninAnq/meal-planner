@@ -110,3 +110,57 @@ def test_rotation_reaches_the_prompt_as_a_signal_and_not_a_rule() -> None:
     # Worded as an opportunity. `SOFT SIGNALS` said nothing about how binding
     # it was, and a model reads a bare list as an instruction.
     assert "come first" in text
+
+
+def test_an_aversion_the_prefilter_enforced_is_not_also_told_to_the_model() -> None:
+    """§6.2: what SQL decides never goes to the model.
+
+    Measured on a real week. A member disliking tomato had `dislikes=Tomate`
+    in the prompt, and the plan came back with "Pour Joséphine : sans tomate"
+    on nine dishes out of nine — several of which contained no tomato. The
+    model was handed a dislike with no way to act on it (every candidate was
+    already free of tomato) so it did the only thing left: it annotated.
+    """
+    from app.services.planning_service import _without_enforced_dislikes
+
+    context, _ = build_prompt_context(
+        [
+            MemberInput(
+                member_id=uuid.uuid4(),
+                life_stage=LifeStage.TEEN_ADULT,
+                aversion_tags=frozenset({"Tomate", "Chose introuvable"}),
+            )
+        ]
+    )
+
+    trimmed = _without_enforced_dislikes(context, frozenset({"tomate"}))
+
+    # Case-insensitive: the household types `Tomate`, the referential holds
+    # `tomate`, and the two must be recognised as one aversion.
+    assert trimmed.members[0].aversion_tags == ("Chose introuvable",)
+
+
+def test_an_aversion_the_prefilter_could_not_act_on_still_reaches_the_model() -> None:
+    """The prompt is the ONLY recourse left for those.
+
+    A word the referential does not know filters nothing, and an aversion the
+    pool could not afford to enforce was abandoned on purpose. Dropping either
+    from the prompt as well would lose it entirely — which is worse than a
+    model that merely reads it as a preference.
+    """
+    from app.services.planning_service import _without_enforced_dislikes
+
+    context, _ = build_prompt_context(
+        [
+            MemberInput(
+                member_id=uuid.uuid4(),
+                life_stage=LifeStage.TEEN_ADULT,
+                aversion_tags=frozenset({"Tomate"}),
+            )
+        ]
+    )
+
+    assert _without_enforced_dislikes(context, frozenset()) == context
+    assert _without_enforced_dislikes(context, frozenset({"oignon"})).members[
+        0
+    ].aversion_tags == ("Tomate",)

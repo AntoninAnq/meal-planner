@@ -376,7 +376,7 @@ ingredients:
     categories: [cheese, dairy]
   - name: Chèvre frais
     aliases: [chevre frais, fromage de chevre frais,
-              buche de chevre]
+              buche de chevre, fromage de chevre, chevre]
     allergens: [milk]
     categories: [cheese]
   - name: Reblochon

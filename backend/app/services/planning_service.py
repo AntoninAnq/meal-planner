@@ -10,7 +10,7 @@ from __future__ import annotations
 import json
 import uuid
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, date, datetime, timedelta
 
 from sqlalchemy import delete, select
@@ -41,7 +41,7 @@ from app.domain.planning import (
     SlotSpec,
     Violation,
 )
-from app.domain.prompt_context import MemberInput, build_prompt_context
+from app.domain.prompt_context import MemberInput, PromptContext, build_prompt_context
 from app.llm.base import LLMClient
 from app.services.catalogue import (
     NOT_A_MEAL,
@@ -222,6 +222,7 @@ def catalogue_for(
     )
     served = [member for member in members if member.life_stage not in unplannable]
     slots = enabled_slots(db, household_id)
+    inputs = _member_inputs(db, household_id, served or members)
     return SqlCatalogue(
         db,
         household_id=household_id,
@@ -234,9 +235,12 @@ def catalogue_for(
         # The same preference, or rebuilding the ranking here would produce a
         # different order from the one the generation used — and the reserve is
         # recomputed rather than stored precisely because the two must match.
-        prefer_free_of=_excluded_allergens(
-            _member_inputs(db, household_id, served or members)
-        ),
+        prefer_free_of=_excluded_allergens(inputs),
+        # For the same reason, and it matters more here than anywhere: this is
+        # what feeds "not that one, show me something else". Offering back the
+        # ingredient someone never eats is the one answer that makes the
+        # feature worse than nothing.
+        disliked_ingredients=_dislikes(inputs),
     )
 
 
@@ -439,13 +443,20 @@ def generate_plan(
         prefer_free_of=_excluded_allergens(inputs),
         wanted_ingredients=_named_ingredients(intents, WANTED_KINDS),
         unwanted_ingredients=_named_ingredients(intents, UNWANTED_KINDS),
+        # Standing aversions, removed from the pool rather than described to
+        # the model — see `SqlCatalogue._dropped_for_dislikes`.
+        disliked_ingredients=_dislikes(inputs),
     )
 
     request = PlanRequest(
         safety=_eater_safety(db, catalogue, inputs, alias_to_member),
         rotation=rotation_signal(db, household_id, before=week_start),
         spec=spec,
-        prompt_context=_with_guests(prompt_context, guests, guest_aliases),
+        prompt_context=_with_guests(
+            _without_enforced_dislikes(prompt_context, catalogue.enforced_dislikes),
+            guests,
+            guest_aliases,
+        ),
         language=language,
         user_constraints=[intent.phrase() for intent in intents],
         recent_meals=recent_meals(db, household_id, before=week_start),
@@ -538,6 +549,51 @@ def _named_ingredients(intents: Sequence[Intent], kinds: Sequence[str]) -> froze
     )
 
 
+def _dislikes(inputs: Sequence[MemberInput]) -> frozenset[str]:
+    """Every standing aversion at the table, whoever holds it.
+
+    Household scope, and that is the point rather than an approximation. §2.3
+    says the objective is to cook ONCE: a dish only one person can eat costs
+    the whole benefit, so a recipe built on something one member never eats is
+    not a candidate for that household's dinner — it is a candidate for a
+    second dish nobody asked for.
+    """
+    return frozenset(tag for entry in inputs for tag in entry.aversion_tags if tag)
+
+
+def _without_enforced_dislikes(
+    context: PromptContext, enforced: frozenset[str]
+) -> PromptContext:
+    """Drop from the prompt the aversions the pre-filter already acted on.
+
+    Stating them twice is what produced "Pour Joséphine : sans tomate" on nine
+    dishes out of nine, several containing no tomato at all. The model was
+    given a dislike and no way to honour it — every candidate had already been
+    checked — so it did the only thing left and annotated. §6.2 is explicit
+    that what SQL can decide never goes to the model; this is that rule applied
+    to a case where the leak was cosmetic rather than unsafe, and still wrong.
+
+    What was NOT enforced stays: an aversion the referential could not resolve,
+    or one the pool could not afford, has the prompt as its only recourse.
+    """
+    if not enforced:
+        return context
+
+    lowered = {name.strip().lower() for name in enforced}
+    return replace(
+        context,
+        members=tuple(
+            replace(
+                member,
+                aversion_tags=tuple(
+                    tag for tag in member.aversion_tags if tag.strip().lower() not in lowered
+                ),
+            )
+            for member in context.members
+        ),
+    )
+
+
 def _excluded_allergens(inputs: Sequence[MemberInput]) -> frozenset[str]:
     """Every allergen anyone at the table excludes, whatever the severity."""
     codes: set[str] = set()
@@ -619,8 +675,6 @@ def _with_guests(context, guests, guest_aliases):  # type: ignore[no-untyped-def
     household-scope rule for severe allergies, applied to a single meal.
     Nothing is stored.
     """
-    from dataclasses import replace
-
     from app.domain.prompt_context import MemberContext
 
     extra: list[MemberContext] = []

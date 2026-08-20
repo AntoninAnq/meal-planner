@@ -311,6 +311,7 @@ class SqlCatalogue:
         prefer_free_of: frozenset[str] = frozenset(),
         wanted_ingredients: frozenset[str] = frozenset(),
         unwanted_ingredients: frozenset[str] = frozenset(),
+        disliked_ingredients: frozenset[str] = frozenset(),
     ) -> None:
         self._db = db
         self._household = household
@@ -329,6 +330,22 @@ class SqlCatalogue:
         #: names, resolved through the referential like any other line.
         self._wanted_ingredients = wanted_ingredients
         self._unwanted_ingredients = unwanted_ingredients
+        #: Standing aversions — someone in this household does not eat this,
+        #: ever. Unlike `unwanted`, these are REMOVED from the pool rather than
+        #: ranked last, and the difference is what a week of use showed: a
+        #: household member who dislikes tomato got "sans tomate" written next
+        #: to their name on nine dishes out of nine, several of which contained
+        #: no tomato. The model was handed a dislike it could not act on except
+        #: by annotating, so it annotated.
+        #:
+        #: Affordable, and measured rather than assumed: tomato — one of the
+        #: most common ingredients there is — sits in 44 recipes out of an
+        #: eligible 322. See `_dropped_for_dislikes` for what happens when it
+        #: is not affordable.
+        self._disliked_ingredients = disliked_ingredients
+        #: The names actually acted upon. What is NOT here is what the prompt
+        #: still has to carry, so the two never state the same aversion twice.
+        self.enforced_dislikes: frozenset[str] = frozenset()
         self._ranked = self._rank(household_id, week_start)
         self._chosen = self._decorate(self._ranked[:limit])
         self._by_handle = {candidate.handle: candidate for candidate in self._chosen}
@@ -485,15 +502,56 @@ class SqlCatalogue:
         ).all()
         return {recipe_id: last for recipe_id, last in rows}
 
+    def _dropped_for_dislikes(self, eligible: list[uuid.UUID]) -> set[uuid.UUID]:
+        """Recipes removed because a member does not eat what is in them.
+
+        Name by name, and each one only if the pool can still afford it. An
+        aversion to something ubiquitous — onion, garlic, tomato in another
+        catalogue — must not empty the week: below `CANDIDATE_FLOOR` the
+        exclusion is abandoned for that name, which falls back to being ranked
+        last like any `avoid`, and the name is left out of
+        `enforced_dislikes` so the prompt states it instead.
+
+        Sorted, because the outcome depends on the order names are applied in
+        when several aversions overlap, and a pre-filter that returns a
+        different pool on the same inputs breaks the seeded ranking.
+        """
+        dropped: set[uuid.UUID] = set()
+        enforced: set[str] = set()
+        for name in sorted(self._disliked_ingredients):
+            matched = self._containing(eligible, frozenset({name}))
+            if not matched:
+                # The referential does not know this word. Nothing was
+                # filtered, so the prompt keeps it — that is the only recourse.
+                continue
+            remaining = len(eligible) - len(dropped | matched)
+            if remaining < CANDIDATE_FLOOR:
+                continue
+            dropped |= matched
+            enforced.add(name)
+        self.enforced_dislikes = frozenset(enforced)
+        return dropped
+
     def _rank(self, household_id: uuid.UUID, week_start: date) -> list[uuid.UUID]:
         eligible = self._eligible()
+        if self._disliked_ingredients:
+            dropped = self._dropped_for_dislikes(eligible)
+            eligible = [recipe_id for recipe_id in eligible if recipe_id not in dropped]
+
+        # An aversion the pool could not afford to enforce is not discarded —
+        # it drops to the weakest instrument available and ranks its recipes
+        # last. The household still gets a week; it just gets the disliked
+        # dishes at the bottom of the list rather than not at all.
+        unwanted = self._unwanted_ingredients | (
+            self._disliked_ingredients - self.enforced_dislikes
+        )
         return rank(
             eligible,
             last_planned=self._last_planned(household_id),
             seed=f"{household_id}:{week_start.isoformat()}",
             preferred=self._free_of(eligible, self._prefer_free_of),
             wanted=self._containing(eligible, self._wanted_ingredients),
-            unwanted=self._containing(eligible, self._unwanted_ingredients),
+            unwanted=self._containing(eligible, unwanted),
         )
 
     def _containing(self, recipe_ids: list[uuid.UUID], names: frozenset[str]) -> set[uuid.UUID]:
