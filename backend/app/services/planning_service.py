@@ -30,6 +30,7 @@ from app.db.models import (
     RecipeFoodCategory,
     RecipeSuitableStage,
 )
+from app.domain.days import slots_to_skip
 from app.domain.enums import ConstraintSeverity, DishSource, LifeStage, MealType
 from app.domain.planning import (
     ALLERGEN_ON_PLANNED_DISH,
@@ -425,6 +426,11 @@ def generate_plan(
         )
         for target in slot_targets
     ]
+    # A slot the household said not to plan is REMOVED, never described to the
+    # model. It used to travel as prose — "absence mardi" in a block of text —
+    # and a dinner was planned for Tuesday anyway. Nothing here needs a model:
+    # a day named is a day known, and §6.3 puts that on the deterministic side.
+    spec = _without_skipped(spec, intents, language)
     if not spec:
         raise ValueError("no slot to fill")
 
@@ -446,6 +452,10 @@ def generate_plan(
         # Standing aversions, removed from the pool rather than described to
         # the model — see `SqlCatalogue._dropped_for_dislikes`.
         disliked_ingredients=_dislikes(inputs),
+        # "Peu de temps cette semaine" ranks the quick dishes first. Prose
+        # alone moved nothing: measured at 9 slots out of 9 on the highest
+        # complexity while 14 quick candidates sat in the same list.
+        prefer_quick=any(intent.kind in TIME_KINDS for intent in intents),
     )
 
     request = PlanRequest(
@@ -511,11 +521,57 @@ def generate_plan(
     return plan, outcome
 
 
-#: Which interpreted `kind` the pre-filter can act on, and how. The rest —
-#: `time_budget`, `skip_slot`, `other` — stay prose for the model: they are
-#: about the SHAPE of the week, which is not a property of a recipe.
+#: Which interpreted `kind` the pre-filter can act on, and how.
+#:
+#: This comment used to end "the rest — `time_budget`, `skip_slot`, `other` —
+#: stay prose for the model: they are about the SHAPE of the week, which is not
+#: a property of a recipe." That was half right and cost a whole week.
+#:
+#: `skip_slot` is not about a recipe, true — it is about the GRID, which is
+#: ours to change, and it is now applied by removing the slot. `time_budget` is
+#: not about one recipe either, but it is about a property every recipe has:
+#: measured effort. Both were handed to the model as sentences and both were
+#: ignored — 9 slots out of 9 at the highest complexity when the pool held 14
+#: quick dishes, and a dinner planned for a Tuesday the household had said it
+#: would be away.
+#:
+#: `other` genuinely stays prose. It is the kind that means "we could not
+#: classify this", and inventing a mechanism for it would be inventing intent.
 WANTED_KINDS = ("leftover", "prefer")
 UNWANTED_KINDS = ("avoid",)
+SKIP_KINDS = ("skip_slot",)
+TIME_KINDS = ("time_budget",)
+
+
+def _without_skipped(
+    spec: Sequence[SlotSpec], intents: Sequence[Intent], language: str
+) -> list[SlotSpec]:
+    """Drop the slots a `skip_slot` constraint names.
+
+    Two refusals, both because the cost is asymmetric. A slot planned that the
+    household skips costs one wasted suggestion; a slot silently cancelled
+    costs a meal they expected — so a phrase naming no day cancels nothing, and
+    a reading that would empty the week is dropped whole.
+
+    That second guard is not theoretical: `parse_days` reads any day it finds,
+    so a household writing about every day of the week would otherwise get an
+    empty plan and the bare "no slot to fill" error.
+    """
+    phrases = [intent.phrase() for intent in intents if intent.kind in SKIP_KINDS]
+    if not phrases:
+        return list(spec)
+
+    skipped = slots_to_skip(phrases, language)
+    if not skipped:
+        return list(spec)
+
+    kept = [
+        slot
+        for slot in spec
+        if (slot.day_of_week, None) not in skipped
+        and (slot.day_of_week, slot.meal_type) not in skipped
+    ]
+    return kept or list(spec)
 
 
 @dataclass(frozen=True)

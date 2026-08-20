@@ -16,6 +16,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
+from app.domain.days import DAY_NAMES, LANGUAGE_NAMES
 from app.domain.planning import SlotSpec
 from app.domain.prompt_context import PromptContext
 
@@ -73,6 +74,13 @@ Rules you must follow:
    running, and a plan that repeats itself is the one thing that makes this
    product useless. This yields to rule 6: a repeat is still better than a meal
    nobody can eat.
+
+   It also yields to a household that ASKS for a repeat under THIS WEEK —
+   "a dish we'll eat two evenings", "something cooked once and served twice".
+   Then you repeat ONE dish, on exactly TWO slots, and preferably consecutive
+   ones; every other slot still gets a dish of its own. Cooking once and eating
+   twice is the point of this product, so honour it exactly — a household that
+   asked for one repeat and received four got neither variety nor a batch.
 9. Do not use any title listed under ALREADY SERVED, nor a reworded version of
    it. Those meals were eaten in the last three weeks. You know more dishes
    than the ones that come to mind first — reach for them. A title comes back
@@ -87,14 +95,11 @@ reasoning — a separate call handles that.
 
 #: Instructions are stable and cacheable, so the language cannot be baked into
 #: them: it travels with the request instead.
-#: Days as the household names them. The model writes dish titles in this
-#: language already (§ `PlanRequest.language`); it must read the week in it too.
-DAY_NAMES = {
-    "fr": ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"],
-    "en": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
-}
-
-LANGUAGE_NAMES = {"fr": "French", "en": "English"}
+#:
+#: The day names come from the domain rather than being spelled again here. The
+#: prompt writes `day 1 = mardi` and `skip_slot` reads `mardi` back to cancel a
+#: slot; two copies of that table is two chances for the week the household
+#: reads and the week the planner builds to disagree.
 
 
 def build_context(
@@ -244,6 +249,9 @@ The kinds, and what each one is for:
 - `prefer` — a food or a style they would like. "something with vegetables".
 - `leftover` — a food already in the kitchen to use up. "there's ham left".
 - `skip_slot` — a meal not to plan at all. "we're out on Friday night".
+- `repeat` — a wish to cook one dish once and eat it twice. "a dish we'll have
+  two evenings", "something in a big batch". `detail` is how many times when
+  they say, otherwise leave it out.
 - `other` — anything real that fits none of the above.
 
 `detail` carries the specific value and nothing else: an ingredient for `avoid`,
@@ -294,6 +302,7 @@ INTERPRETATION_SCHEMA = {
                             "prefer",
                             "leftover",
                             "skip_slot",
+                            "repeat",
                             "other",
                         ],
                     },

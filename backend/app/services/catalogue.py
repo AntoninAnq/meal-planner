@@ -77,6 +77,12 @@ CANDIDATE_MARGIN = 3
 #: here for the same reason the dish titles are French: they are shown as-is.
 COMPLEXITY_LABELS = {1: "simple", 2: "moyen", 3: "long"}
 
+#: What "I have no time this week" ranks first. The lowest of the three bands
+#: rather than "1 or 2": on the eligible pool the three are roughly even, so
+#: taking two of them would promote two thirds of the catalogue and promote
+#: nothing at all.
+QUICK_COMPLEXITY = 1
+
 #: How many DISTINCTIVE ingredients two candidates must share before it is
 #: worth telling the model.
 OVERLAP_THRESHOLD = 3
@@ -164,6 +170,7 @@ def rank(
     preferred: Collection[uuid.UUID] = (),
     wanted: Collection[uuid.UUID] = (),
     unwanted: Collection[uuid.UUID] = (),
+    quick: Collection[uuid.UUID] = (),
 ) -> list[uuid.UUID]:
     """Safe for everyone first, then never served, then least recently served.
 
@@ -216,10 +223,23 @@ def rank(
             return 0 if recipe_id in safe else 1
         return 2 if recipe_id in safe else 3
 
+    # Within each band, quick dishes first when the household said it has no
+    # time. A SUB-ordering rather than a sixth band: "peu de temps" must not
+    # outrank "il reste du jambon", and it must never outrank being free of an
+    # allergen someone at the table excludes.
+    #
+    # Nothing is removed. A long dish stays reachable — a Sunday can hold one,
+    # and the household never said every meal had to be quick.
+    fast = set(quick)
+
     ordered: list[uuid.UUID] = []
     for band in range(5):
         group = [recipe_id for recipe_id in eligible if tier(recipe_id) == band]
-        ordered += _by_staleness(group, last_planned, seed)
+        if fast:
+            ordered += _by_staleness([r for r in group if r in fast], last_planned, seed)
+            ordered += _by_staleness([r for r in group if r not in fast], last_planned, seed)
+        else:
+            ordered += _by_staleness(group, last_planned, seed)
     return ordered
 
 
@@ -312,8 +332,13 @@ class SqlCatalogue:
         wanted_ingredients: frozenset[str] = frozenset(),
         unwanted_ingredients: frozenset[str] = frozenset(),
         disliked_ingredients: frozenset[str] = frozenset(),
+        prefer_quick: bool = False,
     ) -> None:
         self._db = db
+        #: The household said it has little time this week. Ranks quick
+        #: dishes first inside every band — never a filter, because a long
+        #: dish on a Sunday is still a fine answer.
+        self._prefer_quick = prefer_quick
         self._household = household
         self._limit = limit
         #: Recipes the household has just refused. Excluded from the pool
@@ -552,6 +577,26 @@ class SqlCatalogue:
             preferred=self._free_of(eligible, self._prefer_free_of),
             wanted=self._containing(eligible, self._wanted_ingredients),
             unwanted=self._containing(eligible, unwanted),
+            quick=self._quick(eligible) if self._prefer_quick else (),
+        )
+
+    def _quick(self, recipe_ids: list[uuid.UUID]) -> set[uuid.UUID]:
+        """The dishes rated `simple`, computed by formula and never judged.
+
+        Complexity only, not minutes: 18 % of the catalogue declares no time at
+        all, and ranking on a field that is null for a fifth of it would sort
+        those recipes by whether their source happened to fill in a form.
+        `complexity.py` already scales its rating by the signals available, so
+        it is the field that means the same thing on every row.
+        """
+        if not recipe_ids:
+            return set()
+        return set(
+            self._db.scalars(
+                select(Recipe.id).where(
+                    Recipe.id.in_(recipe_ids), Recipe.complexity == QUICK_COMPLEXITY
+                )
+            )
         )
 
     def _containing(self, recipe_ids: list[uuid.UUID], names: frozenset[str]) -> set[uuid.UUID]:

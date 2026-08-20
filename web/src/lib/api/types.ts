@@ -83,7 +83,14 @@ export type MealSlot = {
 };
 
 export type InterpretedConstraint = {
-  kind: "time_budget" | "avoid" | "prefer" | "leftover" | "skip_slot" | "other";
+  kind:
+    | "time_budget"
+    | "avoid"
+    | "prefer"
+    | "leftover"
+    | "skip_slot"
+    | "repeat"
+    | "other";
   label: string;
   detail?: string | null;
 };

@@ -251,6 +251,19 @@ class RunResult:
     #: one preparation served twice is the §2.3 objective, not a variety
     #: failure.
     repeated_dishes: int = 0
+    #: Dishes planned on a day the household said it would be away. Not a
+    #: tendency and not a rate: it is a count that must be zero, because
+    #: `skip_slot` removes the slot before any model is called.
+    dishes_on_skipped_days: int = 0
+    #: Dishes rated `simple`. The direct reading of "peu de temps cette
+    #: semaine", and unlike the weeknight/weekend gap it says something even
+    #: when the whole week is quick.
+    quick_dishes: int = 0
+    #: How many slots the most-repeated dish occupies. `repeated_dishes` counts
+    #: HOW MANY dishes repeat; this says how far one of them went. Asking for
+    #: one batch and getting four dishes twice each scores 4 on the first and
+    #: 2 on this one — the two together are what tells them apart.
+    most_repeated: int = 0
     violations: list[str] = field(default_factory=list)
     allergen_violations: int = 0
     outside_candidates: int = 0
@@ -262,6 +275,7 @@ def one_run(
     session_factory: sessionmaker[Session],
     household_id: uuid.UUID,
     intent: str | None = None,
+    constraints: list[dict[str, Any]] | None = None,
 ) -> RunResult:
     from app.db.models import DietaryConstraint, PlannedDish, PlannedDishMember, RecipeAllergen
     from app.domain.enums import ConstraintSeverity
@@ -276,9 +290,23 @@ def one_run(
                 household_id=household_id,
                 llm=get_llm_client(),
                 week_start=WEEK,
-                # The free-text intent, as the household would type it. It goes
-                # through the same path a real request does.
-                user_constraints=[intent] if intent else (),
+                # A case may state either.
+                #
+                # `intent` is the raw sentence, and `generate_plan` turns a bare
+                # string into `kind="other"` — which is what the slot-level
+                # repair sends and has no interpretation behind it. That is the
+                # loose path, and it exercises nothing the pre-filter can act on.
+                #
+                # `constraints` is what the API actually receives from the
+                # browser: the interpreted list AFTER the household confirmed it
+                # on screen 3. Skipping the model here is deliberate — a golden
+                # about applying a constraint must not fail because the
+                # interpretation phrased it differently that run.
+                user_constraints=(
+                    [ps.Intent(**entry) for entry in constraints]
+                    if constraints
+                    else ([intent] if intent else ())
+                ),
             )
         except Exception as exc:  # noqa: BLE001 — a failed run is a datum
             return RunResult(
@@ -328,6 +356,23 @@ def one_run(
         for dish in dishes:
             key = dish.recipe_id or dish.free_text_label
             occurrences[key] = occurrences.get(key, 0) + 1
+
+        # Which days the household said to skip, read from the SAME function
+        # production uses. Re-implementing the parsing here would be a golden
+        # that agrees with itself and with nothing else.
+        from app.domain.days import slots_to_skip
+
+        skipped_days = {
+            day
+            for day, _ in slots_to_skip(
+                [
+                    ps.Intent(**entry).phrase()
+                    for entry in (constraints or [])
+                    if entry.get("kind") in ps.SKIP_KINDS
+                ],
+                "fr",
+            )
+        }
 
         # The safety check, done independently of the pipeline that produced the
         # plan: this is the one number that must be zero, so it is not read back
@@ -386,6 +431,13 @@ def one_run(
             weeknight_complexity=statistics.mean(weeknight) if weeknight else 0.0,
             weekend_complexity=statistics.mean(weekend) if weekend else 0.0,
             repeated_dishes=sum(1 for count in occurrences.values() if count > 1),
+            dishes_on_skipped_days=sum(
+                1 for dish in dishes if dish.day_of_week in skipped_days
+            ),
+            most_repeated=max(occurrences.values(), default=0),
+            quick_dishes=sum(
+                1 for d in dishes if d.recipe_id and complexity.get(d.recipe_id) == 1
+            ),
         )
 
 
@@ -452,6 +504,12 @@ def report(case: str, runs: list[RunResult], golden: dict[str, Any]) -> None:
     if "max_dishes_per_slot" in expected:
         _check("max plats / créneau", expected["max_dishes_per_slot"],
                max(run.max_dishes_per_slot for run in ok))
+    # Deterministic, so it is asserted hard rather than reported: the slot is
+    # removed before any model call. A non-zero here is a bug in `slots_to_skip`
+    # or in the grid, never a bad draw from the model.
+    if "dishes_on_skipped_days" in expected:
+        _check("plats un jour annulé", expected["dishes_on_skipped_days"],
+               sum(run.dishes_on_skipped_days for run in ok))
     if "distinct_dishes" in expected:
         _check("plats distincts", expected["distinct_dishes"],
                statistics.mean(run.distinct_dishes for run in ok))
@@ -469,7 +527,17 @@ def report(case: str, runs: list[RunResult], golden: dict[str, Any]) -> None:
     print(
         f"  écart d'effort       {gap:+.2f}"
         f"   ·   plats répétés {statistics.mean(r.repeated_dishes for r in ok):g}"
+        f"   ·   le plus répété {statistics.mean(r.most_repeated for r in ok):g}×"
     )
+    # The share of quick dishes, which is what "peu de temps" actually asks
+    # for. Reported next to the effort gap because they answer two different
+    # questions: the gap asks whether the week has a SHAPE, this asks whether
+    # it is quick at all — and a week that is uniformly quick scores 0 on the
+    # gap while being exactly what was requested.
+    quick_share = statistics.mean(
+        r.quick_dishes / r.dishes if r.dishes else 0.0 for r in ok
+    )
+    print(f"  part de plats simples {quick_share:.0%}")
 
     # Reported, never asserted. §2.3 makes minimising preparations the
     # objective, so a threshold on the number of two-dish slots would be a
@@ -509,7 +577,12 @@ def main() -> None:
             else {}
         )
         runs = [
-            one_run(session_factory, household_id, golden.get("intent"))
+            one_run(
+                session_factory,
+                household_id,
+                golden.get("intent"),
+                golden.get("constraints"),
+            )
             for _ in range(args.runs)
         ]
         report(key, runs, golden)

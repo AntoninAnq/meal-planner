@@ -1,0 +1,99 @@
+# Une semaine chargée, telle qu'elle a été tapée dans le champ libre de
+# l'écran 3 — puis confirmée à l'écran, puis générée. Les trois demandes ont
+# été ignorées, toutes les trois, sur la même semaine.
+#
+# CE CAS EXISTE PARCE QUE LES TROIS ONT ÉCHOUÉ ENSEMBLE, et pour la même
+# raison : elles étaient remises au modèle en prose, sans qu'aucun mécanisme
+# ne les applique. `planning_service` le disait en toutes lettres —
+# « `time_budget`, `skip_slot`, `other` stay prose for the model ».
+#
+#     des plats rapides    → 9 créneaux sur 9 en complexité 3, la plus longue,
+#                            alors que 14 plats « simple » figuraient dans la
+#                            même liste de candidats
+#     absent mardi         → un dîner planifié le mardi
+#     un plat deux soirs   → quatre plats différents, chacun répété
+#
+# Deux d'entre elles sont calculables et le sont désormais. La troisième reste
+# au modèle, parce que « quel plat mérite d'être cuisiné en double » est un
+# jugement — et elle est donc rapportée, jamais assertée.
+case: busy_week
+runs: 5
+
+intent: >-
+  J'aurai peu de temps pour cuisiner cette semaine, propose-moi des plats
+  rapides à faire. Un jour sans repas, nous serons absents mardi. Et un plat
+  qu'on mangera deux soirs de suite.
+
+# Ce que l'API reçoit VRAIMENT : la liste interprétée, après que le foyer l'a
+# relue et confirmée à l'écran. Écrite ici plutôt que re-déduite à chaque
+# exécution, et c'est délibéré — un golden qui porte sur l'APPLICATION d'une
+# contrainte ne doit pas virer au rouge parce que l'interprétation a tourné sa
+# phrase autrement ce jour-là. Ce sont deux propriétés distinctes ; celle-ci
+# est la seule que ce cas mesure.
+#
+# Ces trois lignes sont la sortie réelle de `POST /meal-plans/interpret` sur
+# le texte ci-dessus.
+constraints:
+  - kind: time_budget
+    label: peu de temps cette semaine
+    detail: cette semaine
+  - kind: skip_slot
+    label: absence mardi
+    detail: mardi
+  - kind: repeat
+    label: plat à manger deux soirs de suite
+    detail: deux soirs de suite
+
+expected_exact:
+  eaters: 3
+
+expected_properties:
+  allergen_violations: 0
+  dishes_outside_candidates: 0
+  max_dishes_per_slot: "<= 1"
+  # Assertion DURE, et la seule des trois demandes qui puisse l'être. Le
+  # créneau est retiré de la grille avant le moindre appel au modèle : un
+  # chiffre non nul ici est un défaut de `slots_to_skip` ou de la grille, pas
+  # un mauvais tirage. C'est aussi ce qui distingue ce cas de `founder`, dont
+  # les deux mesures ont dû être rétrogradées faute de se stabiliser.
+  dishes_on_skipped_days: 0
+
+# ── Ce qui est RAPPORTÉ, et pourquoi ces deux-là ne sont pas assertées ─────
+#
+# `part de plats simples` mesure « peu de temps » directement, là où l'écart
+# d'effort mesure la FORME de la semaine. Les deux répondent à des questions
+# différentes, et une semaine uniformément rapide — exactement ce qui est
+# demandé ici — obtient un écart nul tout en étant juste.
+#
+# `le plus répété` distingue ce que `plats répétés` confond. Demander une
+# fournée et recevoir quatre plats servis deux fois donne 4 au premier et 2 au
+# second ; une seule répétition sur deux créneaux donne 1 et 2. C'est la paire
+# qui départage, pas l'un des deux.
+#
+# Aucune des deux ne porte de seuil, pour la raison écrite dans `founder.yaml` :
+# une moyenne continue sur neuf créneaux ne se stabilise pas en cinq
+# exécutions, et §14.3 a écrit ce chiffre pour des TAUX. Elles redeviendront
+# assertables quand on saura combien d'exécutions il leur faut.
+
+human_reference:
+  shape:
+    lundi_soir: "rapide"
+    mardi: "PAS DE REPAS — absents"
+    mercredi_soir: "rapide, idéalement la première moitié de la fournée"
+    jeudi_soir: "rapide — la seconde moitié, resservie"
+    vendredi_soir: "rapide"
+    samedi_midi: "rapide"
+    samedi_soir: "rapide"
+    dimanche_midi: "rapide"
+    dimanche_soir: "rapide"
+  batch:
+    note: >-
+      UN plat, sur DEUX créneaux, de préférence consécutifs. Quatre plats
+      répétés deux fois n'est pas une réponse partielle à cette demande : le
+      foyer n'obtient ni la variété qu'il n'a pas remise en cause, ni la
+      fournée qu'il a demandée.
+  note: >-
+    Toute la semaine est rapide ici, et c'est voulu — contrairement à
+    `founder`, ce foyer n'a PAS dit avoir du temps le week-end. Il a dit
+    l'inverse, sans exception. Un week-end plus long serait une semaine bien
+    formée répondant à une autre demande.

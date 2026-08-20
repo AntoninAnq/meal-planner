@@ -315,6 +315,20 @@ HOUSEHOLDS: list[dict[str, Any]] = [
         "constraints": [],
     },
     {
+        "key": "busy_week",
+        "why": "Same shape as `founder` — two adults and a six-year-old, "
+               "nothing filtered — so the only thing this case varies is what "
+               "the household SAID about its week. It carries the three "
+               "constraints that were all ignored on one real generation: a "
+               "time budget, a day away, and a dish to cook once and eat twice.",
+        "members": [
+            {"alias": "m1", "life_stage": "teen_adult"},
+            {"alias": "m2", "life_stage": "teen_adult"},
+            {"alias": "m3", "life_stage": "young_child"},
+        ],
+        "constraints": [],
+    },
+    {
         "key": "no_constraint",
         "why": "The baseline. Nothing is filtered, `allergens_verified` is not "
                "required, and the pool is at its widest.",
