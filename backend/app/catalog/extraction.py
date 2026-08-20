@@ -22,6 +22,11 @@ page-wide search attributes to a dish the cooking time of the one next to it —
 measured, and it is exactly how a first reading of one source reported 100 %
 duration coverage where the real figure is 81 %.
 
+The single exception is `selectors["categories"]`, and it is named as such
+below: a blog's taxonomy is a property of the PAGE, emitted outside every
+`itemscope`, so scoping it to the Recipe subtree would read nothing at all.
+It is capped instead — see `MAX_TAXONOMY_LABELS`.
+
 **What cannot be read is counted, never dropped.** An extractor that fails
 quietly builds a catalogue whose holes nobody knows about.
 """
@@ -49,6 +54,13 @@ _TRAILING_COMMA = re.compile(r",\s*([}\]])")
 #: Ends with a colon and states no quantity — a line with a number is an
 #: ingredient however it is punctuated.
 _SECTION = re.compile(r"^[^\d]*[:：]\s*$")
+
+#: Above this, a `categories` selector is not reading a taxonomy — it has caught
+#: a tag cloud or a navigation menu. Refused whole rather than trusted in part:
+#: `dish_types.yaml` resolves several labels by taking the most restrictive one,
+#: so inheriting a sidebar's twelve rubrics turns every recipe into a component.
+#: Measured on the source that motivated this: exactly one label per page.
+MAX_TAXONOMY_LABELS = 5
 
 _ISO_DURATION = re.compile(r"^P(?:\d+D)?T(?:(\d+)H)?(?:(\d+)M)?", re.I)
 _FRENCH_DURATION = re.compile(
@@ -231,7 +243,14 @@ def _microdata(node: Node, prop: str) -> list[str]:
 
 
 def _count_steps(node: Node | None, recipe: dict[str, Any] | None) -> int | None:
-    """A count is a fact; the steps themselves are the author's (I9)."""
+    """A count is a fact; the steps themselves are the author's (I9).
+
+    Three spellings, because three sources write steps three ways. The last one
+    — paragraphs — exists for a blog that marks up `recipeInstructions` as a
+    `<div>` of `<p>`: no list anywhere, and without it 502 recipes carry no
+    complexity signal at all. That source publishes no duration either, so the
+    step count is the ONLY thing `complexity.py` has to go on for them.
+    """
     if recipe is not None:
         instructions = recipe.get("recipeInstructions")
         if isinstance(instructions, list):
@@ -241,7 +260,48 @@ def _count_steps(node: Node | None, recipe: dict[str, Any] | None) -> int | None
             items = element.css("li")
             if items:
                 return len(items)
+            # Paragraphs, and only the ones carrying text: these blocks end on
+            # an image credit and a share widget, both of them empty `<p>`.
+            paragraphs = [p for p in element.css("p") if _clean(p.text(deep=True))]
+            if paragraphs:
+                return len(paragraphs)
     return None
+
+
+def _read_categories(
+    tree: HTMLParser, node: Node | None, recipe: dict[str, Any] | None, source: Source
+) -> tuple[str, ...]:
+    """The rubric, in the same order as everything else: JSON-LD, microdata, selector.
+
+    It used to be read from JSON-LD alone, which meant a microdata-only source
+    got an empty tuple whatever it published. Measured consequence: 502 recipes
+    with no `dish_type`, half of one household's eligible pool — and a waffle
+    proposed for Sunday lunch. The same waffle is correctly excluded when it
+    comes from a source that emits JSON-LD.
+    """
+    if recipe is not None:
+        declared = _as_tuple(recipe.get("recipeCategory"))
+        if declared:
+            return declared
+
+    if node is not None:
+        marked = tuple(text for text in map(_clean, _microdata(node, "recipeCategory")) if text)
+        if marked:
+            return marked
+
+    # Page-scoped, deliberately — see the module docstring. A blog's taxonomy
+    # sits in the article footer, outside every `itemscope`.
+    selector = source.selectors.get("categories")
+    if selector:
+        found = tuple(
+            text for text in (_clean(el.text(deep=True)) for el in tree.css(selector)) if text
+        )
+        if len(found) > MAX_TAXONOMY_LABELS:
+            # Counted by the caller as missing, never trusted in part.
+            return ()
+        return found
+
+    return ()
 
 
 def extract(
@@ -302,7 +362,17 @@ def extract(
                 next(iter(_microdata(node, "recipeYield")), None)
             )
 
-    for name, value in (("prep_minutes", prep), ("cook_minutes", cook), ("servings", servings)):
+    categories = _read_categories(tree, node, recipe, source)
+
+    for name, value in (
+        ("prep_minutes", prep),
+        ("cook_minutes", cook),
+        ("servings", servings),
+        # Reported like the rest, because an unclassified recipe is not a
+        # neutral gap: an unknown rubric passes the meal-slot filter, so what
+        # is not read here comes back as a dessert at dinner.
+        ("categories", categories or None),
+    ):
         if value is None:
             report.missing.append(name)
 
@@ -314,7 +384,7 @@ def extract(
             cook_minutes=cook,
             servings=servings,
             servings_raw=servings_raw,
-            categories=_as_tuple(recipe.get("recipeCategory")) if recipe else (),
+            categories=categories,
             license=_clean(str(recipe["license"])) or None
             if recipe and recipe.get("license")
             else None,

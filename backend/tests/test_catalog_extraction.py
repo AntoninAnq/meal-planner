@@ -23,7 +23,12 @@ from app.catalog.descriptors import (
     load_sources,
     parse_sources,
 )
-from app.catalog.extraction import extract, parse_duration, parse_servings
+from app.catalog.extraction import (
+    MAX_TAXONOMY_LABELS,
+    extract,
+    parse_duration,
+    parse_servings,
+)
 
 FIXTURES = Path(__file__).parent / "fixtures" / "catalog"
 SOURCES = load_sources(EXAMPLE_SOURCES_FILE)
@@ -168,6 +173,104 @@ def test_the_deprecated_ingredients_property_is_read() -> None:
     assert report.ingredient_source == "microdata_legacy"
     assert recipe is not None
     assert recipe.ingredients[0].raw_text == "50cl de lait"
+
+
+def test_the_rubric_is_read_from_the_page_taxonomy_when_the_markup_has_none() -> None:
+    """The same source marks up no `recipeCategory` anywhere — and classifies
+    every one of its pages in the article footer.
+
+    Read from JSON-LD alone, this source produced 502 recipes with no dish type.
+    They are not excluded by the meal-slot filter — an unknown rubric passes —
+    so they made up half of a household's eligible pool, and a waffle was
+    proposed for Sunday lunch. The identical waffle from a source that emits
+    JSON-LD is correctly filtered out.
+    """
+    recipe, report = run("microdata_legacy_property", "legacy-microdata-site")
+
+    assert recipe is not None
+    assert recipe.categories == ("Céréales",)
+    assert "categories" not in report.missing
+
+
+def test_a_taxonomy_selector_that_catches_a_tag_cloud_is_refused_whole() -> None:
+    """`dish_types.yaml` resolves several labels by keeping the most restrictive.
+
+    So inheriting a navigation menu is not a small error that averages out: one
+    `Sauces` in twelve rubrics turns a main course into a component, and it
+    disappears from every meal slot. Nothing is better than a plausible rubric.
+    """
+    labels = "".join(
+        f'<a rel="category tag" href="/c/{n}">Rubrique {n}</a>'
+        for n in range(MAX_TAXONOMY_LABELS + 1)
+    )
+    document = f"""
+    <html><body>{labels}
+      <div itemscope itemtype="https://schema.org/Recipe">
+        <span itemprop="name">Quelque chose</span>
+        <span itemprop="ingredients">200 g de farine</span>
+      </div>
+    </body></html>
+    """
+    recipe, report = extract(
+        document, url="https://exemple.test/x", source=SOURCES["legacy-microdata-site"]
+    )
+
+    assert recipe is not None
+    assert recipe.categories == ()
+    assert "categories" in report.missing
+
+
+def test_steps_are_counted_from_paragraphs_when_there_is_no_list() -> None:
+    """One source writes its steps as a `<div>` of `<p>`, with no list anywhere.
+
+    It publishes no duration either — 2 pages in 40 mention one, in prose — so
+    the step count is the ONLY complexity signal those 502 recipes have. Empty
+    paragraphs do not count: these blocks end on an image credit and a share
+    widget, both of them `<p>`.
+    """
+    document = """
+    <html><body>
+      <div itemscope itemtype="https://schema.org/Recipe">
+        <span itemprop="name">Quelque chose</span>
+        <span itemprop="ingredients">200 g de farine</span>
+        <div itemprop="recipeInstructions">
+          <p>Une étape.</p><p>Une deuxième.</p><p>Une troisième.</p><p></p>
+        </div>
+      </div>
+    </body></html>
+    """
+    recipe, _ = extract(
+        document, url="https://exemple.test/x", source=SOURCES["legacy-microdata-site"]
+    )
+
+    assert recipe is not None
+    assert recipe.step_count == 3
+
+
+def test_a_marked_up_rubric_beats_the_page_taxonomy() -> None:
+    """Order matters: what the recipe declares about ITSELF wins over what the
+    page says about the article carrying it.
+
+    A blog files one post under one rubric; a recipe can state its own. When
+    both are there the specific one is right, and the selector is a fallback —
+    which is the whole shape of this extractor.
+    """
+    document = """
+    <html><body>
+      <a rel="category tag" href="/c/blog">Rubrique du blog</a>
+      <div itemscope itemtype="https://schema.org/Recipe">
+        <span itemprop="name">Quelque chose</span>
+        <span itemprop="recipeCategory">Plat</span>
+        <span itemprop="ingredients">200 g de farine</span>
+      </div>
+    </body></html>
+    """
+    recipe, _ = extract(
+        document, url="https://exemple.test/x", source=SOURCES["legacy-microdata-site"]
+    )
+
+    assert recipe is not None
+    assert recipe.categories == ("Plat",)
 
 
 def test_clean_json_ld_is_taken_first() -> None:

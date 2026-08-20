@@ -55,6 +55,10 @@ class CampaignReport:
     missing_prep: int = 0
     missing_cook: int = 0
     missing_servings: int = 0
+    #: Counted like the other gaps, and it is the one that costs the most: an
+    #: unread rubric is not an absent field, it is a recipe that passes the
+    #: meal-slot filter without anyone having decided it should.
+    missing_categories: int = 0
     sweet: int = 0
     write_errors: int = 0
     write_error_samples: list[str] = field(default_factory=list)
@@ -74,7 +78,7 @@ class CampaignReport:
             f"JSON-LD           {self.json_ld_repaired} réparés, "
             f"{self.json_ld_unparsable} illisibles",
             f"champs absents    préparation {self.missing_prep}, cuisson {self.missing_cook}, "
-            f"portions {self.missing_servings}",
+            f"portions {self.missing_servings}, rubrique {self.missing_categories}",
             f"réseau            {self.fetch.as_dict()}",
         ]
         if self.write_errors:
@@ -255,6 +259,7 @@ def run_campaign(
         report.missing_prep += "prep_minutes" in extraction.missing
         report.missing_cook += "cook_minutes" in extraction.missing
         report.missing_servings += "servings" in extraction.missing
+        report.missing_categories += "categories" in extraction.missing
         report.sweet += source.is_sweet(parsed.categories)
 
         if dry_run:

@@ -77,13 +77,29 @@ sources:
   # Microdata avec la propriété DÉPRÉCIÉE `ingredients` au lieu de
   # `recipeIngredient`, et un JSON-LD qui ne décrit qu'un `BlogPosting` : il n'y
   # a rien d'autre sur quoi se rabattre.
+  #
+  # Il ne publie AUCUNE rubrique dans son balisage — mais sa taxonomie est sur
+  # la page, dans le pied de l'article. `categories` est le seul sélecteur lu
+  # hors du sous-arbre Recipe, parce que la taxonomie appartient à la page ;
+  # au-delà de cinq libellés il est refusé (nuage de tags, menu de navigation).
+  # Sans lui, ce site produit 502 recettes sans type de plat, dont des gaufres
+  # proposées au dîner.
   legacy-microdata-site:
     enabled: true
     base_url: https://legacy.exemple.test
     sitemaps:
       - https://legacy.exemple.test/sitemap_index.xml
-    selectors: {}
-    sweet_categories: [Dessert, Desserts]
+    selectors:
+      categories: 'a[rel~="category"]'
+    # Les libellés de SA taxonomie, pas ceux d'une autre : `Dessert` n'existe
+    # pas ici. Un descripteur qui nomme des rubriques inexistantes ne filtre
+    # rien et le compteur de recettes sucrées affiche zéro sans que ce soit vrai.
+    sweet_categories:
+      - Confiseries
+      - Biscuits secs
+      - Gâteaux à partager
+      - Glaces, Desserts glacés
+      - Pâtisseries, Desserts individuels
 
   # Un site entièrement sucré. Gardé délibérément : il alimente le module goûter
   # (§4.8) et le dessert d'un repas avec invités, pas les dîners.
