@@ -65,6 +65,18 @@ expected_properties:
 # différentes, et une semaine uniformément rapide — exactement ce qui est
 # demandé ici — obtient un écart nul tout en étant juste.
 #
+# ATTENTION : SUR CETTE FIXTURE, CE CHIFFRE MESURE LA FIXTURE. Elle contient
+# 15 recettes « simple » sur 80, donc un bassin de 38 candidats ne peut pas en
+# être rempli, et deux passes ont donné 38 % puis 20 % sans qu'aucun mécanisme
+# n'ait changé entre les deux. Sur le catalogue réel la mesure déterministe
+# est sans appel — 60 candidats montrés sur 60 sont « simple » avec la
+# contrainte, contre 23 sur 60 sans elle.
+#
+# Le mécanisme est donc prouvé ailleurs : par `test_week_shape.py`, qui vérifie
+# l'ordre du classement sans modèle ni base. C'est le même piège que les
+# 5 candidats de `severe_milk_allergy` — un chiffre qui parle du jeu d'essai
+# et qu'on lit comme s'il parlait du produit.
+#
 # `le plus répété` distingue ce que `plats répétés` confond. Demander une
 # fournée et recevoir quatre plats servis deux fois donne 4 au premier et 2 au
 # second ; une seule répétition sur deux créneaux donne 1 et 2. C'est la paire
