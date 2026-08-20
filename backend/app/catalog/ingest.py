@@ -64,12 +64,18 @@ class CampaignReport:
     write_error_samples: list[str] = field(default_factory=list)
     capped: bool = False
     abandoned: str | None = None
+    known_only: bool = False
     fetch: CampaignStats = field(default_factory=CampaignStats)
 
     def render(self) -> str:
+        origin = (
+            f"URLs déjà connues {self.urls_seen}"
+            if self.known_only
+            else f"URLs au sitemap   {self.urls_seen} (dont {self.urls_skipped} exclues)"
+        )
         lines = [
             f"source            {self.source_code}",
-            f"URLs au sitemap   {self.urls_seen} (dont {self.urls_skipped} exclues)",
+            origin,
             f"pages récupérées  {self.pages_fetched}",
             f"  pas une recette {self.not_a_recipe}",
             f"  sans ingrédient {self.no_ingredients}",
@@ -212,17 +218,38 @@ def run_campaign(
     fetcher: PoliteFetcher,
     limit: int | None = None,
     dry_run: bool = False,
+    known_only: bool = False,
     on_progress: object = None,
 ) -> CampaignReport:
-    report = CampaignReport(source_code=source.code, fetch=fetcher.stats)
+    report = CampaignReport(source_code=source.code, fetch=fetcher.stats, known_only=known_only)
 
     fetcher.load_robots()
 
-    try:
-        urls, skipped = collect_page_urls(fetcher, source)
-    except DomainAbandoned as exc:
-        report.abandoned = str(exc)
-        return report
+    if known_only:
+        # The pages we already hold, and nothing else. This exists because a
+        # sitemap is not a recipe index: on the source that motivated it, 4 000
+        # URLs yield 502 recipes, so re-walking the whole thing to repair those
+        # 502 asks someone else's server for 3 500 pages we have no use for.
+        #
+        # It cannot discover anything new — that is the sitemap's job, and this
+        # is the other one: going back over what a change to the extractor can
+        # now read better.
+        urls = [
+            row
+            for row in db.scalars(
+                select(Recipe.source_url)
+                .where(Recipe.source_code == source.code)
+                .order_by(Recipe.source_url)
+            )
+            if not source.excludes(row)
+        ]
+        skipped = 0
+    else:
+        try:
+            urls, skipped = collect_page_urls(fetcher, source)
+        except DomainAbandoned as exc:
+            report.abandoned = str(exc)
+            return report
 
     report.urls_seen = len(urls) + skipped
     report.urls_skipped = skipped

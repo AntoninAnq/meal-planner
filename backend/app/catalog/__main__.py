@@ -41,6 +41,14 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="extract and report, write nothing",
     )
+    ingest.add_argument(
+        "--refresh-known",
+        action="store_true",
+        help="re-read the pages already in the catalogue instead of walking the "
+        "sitemap. Discovers nothing new — it is what you run after teaching the "
+        "extractor to read something it used to miss. On one source that is 502 "
+        "requests instead of 4000, for the same repair.",
+    )
 
     ingest.add_argument(
         "--purge-cache",
@@ -149,13 +157,19 @@ def _ingest(args) -> int:
     print(
         f"campagne {source.code} · {source.request_interval_seconds}s entre requêtes, "
         f"une à la fois, plafond {source.max_pages_per_campaign} pages"
+        + (" · pages déjà connues seulement" if args.refresh_known else "")
         + (" · DRY RUN, rien ne sera écrit" if args.dry_run else "")
     )
 
     try:
         with get_session_factory()() as db:
             report = run_campaign(
-                db, source=source, fetcher=fetcher, limit=args.limit, dry_run=args.dry_run
+                db,
+                source=source,
+                fetcher=fetcher,
+                limit=args.limit,
+                dry_run=args.dry_run,
+                known_only=args.refresh_known,
             )
     finally:
         transport.close()
