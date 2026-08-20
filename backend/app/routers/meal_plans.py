@@ -8,7 +8,7 @@ from __future__ import annotations
 import logging
 import uuid
 from datetime import UTC, date, datetime
-from typing import Annotated
+from typing import Annotated, NamedTuple
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
@@ -97,15 +97,20 @@ def _serialise(db: Session, plan: MealPlan) -> MealPlanOut:
     # later correction to the catalogue could no longer reach. Read here, in the
     # one place that serialises, rather than denormalised at write time.
     recipe_ids = [dish.recipe_id for dish in dishes if dish.recipe_id]
-    meta: dict[uuid.UUID, tuple[str, int | None, int | None]] = {}
+    meta: dict[uuid.UUID, RecipeMeta] = {}
     if recipe_ids:
-        for recipe_id, title, prep, cook, complexity in db.execute(
+        for recipe_id, title, prep, cook, complexity, source_url in db.execute(
             select(
-                Recipe.id, Recipe.title, Recipe.prep_minutes, Recipe.cook_minutes, Recipe.complexity
+                Recipe.id,
+                Recipe.title,
+                Recipe.prep_minutes,
+                Recipe.cook_minutes,
+                Recipe.complexity,
+                Recipe.source_url,
             ).where(Recipe.id.in_(recipe_ids))
         ).all():
             minutes = (prep or 0) + (cook or 0) if (prep is not None or cook is not None) else None
-            meta[recipe_id] = (title, minutes, complexity)
+            meta[recipe_id] = RecipeMeta(title, minutes, complexity, source_url)
 
     slots: dict[tuple[int, str], PlanSlotOut] = {}
     for dish in dishes:
@@ -122,14 +127,16 @@ def _serialise(db: Session, plan: MealPlan) -> MealPlanOut:
                 ],
             )
             slots[key] = slot
+        about = meta.get(dish.recipe_id) if dish.recipe_id else None
         slot.dishes.append(
             DishOut(
                 id=dish.id,
-                label=dish.free_text_label or _title_of(meta, dish.recipe_id),
+                label=dish.free_text_label or (about.title if about else None),
                 recipe_id=dish.recipe_id,
                 source=dish.source,
-                minutes=_effort(meta, dish.recipe_id)[0],
-                complexity=_effort(meta, dish.recipe_id)[1],
+                minutes=about.minutes if about else None,
+                complexity=about.complexity if about else None,
+                source_url=about.source_url if about else None,
                 derived_from_dish_id=dish.derived_from_dish_id,
                 eaters=[
                     DishEaterOut(
@@ -244,18 +251,18 @@ def read_plan(
     return _serialise(db, plan) if plan else None
 
 
-def _title_of(
-    meta: dict[uuid.UUID, tuple[str, int | None, int | None]], recipe_id: uuid.UUID | None
-) -> str | None:
-    entry = meta.get(recipe_id) if recipe_id else None
-    return entry[0] if entry else None
+class RecipeMeta(NamedTuple):
+    """What the plan does not store, read at serialisation time.
 
+    A catalogue dish carries a `recipe_id` and no copy of the recipe: the title,
+    the effort and the address all belong to the catalogue row, so a correction
+    made there reaches every plan that already points at it.
+    """
 
-def _effort(
-    meta: dict[uuid.UUID, tuple[str, int | None, int | None]], recipe_id: uuid.UUID | None
-) -> tuple[int | None, int | None]:
-    entry = meta.get(recipe_id) if recipe_id else None
-    return (entry[1], entry[2]) if entry else (None, None)
+    title: str
+    minutes: int | None
+    complexity: int | None
+    source_url: str
 
 
 def _load_dish(db: Session, plan_id: uuid.UUID, dish_id: uuid.UUID, household_id: uuid.UUID):  # type: ignore[no-untyped-def]
@@ -317,6 +324,7 @@ def alternatives(
             minutes=candidate.minutes,
             complexity=candidate.complexity,
             ingredients=candidate.ingredients,
+            source_url=candidate.source_url or None,
         )
         for candidate in offered
     ]

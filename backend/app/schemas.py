@@ -216,6 +216,11 @@ class DishOut(BaseModel):
     #: rather than implying a recipe is quick.
     minutes: int | None = None
     complexity: int | None = None
+    #: The address of the recipe at its source, for a catalogue dish. I9 keeps
+    #: the facts and sends people to the author for the rest, so this link is
+    #: not a convenience — it is the half of the bargain the interface owes.
+    #: Null on a dish someone typed themselves: there is nothing to link to.
+    source_url: str | None = None
 
 
 class SlotGuestsOut(BaseModel):
@@ -280,6 +285,9 @@ class AlternativeOut(BaseModel):
     minutes: int | None = None
     complexity: int | None = None
     ingredients: list[str] = Field(default_factory=list)
+    #: Same reason as on a planned dish: choosing an alternative is exactly the
+    #: moment someone wants to see what they are choosing.
+    source_url: str | None = None
 
 
 class DishReplace(BaseModel):

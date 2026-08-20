@@ -83,6 +83,15 @@ labels:
     - Pâtes à pasta
     - Conserves à l'huile
     - Conserves au sucre
+    # Taxonomie composite d'une source qui groupe plusieurs choses par ligne.
+    # `Confitures, Compotes, Coulis` va ici et non en dessert, pour la même
+    # raison que `Confitures` juste au-dessus : ça se garde et ça accompagne.
+    - Condiments, Sauces, Bocaux
+    - Confitures, Compotes, Coulis
+    - Bases et techniques
+    - Techniques, Pas à pas
+    - Siphon
+    - Sauce
 
   # ── Boissons ─────────────────────────────────────────────────────────────
   drink:
@@ -99,6 +108,7 @@ labels:
     - Hydromels
     - Infusions et thés
     - Moon Milks
+    - Boissons, Cocktails
 
   # ── Desserts ─────────────────────────────────────────────────────────────
   # Uniquement ce qui est sucré dans tous les cas. Les rubriques à double
@@ -144,6 +154,11 @@ labels:
     - Crumbles
     - Gâteaux au yaourt
     - Confiserie
+    - Pâtisseries, Desserts individuels
+    - Gâteaux à partager
+    - Glaces, Desserts glacés
+    - Confiseries
+    - Mignardises
 
   # ── Goûter ───────────────────────────────────────────────────────────────
   snack:
@@ -151,6 +166,13 @@ labels:
     - Gaufres
     - Pancakes
     - Scones
+    - Biscuits secs
+    # Arbitrage assumé, et il va contre la doctrine du bloc `unknown` : la
+    # crêpe salée existe, donc cette rubrique est bien à double lecture. Deux
+    # de ses trois termes sont sucrés par défaut, et c'est elle qui a mis une
+    # gaufre au déjeuner du dimanche. La perte est bornée et connue — quelques
+    # galettes de sarrasin sortent du dîner sur un bassin de 390 candidats.
+    - Crêpes, Gaufres, Beignets
 
   # ── Petit déjeuner ───────────────────────────────────────────────────────
   breakfast:
@@ -163,6 +185,8 @@ labels:
     - Breakfast
     - Brioche
     - Bouillies
+    - Pains, Brioches, Viennoiseries
+    - Brunch
 
   # ── Entrées et apéritif ──────────────────────────────────────────────────
   starter:
@@ -189,6 +213,9 @@ labels:
     - Toasts et canapés
     - Planches
     - Aspic
+    - Entrées chaudes
+    - Entrées froides
+    - Terrines, Pâtés
 
   # ── Accompagnements ──────────────────────────────────────────────────────
   # Des aliments, mais pas un dîner à eux seuls.
@@ -209,6 +236,7 @@ labels:
     - Pickles lactofermentés
     - Gratins dauphinois
     - Purées gratinées
+    - Accompagnements
 
   # ── Plats ────────────────────────────────────────────────────────────────
   main:
@@ -301,6 +329,22 @@ labels:
     - Flamiches
     - Pastillas
     - Pâtés en croûte
+    # Une source qui classe par ingrédient principal. `Volailles`, `Viandes` et
+    # `Poissons` valent ici ce que valent `Viande` et `Poisson` plus haut : le
+    # singulier était déjà cartographié, le pluriel manquait.
+    - Volailles
+    - Viandes
+    - Poissons
+    - Pâtes, Riz, Semoule
+    - Soupes, Potages, Veloutés
+    - Potages et veloutés
+    - Salade composée
+    - Salades de riz
+    - Raviolis
+    # Du sandwich, du burger, de la pizza — les trois sont déjà des plats
+    # au-dessus. « Street Food » est un repas pris debout, pas un grignotage.
+    - Snacking, Street Food
+    - Main Dish
 
   # ── Explicitement sans information ───────────────────────────────────────
   # Écrits plutôt qu'omis, pour que le prochain lecteur sache qu'ils ont été
@@ -366,3 +410,19 @@ labels:
     - Cake
     - Fouaces
     - Fruits farcis
+    - Géorgie
+    - Vénetie
+    # `Tartes, Clafoutis` groupe une rubrique à double lecture et une rubrique
+    # sucrée. Le groupe suit la plus ambiguë des deux : la tarte à l'oignon.
+    - Tartes, Clafoutis
+    # Une troisième famille, distincte des deux précédentes : des rubriques qui
+    # nomment un INGRÉDIENT. Elles ne disent rien du moment du repas — des œufs
+    # se mangent au petit déjeuner, en entrée et en plat — et les mapper
+    # reviendrait à deviner.
+    - Céréales
+    - Pommes de terre
+    - Fromages, Yaourts, Beurres
+    - Oeufs
+    # Et une quatrième : ce qui décrit la recette sans dire quand on la mange.
+    - Spécial Intolérance
+    - Salé

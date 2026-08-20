@@ -267,6 +267,11 @@ class Candidate:
     minutes: int | None = None
     #: 1..3, computed by formula (`catalog/complexity.py`), never judged.
     complexity: int | None = None
+    #: Where the recipe actually lives. Never reaches `line()`: the model has
+    #: no use for an address and it would cost tokens on every candidate. It is
+    #: here because the interface links back to the source, which is the other
+    #: half of I9 — we keep the facts and send people to the author for the rest.
+    source_url: str = ""
 
     def line(self) -> str:
         parts = [f"{self.handle} — {self.title}"]
@@ -562,15 +567,16 @@ class SqlCatalogue:
         """
         rows = self._db.execute(
             select(Recipe.id, Recipe.title, Recipe.prep_minutes, Recipe.cook_minutes,
-                   Recipe.complexity).where(Recipe.id.in_(shown))
+                   Recipe.complexity, Recipe.source_url).where(Recipe.id.in_(shown))
         ).all()
         meta = {
             recipe_id: (
                 title,
                 (prep or 0) + (cook or 0) if (prep is not None or cook is not None) else None,
                 complexity,
+                source_url,
             )
-            for recipe_id, title, prep, cook, complexity in rows
+            for recipe_id, title, prep, cook, complexity, source_url in rows
         }
 
         ingredients: dict[uuid.UUID, list[str]] = {}
@@ -591,7 +597,7 @@ class SqlCatalogue:
 
         candidates: list[Candidate] = []
         for index, recipe_id in enumerate(shown):
-            title, minutes, complexity = meta.get(recipe_id, ("", None, None))
+            title, minutes, complexity, source_url = meta.get(recipe_id, ("", None, None, ""))
             candidates.append(
                 Candidate(
                     handle=f"r_{index:03d}",
@@ -600,6 +606,7 @@ class SqlCatalogue:
                     ingredients=ingredients.get(recipe_id, []),
                     minutes=minutes,
                     complexity=complexity,
+                    source_url=source_url,
                 )
             )
         return candidates
