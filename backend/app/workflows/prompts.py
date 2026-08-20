@@ -17,7 +17,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 from app.domain.days import DAY_NAMES, LANGUAGE_NAMES
-from app.domain.planning import SlotSpec
+from app.domain.planning import SlotSpec, repetition_limit
 from app.domain.prompt_context import PromptContext
 
 ARBITRATION_INSTRUCTIONS = """\
@@ -75,12 +75,15 @@ Rules you must follow:
    product useless. This yields to rule 6: a repeat is still better than a meal
    nobody can eat.
 
-   It also yields to a household that ASKS for a repeat under THIS WEEK —
-   "a dish we'll eat two evenings", "something cooked once and served twice".
-   Then you repeat ONE dish, on exactly TWO slots, and preferably consecutive
-   ones; every other slot still gets a dish of its own. Cooking once and eating
-   twice is the point of this product, so honour it exactly — a household that
-   asked for one repeat and received four got neither variety nor a batch.
+   A household asking for a repeat under THIS WEEK buys exactly ONE exception:
+   one dish on two slots, preferably consecutive. Every other slot still gets a
+   dish of its own. Two slots is the whole permission — not a direction to
+   repeat as much as possible.
+
+   Measured on qwen3:8b when this paragraph was written as encouragement
+   rather than as a bound: one dish filled five slots out of seven, and the
+   plan was rejected twice before being kept as the least bad attempt. The
+   household had asked for two.
 9. Do not use any title listed under ALREADY SERVED, nor a reworded version of
    it. Those meals were eaten in the last three weeks. You know more dishes
    than the ones that come to mind first — reach for them. A title comes back
@@ -156,7 +159,16 @@ def build_context(
         f"{', '.join(slot.eater_aliases)}"
         for slot in spec
     )
-    blocks.append(f"SLOTS TO FILL\n{slots}")
+    # The bound the re-validation will apply, stated in the same breath as the
+    # slots. It is read from `repetition_limit` rather than written here: a
+    # prompt promising one number while the checker enforces another is a
+    # rejection the model cannot understand or fix.
+    limit = repetition_limit(len(spec))
+    blocks.append(
+        f"SLOTS TO FILL\n{slots}\n"
+        f"No dish may appear on more than {limit} of these {len(spec)} slots. "
+        "A plan that breaks this is rejected."
+    )
 
     if user_constraints:
         blocks.append("THIS WEEK\n" + "\n".join(f"- {line}" for line in user_constraints))

@@ -187,6 +187,20 @@ def _dish_identity(dish: ProposedDish) -> str:
     return dish.recipe_id or " ".join((dish.label or "").lower().split())
 
 
+def repetition_limit(slots: int) -> int:
+    """How many slots one dish may fill before the plan is rejected.
+
+    Public because the PROMPT states it. A model judged on a rule it was never
+    told is a model asked to guess: told only "you may repeat", qwen3:8b put
+    one dish on five slots out of seven, was rejected twice, and its least bad
+    attempt still had five. Naming the number costs six tokens.
+
+    Half the week is already generous for leftovers, and leaves room to answer
+    "one dish, repeated" in a slightly less obvious way.
+    """
+    return max(2, slots // 2)
+
+
 def _check_not_degenerate(
     proposal: Sequence[ProposedSlot], violations: list[Violation]
 ) -> None:
@@ -221,9 +235,7 @@ def _check_not_degenerate(
         )
         return
 
-    # Half the week is already generous for leftovers, and leaves the model no
-    # room to answer "one dish, repeated" in a slightly less obvious way.
-    limit = max(2, len(slots) // 2)
+    limit = repetition_limit(len(slots))
     for identity, count in sorted(counts.items()):
         if count > limit:
             violations.append(

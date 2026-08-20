@@ -76,6 +76,13 @@ def test_an_invalid_plan_is_rejected_and_retried() -> None:
     assert len(llm.calls) == 2
 
 
+#: The opening of `repair_hint`, matched in full rather than on the word
+#: "rejected". That word now also appears in the slot block — "a plan that
+#: breaks this is rejected" — and two tests started failing on a prompt change
+#: that was correct. A sentinel has to be the thing itself, not a word from it.
+REPAIR_MARKER = "Your previous plan was rejected"
+
+
 def test_the_repair_hint_carries_the_violations_back_to_the_model() -> None:
     broken = _plan(_slot(0, _dish("m1")), _slot(1, _dish("m1", "m2")))
     llm = FakeLLMClient([broken, GOOD])
@@ -83,7 +90,7 @@ def test_the_repair_hint_carries_the_violations_back_to_the_model() -> None:
     run_plan(_request(), llm=llm)
 
     first, second = llm.calls
-    assert "rejected" not in first["context"]
+    assert REPAIR_MARKER not in first["context"]
     assert "eater_not_served" in second["context"]
 
 
@@ -216,5 +223,5 @@ def test_the_repair_hint_changes_between_attempts_too() -> None:
     run_plan(_request(), llm=llm)
 
     assert len(llm.calls) == 2
-    assert "rejected" in llm.calls[1]["context"]
-    assert "rejected" not in llm.calls[0]["context"]
+    assert REPAIR_MARKER in llm.calls[1]["context"]
+    assert REPAIR_MARKER not in llm.calls[0]["context"]
