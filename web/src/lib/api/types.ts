@@ -183,7 +183,11 @@ export type GeneratePlanRequest = {
   scope: WeekScope | SlotScope;
   member_ids?: string[] | null;
   guests?: GuestGroup[];
-  constraints?: string[];
+  /** Structured, like the API. This said `string[]` long after the API stopped
+   * accepting strings — nothing referenced it, so nothing failed, and it sat
+   * there describing a contract that no longer existed. Kept and corrected
+   * rather than deleted: it is what a reader checks first. */
+  constraints?: InterpretedConstraint[];
   /** The frontend knows the active locale; the model does not. */
   language?: string;
 };
