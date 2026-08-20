@@ -55,6 +55,9 @@ export function SlotPanel({
   const tCommon = useTranslations("common");
   const tMeal = useTranslations("mealType");
   const tStage = useTranslations("lifeStage");
+  //: The link back to the source is worded once, in `plan`, because the week
+  //: view and this panel must not name the same thing two different ways.
+  const tPlan = useTranslations("plan");
   const router = useRouter();
 
   const [labels, setLabels] = useState<Record<string, string>>({});
@@ -253,6 +256,25 @@ export function SlotPanel({
                                   {" "}
                                   — {alternative.minutes} min
                                 </span>
+                              )}
+                              {/* Deciding between two dishes on a title alone is
+                                  guesswork. This is the one place where reading
+                                  the recipe first is the whole point. */}
+                              {alternative.source_url && (
+                                <>
+                                  {" "}
+                                  <a
+                                    href={alternative.source_url}
+                                    target="_blank"
+                                    rel="noreferrer noopener"
+                                    aria-label={tPlan("sourceLinkLabel", {
+                                      title: alternative.title,
+                                    })}
+                                    className="text-xs text-ink-muted underline underline-offset-2 hover:text-accent"
+                                  >
+                                    {tPlan("sourceLink")} ↗
+                                  </a>
+                                </>
                               )}
                             </ListRow>
                           ))}

@@ -21,6 +21,7 @@ function dish(overrides: Partial<Dish> = {}): Dish {
     source: "catalog",
     minutes: null,
     complexity: null,
+    source_url: null,
     ...overrides,
   };
 }

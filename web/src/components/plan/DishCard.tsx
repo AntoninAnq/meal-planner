@@ -19,6 +19,11 @@ import type { Dish } from "@/lib/api/types";
  * The one thing the card must never stay silent about is a dish someone typed
  * themselves: no filter looked at it, and unlike everything else here that is
  * permanent (UX §15).
+ *
+ * The link back to the source is the other half of I9: we keep the facts —
+ * ingredients, timings, rubric — and send people to the author for the recipe
+ * itself. It is not decoration; without it the catalogue takes and gives
+ * nothing back.
  */
 export async function DishCard({
   dish,
@@ -40,8 +45,31 @@ export async function DishCard({
     <div className={cx(showEaters && "rounded-control border border-border px-2.5 py-2")}>
       <p className="text-sm leading-snug font-medium text-ink">{dish.label ?? t("untitled")}</p>
 
-      {effort.length > 0 && (
-        <p className="mt-0.5 text-xs text-ink-faint">{effort.join(" · ")}</p>
+      {(effort.length > 0 || dish.source_url) && (
+        <p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-ink-faint">
+          {effort.length > 0 && <span>{effort.join(" · ")}</span>}
+
+          {/* `pointer-events-auto` is load-bearing: the whole slot card is a
+              link to the panel, so its contents are made inert and this one
+              element opts back in. The card link itself is an overlay behind
+              this, which is what keeps an anchor from nesting in an anchor —
+              invalid HTML that browsers repair by dropping one of them. */}
+          {dish.source_url && (
+            <a
+              href={dish.source_url}
+              target="_blank"
+              rel="noreferrer noopener"
+              aria-label={t("sourceLinkLabel", { title: dish.label ?? t("untitled") })}
+              className={cx(
+                "pointer-events-auto relative z-10 rounded-full bg-surface-sunken px-1.5 py-0.5",
+                "text-ink-muted transition-colors hover:bg-accent-soft hover:text-accent",
+                "focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent",
+              )}
+            >
+              {t("sourceLink")} ↗
+            </a>
+          )}
+        </p>
       )}
 
       {/* Nothing verified this one. The filter reads tags, and a title has

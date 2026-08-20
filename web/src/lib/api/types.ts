@@ -112,6 +112,10 @@ export type Dish = {
    * than implying a recipe is quick. */
   minutes: number | null;
   complexity: number | null;
+  /** Where the recipe lives, at its source. I9 keeps the facts and sends people
+   * to the author for the rest, so this link is not a convenience — it is the
+   * half of the bargain the interface owes. Null on a hand-written dish. */
+  source_url: string | null;
 };
 
 /** A candidate the pre-filter produced and the model passed over.
@@ -124,6 +128,7 @@ export type Alternative = {
   minutes: number | null;
   complexity: number | null;
   ingredients: string[];
+  source_url: string | null;
 };
 
 /** An anonymous count, never an entity. Guests stay transitory — storing them

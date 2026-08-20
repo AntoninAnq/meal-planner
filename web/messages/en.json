@@ -109,6 +109,8 @@
       "3": "long"
     },
     "handWritten": "hand-written — unchecked",
+    "sourceLink": "view recipe",
+    "sourceLinkLabel": "View “{title}” on the original site (new tab)",
     "notPlannedHeading": "Some meals are not planned",
     "notPlannedBody": "The catalogue holds no recipe suited to a baby under 18 months. Those meals stay yours to make."
   },
