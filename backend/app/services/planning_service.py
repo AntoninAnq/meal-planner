@@ -30,7 +30,7 @@ from app.db.models import (
     RecipeFoodCategory,
     RecipeSuitableStage,
 )
-from app.domain.days import slots_to_skip
+from app.domain.days import parse_days, slots_to_skip
 from app.domain.enums import ConstraintSeverity, DishSource, LifeStage, MealType
 from app.domain.planning import (
     ALLERGEN_ON_PLANNED_DISH,
@@ -452,10 +452,12 @@ def generate_plan(
         # Standing aversions, removed from the pool rather than described to
         # the model — see `SqlCatalogue._dropped_for_dislikes`.
         disliked_ingredients=_dislikes(inputs),
-        # "Peu de temps cette semaine" ranks the quick dishes first. Prose
-        # alone moved nothing: measured at 9 slots out of 9 on the highest
-        # complexity while 14 quick candidates sat in the same list.
-        prefer_quick=any(intent.kind in TIME_KINDS for intent in intents),
+        # "Peu de temps cette semaine" favours the quick dishes. Prose alone
+        # moved nothing: measured at 9 slots out of 9 on the highest complexity
+        # while 14 quick candidates sat in the same list. A fraction rather
+        # than a flag, so that a constraint naming only some days still leaves
+        # the model a long dish for the Sunday — see `quick_share`.
+        quick_share=quick_share(spec, intents, language),
     )
 
     request = PlanRequest(
@@ -541,6 +543,46 @@ WANTED_KINDS = ("leftover", "prefer")
 UNWANTED_KINDS = ("avoid",)
 SKIP_KINDS = ("skip_slot",)
 TIME_KINDS = ("time_budget",)
+
+
+def quick_share(
+    spec: Sequence[SlotSpec], intents: Sequence[Intent], language: str
+) -> float:
+    """How much of the candidate list should be quick, between 0 and 1.
+
+    Three cases, and the middle one is why this is a fraction rather than a flag.
+
+    No time constraint at all -> `0`. Nothing is favoured.
+
+    A constraint naming NO day -> `1`. "J'aurai peu de temps cette semaine" is
+    about every slot, so every candidate may as well be quick. Measured on the
+    real catalogue: 60 of the 60 shown, against 23 without.
+
+    A constraint naming SOME days -> the share of slots those days cover. "Je
+    rentre tard du mardi au vendredi, le week-end j'ai le temps" is a week with
+    a shape, and a list of 60 quick dishes cannot produce one — there is no long
+    dish left for the Sunday. Measured before this existed: `founder`, whose
+    intent says exactly that, scored 2.18 on weeknights against 2.20 at
+    weekends. The same flat number.
+
+    Using the slot share directly keeps both sides comfortably stocked: 4 named
+    slots out of 9 gives 27 quick candidates and 33 others, where the week needs
+    4 and 5.
+    """
+    phrases = [intent.phrase() for intent in intents if intent.kind in TIME_KINDS]
+    if not phrases or not spec:
+        return 0.0
+
+    days: set[int] = set()
+    for phrase in phrases:
+        days |= parse_days(phrase, language)
+    if not days:
+        return 1.0
+
+    named = sum(1 for slot in spec if slot.day_of_week in days)
+    # A named day with no enabled slot says nothing usable; treating it as 0
+    # would silently drop a constraint the household did state.
+    return named / len(spec) if named else 1.0
 
 
 def _without_skipped(

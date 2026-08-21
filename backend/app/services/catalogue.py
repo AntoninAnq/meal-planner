@@ -171,6 +171,7 @@ def rank(
     wanted: Collection[uuid.UUID] = (),
     unwanted: Collection[uuid.UUID] = (),
     quick: Collection[uuid.UUID] = (),
+    quick_share: float = 1.0,
 ) -> list[uuid.UUID]:
     """Safe for everyone first, then never served, then least recently served.
 
@@ -223,24 +224,70 @@ def rank(
             return 0 if recipe_id in safe else 1
         return 2 if recipe_id in safe else 3
 
-    # Within each band, quick dishes first when the household said it has no
-    # time. A SUB-ordering rather than a sixth band: "peu de temps" must not
-    # outrank "il reste du jambon", and it must never outrank being free of an
-    # allergen someone at the table excludes.
+    # Within each band, quick dishes are favoured when the household said it
+    # has no time. A SUB-ordering rather than a sixth band: "peu de temps" must
+    # not outrank "il reste du jambon", and it must never outrank being free of
+    # an allergen someone at the table excludes.
     #
-    # Nothing is removed. A long dish stays reachable — a Sunday can hold one,
-    # and the household never said every meal had to be quick.
+    # Nothing is removed. A long dish stays reachable, and `quick_share` is how
+    # far the favouring goes — see `_favour`.
     fast = set(quick)
 
     ordered: list[uuid.UUID] = []
     for band in range(5):
         group = [recipe_id for recipe_id in eligible if tier(recipe_id) == band]
         if fast:
-            ordered += _by_staleness([r for r in group if r in fast], last_planned, seed)
-            ordered += _by_staleness([r for r in group if r not in fast], last_planned, seed)
+            ordered += _favour(
+                _by_staleness([r for r in group if r in fast], last_planned, seed),
+                _by_staleness([r for r in group if r not in fast], last_planned, seed),
+                quick_share,
+            )
         else:
             ordered += _by_staleness(group, last_planned, seed)
     return ordered
+
+
+def _favour(head: list[uuid.UUID], tail: list[uuid.UUID], share: float) -> list[uuid.UUID]:
+    """Interleave so that `head` makes up `share` of every prefix.
+
+    A whole-week constraint — "j'aurai peu de temps cette semaine" — passes
+    `1.0` and this is just concatenation: the 60 candidates shown are all
+    quick, which is what was asked.
+
+    A constraint naming only some days is the case this exists for. "Je rentre
+    tard du mardi au vendredi, le week-end j'ai le temps" asks for a week with
+    a SHAPE, and concatenation makes that impossible: the model is shown 60
+    quick dishes and has no long one to put on the Sunday. Measured before this
+    existed — `founder`, which asks exactly that, scored 2.18 on weeknights
+    against 2.20 at weekends. The same flat number.
+
+    The proportion is held at every prefix, not just overall, because the list
+    is truncated to `limit` before the model ever sees it: a share honoured
+    only across the full 1 600-recipe ranking would put every long dish past
+    the cut.
+    """
+    if share >= 1.0 or not tail:
+        return head + tail
+    if share <= 0.0 or not head:
+        return tail + head
+
+    merged: list[uuid.UUID] = []
+    taken = 0
+    heads, tails = iter(head), iter(tail)
+    remaining_head, remaining_tail = len(head), len(tail)
+
+    while remaining_head or remaining_tail:
+        # Bresenham rather than a ratio of counts: deterministic, and it never
+        # starves either side when one list runs out first.
+        wants_head = (taken + 1) / (len(merged) + 1) <= share
+        if remaining_head and (wants_head or not remaining_tail):
+            merged.append(next(heads))
+            remaining_head -= 1
+            taken += 1
+        else:
+            merged.append(next(tails))
+            remaining_tail -= 1
+    return merged
 
 
 def _by_staleness(
@@ -332,13 +379,18 @@ class SqlCatalogue:
         wanted_ingredients: frozenset[str] = frozenset(),
         unwanted_ingredients: frozenset[str] = frozenset(),
         disliked_ingredients: frozenset[str] = frozenset(),
-        prefer_quick: bool = False,
+        quick_share: float = 0.0,
     ) -> None:
         self._db = db
-        #: The household said it has little time this week. Ranks quick
-        #: dishes first inside every band — never a filter, because a long
-        #: dish on a Sunday is still a fine answer.
-        self._prefer_quick = prefer_quick
+        #: How much of the candidate list should be quick dishes, between 0 and
+        #: 1. `0` means the household said nothing about time. `1` means it
+        #: said so for the whole week. Anything between is a constraint naming
+        #: only some days — "rapide du mardi au vendredi" — and then the list
+        #: must hold BOTH, or the model has no long dish to put on the Sunday.
+        #:
+        #: Never a filter at any value: a long dish stays in the pool and in
+        #: the reserve behind `alternatives`.
+        self._quick_share = quick_share
         self._household = household
         self._limit = limit
         #: Recipes the household has just refused. Excluded from the pool
@@ -577,7 +629,8 @@ class SqlCatalogue:
             preferred=self._free_of(eligible, self._prefer_free_of),
             wanted=self._containing(eligible, self._wanted_ingredients),
             unwanted=self._containing(eligible, unwanted),
-            quick=self._quick(eligible) if self._prefer_quick else (),
+            quick=self._quick(eligible) if self._quick_share > 0 else (),
+            quick_share=self._quick_share,
         )
 
     def _quick(self, recipe_ids: list[uuid.UUID]) -> set[uuid.UUID]:

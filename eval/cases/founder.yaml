@@ -18,6 +18,27 @@ intent: >-
   rapides. Le lundi et le week-end j'ai le temps de cuisiner. J'aimerais un
   plat en grande quantité, cuisiné une fois et servi deux fois.
 
+# La même intention, structurée — telle que `POST /meal-plans/interpret` la
+# rend et que le foyer la confirme à l'écran avant de générer.
+#
+# ELLE A ÉTÉ AJOUTÉE APRÈS COUP, ET C'EST UN CHANGEMENT DE CE QUE CE CAS
+# MESURE. Sans elle, `intent` partait en une phrase que `generate_plan`
+# convertit en `kind: other` : aucun mécanisme du pré-filtre ne s'y branchait,
+# et l'écart d'effort de ce cas mesurait donc un dispositif éteint. Il valait
+# +0,02 — 2,18 en semaine contre 2,20 le week-end — ce qui n'était pas un
+# échec du modèle mais l'absence de toute cause.
+#
+# Conséquence à assumer : les chiffres d'avant ce jour ne sont plus comparables
+# à ceux d'après. C'est le même acte que régénérer le catalogue (§14.1), en
+# plus petit, et il est écrit ici pour qu'on ne l'oublie pas.
+constraints:
+  - kind: time_budget
+    label: je rentre tard du mardi au vendredi
+    detail: du mardi au vendredi
+  - kind: repeat
+    label: un plat en grande quantité, cuisiné une fois et servi deux fois
+    detail: deux fois
+
 expected_exact:
   # Deux adultes et un enfant de 6 ans qui mange ce qu'ils mangent. Aucune
   # contrainte ne force un second plat.

@@ -5,9 +5,13 @@ et détecter les régressions de prompt. Voir `docs/ARCHITECTURE.md` §14.
 
 ```bash
 docker compose run --rm --no-deps \
-    -v "$PWD/eval:/eval" -v "$PWD/db:/db:ro" -w / api \
+    -v "$PWD/eval:/eval" -v "$PWD/db:/db:ro" -e PYTHONPATH=/app -w / api \
     python /eval/run.py --runs 5
 ```
+
+`PYTHONPATH=/app` parce que `-w /` sort du répertoire où `app` est importable.
+Sans lui : `ModuleNotFoundError: No module named 'app'`, après le démarrage des
+conteneurs et avant la moindre exécution.
 
 Le modèle vient de l'environnement (`LLM_PROVIDER`, `OLLAMA_MODEL`) : comparer
 deux modèles, c'est deux exécutions avec une seule variable changée.
