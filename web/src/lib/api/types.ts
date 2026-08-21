@@ -99,6 +99,16 @@ export type DishEater = {
   member_id: string;
   /** How to serve this person, never whether they may eat it. */
   serving_variant: string | null;
+  /** True when the assignment only holds BECAUSE of the variant — a baby on a
+   * recipe that does not carry that stage (§4.9). No catalogue recipe does, so
+   * this is every baby assignment today. Derived server-side, never stored. */
+  requires_confirmation: boolean;
+  /** When the parent confirmed. Null means "not yet", which is a real state:
+   * shown, marked pending, and not a meal to count on. */
+  variant_confirmed_at: string | null;
+  /** What the variant leaves out, by ingredient name. Checked against the
+   * recipe's own list before ever being stored. */
+  removals: string[];
 };
 
 export type DishSource = "catalog" | "llm_suggestion" | "user";

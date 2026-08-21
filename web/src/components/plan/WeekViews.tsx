@@ -21,6 +21,9 @@ export type WeekViewProps = {
   slots: Map<SlotKey, PlanSlot>;
   violations: Map<SlotKey | "", Violation[]>;
   memberNames: Record<string, string>;
+  /** Needed only to confirm a baby's serving variant, which is an action on a
+   * dish of THIS plan. Null on a week with no plan yet. */
+  planId: string | null;
 };
 
 function mealsOf(enabledSlots: MealSlot[], dayOfWeek: number): MealType[] {
@@ -68,6 +71,7 @@ export async function WeekGrid(props: WeekViewProps) {
                     slot={props.slots.get(key)}
                     memberNames={props.memberNames}
                     violations={props.violations.get(key) ?? []}
+                    planId={props.planId}
                     href={{ pathname: "/", query: { week: props.weekStart, slot: key } }}
                   />
                 );
@@ -120,6 +124,7 @@ export async function DayList(props: WeekViewProps) {
                   slot={props.slots.get(key)}
                   memberNames={props.memberNames}
                   violations={props.violations.get(key) ?? []}
+                  planId={props.planId}
                   href={{ pathname: "/", query: { week: props.weekStart, slot: key } }}
                 />
               );

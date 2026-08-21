@@ -111,6 +111,11 @@
     "handWritten": "hand-written — unchecked",
     "sourceLink": "view recipe",
     "sourceLinkLabel": "View “{title}” on the original site (new tab)",
+    "variantConfirm": "Confirm for {name}",
+    "variantConfirmed": "Confirmed ✓",
+    "variantConfirmFailed": "Failed, try again",
+    "variantPending": "This adaptation has not been confirmed",
+    "variantRemovals": "Without: {items}",
     "notPlannedHeading": "Some meals are not planned",
     "notPlannedBody": "The catalogue holds no recipe suited to a baby under 18 months. Those meals stay yours to make."
   },

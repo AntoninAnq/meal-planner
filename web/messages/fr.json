@@ -111,6 +111,11 @@
     "handWritten": "écrit à la main — non vérifié",
     "sourceLink": "voir la recette",
     "sourceLinkLabel": "Voir « {title} » sur le site d'origine (nouvel onglet)",
+    "variantConfirm": "À valider pour {name}",
+    "variantConfirmed": "Validé ✓",
+    "variantConfirmFailed": "Échec, réessayez",
+    "variantPending": "Cette adaptation n'a pas été validée",
+    "variantRemovals": "Sans : {items}",
     "notPlannedHeading": "Certains repas ne sont pas planifiés",
     "notPlannedBody": "Le catalogue ne contient aucune recette adaptée à un bébé de moins de 18 mois. Ses repas restent à votre main."
   },

@@ -1,5 +1,6 @@
 import { getTranslations } from "next-intl/server";
 
+import { VariantConfirm } from "@/components/plan/VariantConfirm";
 import { cx } from "@/lib/cx";
 import type { Dish } from "@/lib/api/types";
 
@@ -29,10 +30,14 @@ export async function DishCard({
   dish,
   memberNames,
   showEaters,
+  planId,
 }: {
   dish: Dish;
   memberNames: Record<string, string>;
   showEaters: boolean;
+  /** Null when there is no plan to act on — the empty-week placeholder. The
+   * confirmation button needs it and nothing else on this card does. */
+  planId?: string | null;
 }) {
   const t = await getTranslations("plan");
   const variants = dish.eaters.filter((eater) => eater.serving_variant !== null);
@@ -93,15 +98,46 @@ export async function DishCard({
 
       {/* The serving variant is the product's best possible outcome: one
           preparation, a different plate. It has to be legible, or nobody knows
-          to set the portion aside before salting. */}
-      {variants.map((eater) => (
-        <p key={eater.member_id} className="mt-1 text-xs text-accent">
-          {t("variant", {
-            name: memberNames[eater.member_id] ?? "?",
-            variant: eater.serving_variant ?? "",
-          })}
-        </p>
-      ))}
+          to set the portion aside before salting.
+
+          A variant a baby's assignment DEPENDS on is a different thing, and it
+          does not get to look like the others. No catalogue recipe suits a
+          baby, so nothing vouched for this plate but a model that cannot judge
+          texture — §4.9 puts that decision on the parent, and the interface
+          has to make the difference visible or the confirmation is theatre. */}
+      {variants.map((eater) => {
+        const name = memberNames[eater.member_id] ?? "?";
+        const pending = eater.requires_confirmation && !eater.variant_confirmed_at;
+
+        return (
+          <div key={eater.member_id} className="mt-1">
+            <p className={cx("text-xs", pending ? "text-ink" : "text-accent")}>
+              {t("variant", { name, variant: eater.serving_variant ?? "" })}
+            </p>
+
+            {eater.removals.length > 0 && (
+              <p className="text-xs text-ink-muted">
+                {t("variantRemovals", { items: eater.removals.join(", ") })}
+              </p>
+            )}
+
+            {eater.requires_confirmation && planId && (
+              <p className="mt-0.5 flex flex-wrap items-center gap-1.5">
+                <VariantConfirm
+                  planId={planId}
+                  dishId={dish.id}
+                  memberId={eater.member_id}
+                  name={name}
+                  confirmed={eater.variant_confirmed_at !== null}
+                />
+                {pending && (
+                  <span className="text-xs text-ink-muted">{t("variantPending")}</span>
+                )}
+              </p>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }

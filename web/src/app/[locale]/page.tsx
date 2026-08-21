@@ -99,6 +99,7 @@ async function Week({
     slots: slotsByKey(plan),
     violations: violationsByKey(plan?.violations ?? []),
     memberNames,
+    planId: plan?.id ?? null,
   };
 
   const view = resolveView((await cookies()).get(VIEW_COOKIE)?.value);

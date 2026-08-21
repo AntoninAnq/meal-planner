@@ -27,6 +27,7 @@ export async function SlotCard({
   slot,
   memberNames,
   violations,
+  planId,
   href,
   className,
 }: {
@@ -34,6 +35,7 @@ export async function SlotCard({
   slot: PlanSlot | undefined;
   memberNames: Record<string, string>;
   violations: Violation[];
+  planId: string | null;
   /** Opens the slot panel. The panel is driven by the URL, so the back button
    * closes it and a reload reopens it on the same slot. */
   href: { pathname: "/"; query: Record<string, string> };
@@ -94,6 +96,7 @@ export async function SlotCard({
                 dish={dish}
                 memberNames={memberNames}
                 showEaters={diverges}
+                planId={planId}
               />
             ))}
           </div>

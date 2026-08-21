@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { Dish, MealPlan, Violation } from "@/lib/api/types";
+import type { Dish, DishEater, MealPlan, Violation } from "@/lib/api/types";
 import {
   hasDivergence,
   parseSlotKey,
@@ -11,13 +11,25 @@ import {
   violationsByKey,
 } from "@/lib/plan";
 
+/** A minimal eater. The fields beyond the id exist for the baby variant
+ * confirmation (§4.9) and are never what these tests are about. */
+function eater(id: string, variant: string | null = null): DishEater {
+  return {
+    member_id: id,
+    serving_variant: variant,
+    requires_confirmation: false,
+    variant_confirmed_at: null,
+    removals: [],
+  };
+}
+
 function dish(overrides: Partial<Dish> = {}): Dish {
   return {
     id: "d1",
     label: "Poulet aux olives",
     recipe_id: null,
     derived_from_dish_id: null,
-    eaters: [{ member_id: "m1", serving_variant: null }],
+    eaters: [eater("m1")],
     source: "catalog",
     minutes: null,
     complexity: null,
@@ -67,8 +79,8 @@ describe("slotsByKey", () => {
 describe("hasDivergence", () => {
   it("is false when everyone eats the same thing, off the same plate", () => {
     expect(hasDivergence([dish({ eaters: [
-      { member_id: "m1", serving_variant: null },
-      { member_id: "m2", serving_variant: null },
+      eater("m1"),
+      eater("m2"),
     ] })])).toBe(false);
   });
 
@@ -83,8 +95,8 @@ describe("hasDivergence", () => {
       hasDivergence([
         dish({
           eaters: [
-            { member_id: "m1", serving_variant: null },
-            { member_id: "m2", serving_variant: "sans olives" },
+            eater("m1"),
+            eater("m2", "sans olives"),
           ],
         }),
       ]),
