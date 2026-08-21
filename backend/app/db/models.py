@@ -22,6 +22,7 @@ from sqlalchemy import (
     DateTime,
     Enum,
     ForeignKey,
+    ForeignKeyConstraint,
     Integer,
     Numeric,
     SmallInteger,
@@ -342,9 +343,60 @@ class PlannedDishMember(Base):
     #:
     #: It describes HOW to serve, never WHETHER the assignment is allowed: a
     #: variant can never make acceptable an assignment that was not (I1).
+    #:
+    #: ONE exception, and only for the `baby` stage (§4.9). No catalogue recipe
+    #: carries `baby` — zero of 3 439 — so a variant is the only way that stage
+    #: can be fed at all. There, and there alone, the variant DOES open the
+    #: assignment, and `variant_confirmed_at` is what makes that legitimate.
     serving_variant: Mapped[str | None] = mapped_column(String(200))
 
+    #: When the parent confirmed this variant. NULL means "not yet", which is a
+    #: real state: the variant is shown, marked pending, and never counted as a
+    #: meal the household can rely on.
+    #:
+    #: Same shape as `Ingredient.confirmed_at` and for the same reason — I1
+    #: forbids a LLM deciding, not a human, but the difference has to be
+    #: recorded where the code can read it, or "the parent agreed" is a claim
+    #: nobody can check.
+    variant_confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
     dish: Mapped[PlannedDish] = relationship(back_populates="eaters")
+    removals: Mapped[list[PlannedDishMemberRemoval]] = relationship(
+        back_populates="assignment", cascade="all, delete-orphan"
+    )
+
+
+class PlannedDishMemberRemoval(Base):
+    """What the variant takes out of the dish, as ingredient ids.
+
+    Structured rather than prose, and the reason is measured. Asked in free
+    text for an aversion, the model wrote "sans tomate" beside an eater on nine
+    dishes, several of which contained no tomato — nothing could catch it. An
+    ingredient id can be checked against the recipe's own list before it ever
+    reaches a screen; a sentence cannot.
+
+    It also keeps the allergens computable: removing an ingredient can only
+    take allergens away, never add one, so a variant is at worst as safe as the
+    dish it comes from.
+    """
+
+    __tablename__ = "planned_dish_member_removal"
+
+    planned_dish_id: Mapped[uuid.UUID] = mapped_column(primary_key=True)
+    member_id: Mapped[uuid.UUID] = mapped_column(primary_key=True)
+    ingredient_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("ingredient.id", ondelete="RESTRICT"), primary_key=True
+    )
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["planned_dish_id", "member_id"],
+            ["planned_dish_member.planned_dish_id", "planned_dish_member.member_id"],
+            ondelete="CASCADE",
+        ),
+    )
+
+    assignment: Mapped[PlannedDishMember] = relationship(back_populates="removals")
 
 
 class MealHistory(Base):

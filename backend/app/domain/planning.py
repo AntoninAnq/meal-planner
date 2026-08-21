@@ -24,7 +24,12 @@ from collections import Counter
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 
-from app.domain.enums import MealType
+from app.domain.enums import LifeStage, MealType
+
+#: The one stage a serving variant may open an assignment for (§4.9). Compared
+#: as a string because `EaterSafety` carries stages as values, not enum members
+#: — it crosses into the prompt layer, where no entity is allowed.
+BABY_STAGE = LifeStage.BABY.value
 
 
 @dataclass(frozen=True)
@@ -145,9 +150,14 @@ UNVERIFIED_ON_PLANNED_DISH = "unverified_on_planned_dish"
 #: with: measured on the harness, an 8B served gluten to a gluten-intolerant
 #: eater on 6 slots out of 9, reproducibly, and nothing complained.
 ALLERGEN_FOR_EATER = "allergen_for_eater"
-#: The dish does not suit the life stage of a member assigned to it. §4.3
-#: read literally: an assignment is valid IFF the stage is in
-#: `suitable_stages`, and a serving variant can never make it valid (§4.9).
+#: The dish does not suit the life stage of a member assigned to it. §4.3 read
+#: literally: an assignment is valid IFF the stage is in `suitable_stages`.
+#:
+#: ONE exception, `baby`, and §4.9 spells out why it does not perce I1: zero of
+#: the 3 439 catalogue recipes carries that stage, so the literal rule means a
+#: household with a child under 18 months is never served. A serving variant
+#: opens the assignment — and what makes it legitimate is the PARENT confirming
+#: it, not the model writing it. See `_check_eaters_can_eat`.
 STAGE_FOR_EATER = "stage_for_eater"
 
 
@@ -419,6 +429,22 @@ def _check_eaters_can_eat(
 
         stage = safety.stage_by_eater.get(alias)
         if suitable is not None and stage is not None and stage not in suitable:
+            # The `baby` exception of §4.9, and the ONLY place the rule bends.
+            #
+            # Zero of the 3 439 catalogue recipes carries `baby`, so applying
+            # §4.3 literally means a household with a child under 18 months
+            # cannot be served at all — which is what V1 did, by dropping the
+            # stage out of the grid entirely.
+            #
+            # A serving variant lifts it, and I1 still holds because what makes
+            # the assignment legitimate is not the model writing a sentence: it
+            # is the PARENT confirming it, recorded in `variant_confirmed_at`.
+            # This check runs before any parent has seen anything, so all it
+            # can require is that a variant was proposed at all — a baby
+            # assigned to an adult dish with no variant is the mistake the
+            # prompt calls "always wrong", and it stays a violation.
+            if stage == BABY_STAGE and dish.serving_variants.get(alias):
+                continue
             violations.append(
                 Violation(
                     STAGE_FOR_EATER,
