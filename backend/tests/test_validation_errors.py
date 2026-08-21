@@ -1,5 +1,9 @@
 """A 422 must say WHICH field it is about.
 
+Imports `app.errors`, never `app.main`: the latter builds `Settings()` at
+import time and `session_secret` has no default, so importing it here broke
+the CI on a runner with no environment — 348 tests never even collected.
+
 This exists because of an afternoon spent on one. A discriminated union that
 receives a string answers `Input should be a valid dictionary or object to
 extract fields from` — a sentence that names no field, is identical whether the
@@ -13,7 +17,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from pydantic import BaseModel
 
-from app.main import _log_validation_error, _shape
+from app.errors import log_validation_error, shape_of
 
 
 class Body(BaseModel):
@@ -23,7 +27,7 @@ class Body(BaseModel):
 
 def _client() -> TestClient:
     app = FastAPI()
-    app.add_exception_handler(type(_probe_error()), _log_validation_error)  # type: ignore[arg-type]
+    app.add_exception_handler(type(_probe_error()), log_validation_error)  # type: ignore[arg-type]
 
     @app.post("/thing")
     def thing(body: Body) -> dict[str, str]:  # pragma: no cover - never reached
@@ -62,16 +66,16 @@ def test_the_log_describes_the_shape_and_never_the_value() -> None:
     The log needs to know that `scope` arrived as a string; it must never
     record that someone wrote "pas de gluten, ma fille est coeliaque".
     """
-    assert _shape("pas de gluten") == "str"
-    assert _shape(None) == "NoneType"
-    assert _shape({"type": "week", "week_start": "2026-08-17"}) == "dict{type,week_start}"
-    assert _shape([{"kind": "avoid", "detail": "poisson"}]) == "list[1] of dict{detail,kind}"
-    assert _shape([]) == "list[0] of -"
+    assert shape_of("pas de gluten") == "str"
+    assert shape_of(None) == "NoneType"
+    assert shape_of({"type": "week", "week_start": "2026-08-17"}) == "dict{type,week_start}"
+    assert shape_of([{"kind": "avoid", "detail": "poisson"}]) == "list[1] of dict{detail,kind}"
+    assert shape_of([]) == "list[0] of -"
 
     rendered = " ".join(
         [
-            _shape("pas de gluten"),
-            _shape([{"kind": "avoid", "detail": "poisson"}]),
+            shape_of("pas de gluten"),
+            shape_of([{"kind": "avoid", "detail": "poisson"}]),
         ]
     )
     assert "gluten" not in rendered
