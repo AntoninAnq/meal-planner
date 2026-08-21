@@ -20,12 +20,13 @@ from app.db.models import (
     DietaryConstraint,
     FoodCategory,
     HouseholdSettings,
+    Ingredient,
     MealPlan,
     MealSlotConfig,
     Member,
     PlannedDish,
     PlannedDishMember,
-    Ingredient,
+    PlannedDishMemberRemoval,
     Recipe,
     RecipeAllergen,
     RecipeFoodCategory,
@@ -278,10 +279,23 @@ def household_filter(
         if c.allergen_code
         and c.severity in (ConstraintSeverity.SEVERE_ALLERGY, ConstraintSeverity.INTOLERANCE)
     }
+    # `baby` is left OUT of the stage filter, and it has to be. The filter keeps
+    # recipes suiting at least one stage present, and zero of the 3 439 recipes
+    # carries `baby` — so a household whose only eater is an infant matched
+    # nothing at all and got `no_candidates` on every slot. That is the old
+    # "the stage leaves the grid" behaviour resurfacing one layer down.
+    #
+    # §4.9 feeds that stage by ADAPTING an adult dish, so the recipes it needs
+    # are precisely the ones this filter would have to drop. Harmless for a
+    # mixed household — the filter is a disjunction, and the adults already
+    # keep the pool open — and decisive for a household of one baby.
+    plannable = frozenset(
+        member.life_stage for member in members if member.life_stage is not LifeStage.BABY
+    )
     return HouseholdFilter(
         excluded_allergens=frozenset(severe),
         require_verified=bool(declared),
-        life_stages=frozenset(member.life_stage for member in members),
+        life_stages=plannable,
     )
 
 
@@ -293,17 +307,25 @@ def stages_without_candidates(db: Session, stages: frozenset[LifeStage]) -> set[
     on every slot of a household with an infant — nine failures a week, for the
     product's own target audience.
 
-    So the stage leaves the grid instead. The system says once what it cannot
-    do rather than flagging it nine times, and no safety frontier moves: the
-    baby is not served a dish that suits it, it is not served at all. The dish
-    derived from the adult's (§4.9, level 3) is what fixes this for real, and
-    it is phase 3.
+    So the stage left the grid instead. The system said once what it could not
+    do rather than flagging it nine times, and no safety frontier moved: the
+    baby was not served a dish that suits it, it was not served at all.
 
-    Computed rather than hardcoded: the day a household writes its own baby
-    recipes, this returns an empty set and nothing else changes.
+    **`baby` no longer leaves the grid.** §4.9 now lets a serving variant open
+    the assignment for that stage alone, confirmed by the parent — so a
+    household with an infant is served, and the absence of baby recipes is
+    answered by adapting an adult dish rather than by giving up. This function
+    keeps the mechanism for any FUTURE stage the catalogue cannot feed; it is
+    simply no longer the answer for this one.
+
+    Computed rather than hardcoded, and that is what makes the exemption safe:
+    the day the catalogue holds real baby recipes, `baby` stops being exempt on
+    its own and the ordinary rule applies again.
     """
     missing: set[LifeStage] = set()
     for stage in stages:
+        if stage is LifeStage.BABY:
+            continue
         exists = db.scalar(
             select(Recipe.id)
             .join(RecipeSuitableStage, RecipeSuitableStage.recipe_id == Recipe.id)
@@ -783,6 +805,47 @@ def _eater_safety(
     )
 
 
+def _store_removals(
+    db: Session, dish: PlannedDish, member_id: uuid.UUID, names: Sequence[str]
+) -> None:
+    """Turn the names the model echoed into ingredient rows.
+
+    Resolved against THIS recipe's own ingredients, never against the whole
+    referential. `validate_proposal` has already rejected a name the recipe
+    does not contain, so anything unmatched here is a spelling the fold missed
+    — dropped in silence rather than stored as a removal nobody can trace.
+
+    Nothing is written for a free-text dish: with no `recipe_id` there is no
+    ingredient list to point at, and a removal that references nothing is worse
+    than none.
+    """
+    if not names or dish.recipe_id is None:
+        return
+
+    by_name = {
+        name.strip().casefold(): ingredient_id
+        for ingredient_id, name in db.execute(
+            select(Ingredient.id, Ingredient.canonical_name)
+            .join(RecipeIngredient, RecipeIngredient.ingredient_id == Ingredient.id)
+            .where(
+                RecipeIngredient.recipe_id == dish.recipe_id,
+                RecipeIngredient.is_section.is_(False),
+            )
+        ).all()
+    }
+
+    for name in names:
+        ingredient_id = by_name.get(name.strip().casefold())
+        if ingredient_id is not None:
+            db.add(
+                PlannedDishMemberRemoval(
+                    planned_dish_id=dish.id,
+                    member_id=member_id,
+                    ingredient_id=ingredient_id,
+                )
+            )
+
+
 def _guest_aliases(guests: Sequence[GuestGroup]) -> list[str]:
     aliases: list[str] = []
     for index, group in enumerate(guests, start=1):
@@ -937,6 +1000,12 @@ def _persist(
                         serving_variant=proposed.serving_variants.get(alias),
                     )
                 )
+                # `variant_confirmed_at` is deliberately NOT set here. A
+                # variant arrives unconfirmed and stays so until a parent says
+                # otherwise — that is the whole point of the column, and
+                # writing a timestamp at generation would make the system
+                # confirm its own proposal (§4.9).
+                _store_removals(db, dish, member_id, proposed.variant_removals.get(alias, ()))
 
     db.commit()
     return plan

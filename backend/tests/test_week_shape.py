@@ -206,7 +206,9 @@ def test_a_long_dish_is_ranked_down_and_never_removed() -> None:
 def test_a_week_long_constraint_takes_every_quick_dish() -> None:
     """"J'aurai peu de temps cette semaine" names no day, so every slot is
     concerned and the whole list may as well be quick."""
-    assert quick_share(FULL_WEEK, [Intent("time_budget", "peu de temps", "cette semaine")], "fr") == 1.0
+    whole_week = [Intent("time_budget", "peu de temps", "cette semaine")]
+
+    assert quick_share(FULL_WEEK, whole_week, "fr") == 1.0
 
 
 def test_a_constraint_naming_days_leaves_room_for_the_others() -> None:

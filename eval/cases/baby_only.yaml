@@ -1,23 +1,72 @@
-# Le foyer que le catalogue ne peut pas nourrir.
+# Un foyer où le seul mangeur est un bébé de moins de 18 mois.
 case: baby_only
 runs: 5
 
-# 1. Noyau déterministe — égalité stricte. C'est ici que les garanties tiennent.
-expected_exact:
-  # Aucune recette scrapée ne porte `baby` (§6.4). Le plan doit être VIDE et le
-  # dire : inventer un repas ici est l'échec, pas l'absence de repas.
-  plan_is_empty: true
+# ── CE CAS A CHANGÉ DE RÉPONSE ATTENDUE, ET C'EST LE POINT ────────────────
+#
+# Il exigeait `plan_is_empty: true` et `llm_calls: 0` : aucune recette scrapée
+# ne porte `baby` — **zéro sur 3 439** — donc le stade sortait de la grille et
+# le système disait une fois ce qu'il ne savait pas faire.
+#
+# Le §4.9 lève ça pour ce seul stade. Une variante de service ouvre
+# l'assignation, et ce qui la rend légitime n'est pas le modèle qui l'écrit,
+# c'est le parent qui la confirme (`variant_confirmed_at`). Le foyer est donc
+# servi, et l'absence de recettes bébé se répond en adaptant un plat adulte.
+#
+# **Ce n'est PAS un golden assoupli pour passer au vert.** L'ancien exigeait le
+# vide et le nouveau exige des repas : c'est l'assertion inverse, sur une
+# décision documentée. Ce qui n'a pas bougé, et qui est vérifié plus bas : un
+# bébé assigné sans variante reste un échec.
 
-# 2. Couche LLM — invariants durs et taux.
+expected_exact:
+  eaters: 1
+
 expected_properties:
   allergen_violations: 0
   dishes_outside_candidates: 0
-  # Aucun appel de modèle ne doit partir : le pré-filtre sait déjà qu'il n'y a
-  # rien, et trois tentatives coûteraient des minutes pour une certitude acquise.
-  llm_calls: 0
+  # Le foyer est servi comme les autres. Un plan vide ici voudrait maintenant
+  # dire que le pré-filtre ou le modèle a renoncé, pas que le catalogue est
+  # pauvre.
+  distinct_dishes: ">= 5"
+  # LA garantie qui n'a pas bougé. Zéro recette du catalogue ne convient à un
+  # bébé, donc CHAQUE assignation doit porter une variante — sans quoi c'est
+  # exactement l'erreur que le prompt appelle « toujours fausse », servie au
+  # mangeur le plus vulnérable de la table.
+  assignments_without_variant: 0
 
-# 3. Référence humaine — ne fait échouer aucun test (§14.2).
+# ── CE QUE LE MÉCANISME NE DIT PAS, ET QU'IL FAUT SAVOIR ──────────────────
+#
+# Le dispositif fonctionne de bout en bout : le bébé est servi sur tous les
+# créneaux, chaque assignation porte une variante, aucune n'est confirmée
+# d'office. Le CONTENU des variantes, lui, est pauvre.
+#
+# Mesuré sur qwen3:8b, deux passes de cinq exécutions : **la même phrase sur
+# tous les créneaux** — « part prélevée avant salage et mixée » — et **zéro
+# retrait d'ingrédient**, y compris sur un curry au clou de girofle ou une
+# poêlée au safran, alors que les consignes demandent explicitement de nommer
+# les épices fortes de CE plat.
+#
+# Le prompt a été réécrit une fois pour l'exiger — « a dish with ras el-hanout
+# and one with white wine do not get the same instruction » — sans le moindre
+# effet. Ce modèle recopie l'exemple qu'on lui donne. Le constat est arrêté là
+# plutôt que de continuer à tourner la formulation : c'est une limite du
+# modèle, pas du mécanisme, et un modèle plus capable lira les mêmes consignes.
+#
+# La conséquence est bornée, et c'est exactement pourquoi le §4.9 fait
+# confirmer le parent : une part prélevée avant salage et écrasée est une
+# réponse correcte pour la plupart des plats, simplement générique. Le parent
+# qui confirme a le plat et la recette sous les yeux — la pastille vers la
+# source est à un clic.
+
 human_reference:
   note: >-
-    Un parent nourrit un bébé de moins de 18 mois avec des purées qu'il prépare
-    lui-même. La bonne réponse du produit est de ne pas prétendre le contraire.
+    Un parent nourrit un bébé de moins de 18 mois avec des choses extraites du
+    plat familial : pâtes ou riz bien cuits oui, concombre cru non. La bonne
+    réponse du produit n'est plus de se taire — c'est de proposer l'adaptation
+    et de laisser le parent la confirmer.
+  limite: >-
+    Ce foyer n'a QUE le bébé, donc il n'y a pas de plat adulte dont la part du
+    bébé serait prélevée : le système choisit un plat du catalogue et décrit
+    comment l'adapter. C'est le cas dégradé. Le cas réel — deux adultes, un
+    enfant, un bébé — est celui de `founder`, où le bébé mange une part de ce
+    que les autres mangent.

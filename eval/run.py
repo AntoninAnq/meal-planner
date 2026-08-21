@@ -259,6 +259,11 @@ class RunResult:
     #: semaine", and unlike the weeknight/weekend gap it says something even
     #: when the whole week is quick.
     quick_dishes: int = 0
+    #: Assignments carrying no serving variant, for a `baby` eater. Zero of the
+    #: catalogue's recipes suits that stage, so every one of them must have one:
+    #: a baby assigned to an adult dish bare is the mistake the prompt calls
+    #: "always wrong", on the most vulnerable eater at the table.
+    assignments_without_variant: int = 0
     #: How many slots the most-repeated dish occupies. `repeated_dishes` counts
     #: HOW MANY dishes repeat; this says how far one of them went. Asking for
     #: one batch and getting four dishes twice each scores 4 on the first and
@@ -277,8 +282,14 @@ def one_run(
     intent: str | None = None,
     constraints: list[dict[str, Any]] | None = None,
 ) -> RunResult:
-    from app.db.models import DietaryConstraint, PlannedDish, PlannedDishMember, RecipeAllergen
-    from app.domain.enums import ConstraintSeverity
+    from app.db.models import (
+        DietaryConstraint,
+        Member,
+        PlannedDish,
+        PlannedDishMember,
+        RecipeAllergen,
+    )
+    from app.domain.enums import ConstraintSeverity, LifeStage
     from app.llm.factory import get_llm_client
     from app.services import planning_service as ps
 
@@ -401,7 +412,20 @@ def one_run(
         for row in db.scalars(select(RecipeAllergen)):
             carried.setdefault(row.recipe_id, set()).add(row.allergen_code.value)
 
+        # Read from the members table rather than from the plan: which stage
+        # someone is at is a property of the household, and deriving it from
+        # what they were served would make the check agree with itself.
+        babies = {
+            member_id
+            for member_id in db.scalars(
+                select(Member.id).where(
+                    Member.household_id == household_id, Member.life_stage == LifeStage.BABY
+                )
+            )
+        }
+
         breaches = 0
+        bare_baby_assignments = 0
         by_dish = {dish.id: dish for dish in dishes}
         for assignment in db.scalars(
             select(PlannedDishMember).where(
@@ -409,7 +433,11 @@ def one_run(
             )
         ):
             dish = by_dish.get(assignment.planned_dish_id)
-            if dish is None or dish.recipe_id is None:
+            if dish is None:
+                continue
+            if assignment.member_id in babies and not assignment.serving_variant:
+                bare_baby_assignments += 1
+            if dish.recipe_id is None:
                 continue
             if carried.get(dish.recipe_id, set()) & excluded.get(assignment.member_id, set()):
                 breaches += 1
@@ -438,6 +466,7 @@ def one_run(
             quick_dishes=sum(
                 1 for d in dishes if d.recipe_id and complexity.get(d.recipe_id) == 1
             ),
+            assignments_without_variant=bare_baby_assignments,
         )
 
 
@@ -507,6 +536,11 @@ def report(case: str, runs: list[RunResult], golden: dict[str, Any]) -> None:
     # Deterministic, so it is asserted hard rather than reported: the slot is
     # removed before any model call. A non-zero here is a bug in `slots_to_skip`
     # or in the grid, never a bad draw from the model.
+    # Deterministic like the skipped days: `validate_proposal` refuses a bare
+    # baby assignment, so a non-zero here means the guarantee itself broke.
+    if "assignments_without_variant" in expected:
+        _check("assignations sans variante", expected["assignments_without_variant"],
+               sum(run.assignments_without_variant for run in ok))
     if "dishes_on_skipped_days" in expected:
         _check("plats un jour annulé", expected["dishes_on_skipped_days"],
                sum(run.dishes_on_skipped_days for run in ok))

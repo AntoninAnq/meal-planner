@@ -256,8 +256,12 @@ def build_catalogue() -> list[dict[str, Any]]:
 HOUSEHOLDS: list[dict[str, Any]] = [
     {
         "key": "baby_only",
-        "why": "No catalogue recipe carries `baby` (§6.4). The plan must contain "
-               "NOTHING and say so — inventing a meal here is the failure.",
+        "why": "No catalogue recipe carries `baby` — zero of 3 439 — so every "
+               "assignment here must ride on a serving variant (§4.9). The "
+               "degraded case: with no adult at the table there is no dish to "
+               "take a portion from, so the system adapts a catalogue recipe "
+               "outright. It used to expect an EMPTY plan; the stage no longer "
+               "leaves the grid.",
         "members": [{"alias": "m1", "life_stage": "baby"}],
         "constraints": [],
     },

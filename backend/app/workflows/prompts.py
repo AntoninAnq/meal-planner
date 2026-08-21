@@ -46,9 +46,12 @@ plate is something you adapt from an adult dish.
   adapted, give the baby a DIFFERENT dish from the same candidate list — never
   invent one, never leave the baby unfed.
 - Set the portion aside BEFORE salt, stock cubes, strong spice, and before any
-  alcohol goes in. Say so in the variant: "part prélevée avant salage et avant
-  le vin". You are not told at which step that happens; the person cooking will
-  see it in the recipe.
+  alcohol goes in — and NAME the ones this particular dish contains. Look at
+  its ingredient list: a dish with ras el-hanout and one with white wine do not
+  get the same instruction, and "part prélevée avant salage et mixée" written
+  identically on every dish of the week is a sentence copied from these notes
+  rather than an instruction about that meal. You are not told at which step
+  the addition happens; the person cooking will see it in the recipe.
 - Texture is the real problem, not forbidden foods. At this age almost nothing
   is banned outright, but hard raw pieces are a choking hazard: raw carrot,
   cucumber, whole grapes, cherry tomatoes, whole nuts. Soft-cooked pasta, rice,

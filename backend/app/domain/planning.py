@@ -425,14 +425,19 @@ def _check_removals_are_real(
         return
 
     where = f"day {key[0]} {key[1]}"
-    for alias, names in dish.variant_removals.items():
+    for alias, names in sorted(dish.variant_removals.items()):
         unknown = sorted(name for name in names if _fold_name(name) not in known)
         if unknown:
             violations.append(
                 Violation(
                     UNKNOWN_REMOVAL,
-                    f"{where}: {dish.recipe_id} contains no {', '.join(unknown)} — "
-                    f"remove only what is in its ingredient list, or nothing",
+                    # Names the eater, like every other per-assignment
+                    # violation: the repair hint has to say WHOSE variant is
+                    # wrong, or the model's only available fix is to drop them
+                    # all.
+                    f"{where}: {dish.recipe_id} contains no {', '.join(unknown)}, "
+                    f"asked for '{alias}' — remove only what is in its "
+                    f"ingredient list, or nothing",
                     *key,
                 )
             )
