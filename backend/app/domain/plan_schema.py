@@ -46,6 +46,19 @@ def plan_output_schema(*, with_catalogue: bool) -> dict[str, Any]:
                         "description": "How to serve this eater: 'sans olives', "
                         "'part prélevée avant salage et mixée'.",
                     },
+                    "remove": {
+                        # Names, not free text, and not new identifiers: the
+                        # model copies them from the candidate line it was
+                        # shown, and the code checks each one belongs to that
+                        # recipe. Measured reason for the check: asked in prose
+                        # for an aversion, this model wrote "sans tomate" next
+                        # to an eater on nine dishes, several holding no tomato.
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Ingredients to leave out for this eater. "
+                        "Each MUST be copied exactly from this recipe's own "
+                        "ingredient list. Omit rather than guess.",
+                    },
                 },
                 "required": ["eater", "variant"],
                 "additionalProperties": False,
@@ -116,6 +129,11 @@ def parse_proposal(data: dict[str, Any]) -> list[ProposedSlot]:
                 serving_variants={
                     variant["eater"]: variant["variant"]
                     for variant in raw_dish.get("serving_variants", [])
+                },
+                variant_removals={
+                    variant["eater"]: tuple(variant.get("remove") or ())
+                    for variant in raw_dish.get("serving_variants", [])
+                    if variant.get("remove")
                 },
             )
             for raw_dish in raw_slot.get("dishes", [])

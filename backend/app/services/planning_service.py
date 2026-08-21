@@ -25,9 +25,11 @@ from app.db.models import (
     Member,
     PlannedDish,
     PlannedDishMember,
+    Ingredient,
     Recipe,
     RecipeAllergen,
     RecipeFoodCategory,
+    RecipeIngredient,
     RecipeSuitableStage,
 )
 from app.domain.days import parse_days, slots_to_skip
@@ -743,6 +745,23 @@ def _eater_safety(
         ).all():
             stages.setdefault(recipe_id, set()).add(stage.value)
 
+    # What a serving variant is allowed to name. Resolved ingredients only:
+    # a line the referential never recognised cannot be echoed back by the
+    # model, and rejecting it is more honest than accepting a name nobody can
+    # check. Folded the same way `_check_removals_are_real` folds — case and
+    # surrounding space, nothing more.
+    ingredients: dict[uuid.UUID, set[str]] = {}
+    if known:
+        for recipe_id, name in db.execute(
+            select(RecipeIngredient.recipe_id, Ingredient.canonical_name)
+            .join(Ingredient, Ingredient.id == RecipeIngredient.ingredient_id)
+            .where(
+                RecipeIngredient.recipe_id.in_(known),
+                RecipeIngredient.is_section.is_(False),
+            )
+        ).all():
+            ingredients.setdefault(recipe_id, set()).add(name.strip().casefold())
+
     return EaterSafety(
         allergens_by_recipe={
             handle: frozenset(allergens.get(recipe_id, set()))
@@ -756,6 +775,11 @@ def _eater_safety(
             if recipe_id is not None
         },
         stage_by_eater=stage_by_eater,
+        ingredients_by_recipe={
+            handle: frozenset(ingredients.get(recipe_id, set()))
+            for handle, recipe_id in zip(handles, recipe_ids, strict=True)
+            if recipe_id is not None
+        },
     )
 
 

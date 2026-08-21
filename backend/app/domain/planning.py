@@ -57,6 +57,11 @@ class ProposedDish:
     #: alias -> "sans olives". How to serve, never whether the
     #: assignment is allowed.
     serving_variants: Mapping[str, str] = field(default_factory=dict)
+    #: alias -> the ingredient NAMES to leave out for that eater, copied from
+    #: the recipe's own list. Checked against it by `_check_removals_are_real`:
+    #: a name the recipe does not contain is a hallucination, and on a baby's
+    #: plate that is the kind nobody catches by reading.
+    variant_removals: Mapping[str, tuple[str, ...]] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -83,6 +88,10 @@ class EaterSafety:
     stages_by_recipe: Mapping[str, frozenset[str]] = field(default_factory=dict)
     #: eater alias -> their life stage.
     stage_by_eater: Mapping[str, str] = field(default_factory=dict)
+    #: recipe handle -> its resolved ingredient names, normalised. Only what
+    #: the referential recognised: a line nobody has written down cannot be
+    #: named in a removal, and saying so is more honest than pretending.
+    ingredients_by_recipe: Mapping[str, frozenset[str]] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -159,6 +168,12 @@ ALLERGEN_FOR_EATER = "allergen_for_eater"
 #: opens the assignment — and what makes it legitimate is the PARENT confirming
 #: it, not the model writing it. See `_check_eaters_can_eat`.
 STAGE_FOR_EATER = "stage_for_eater"
+#: A serving variant says to leave out something the recipe does not contain.
+#: The exact failure measured on an aversion the week of 2026-08-20 — "sans
+#: tomate" written beside an eater on nine dishes, several without tomato —
+#: except that here it would be a safety instruction for a 16-month-old, which
+#: a parent has every reason to trust.
+UNKNOWN_REMOVAL = "unknown_removal"
 
 
 def validate_proposal(
@@ -386,6 +401,54 @@ def repair_hint(violations: Sequence[Violation]) -> str:
     return "Your previous plan was rejected for the following reasons. Fix all of them:\n" + lines
 
 
+def _check_removals_are_real(
+    dish: ProposedDish,
+    key: tuple[int, MealType],
+    safety: EaterSafety,
+    violations: list[Violation],
+) -> None:
+    """Every ingredient a variant removes must be in the recipe.
+
+    Compared on the folded name rather than an identifier, because that is what
+    the model was shown — the candidate line lists canonical names, and asking
+    it to echo one back is cheaper and more reliable than inventing a second
+    handle namespace.
+
+    Silent when the recipe's ingredients are unknown to `safety`: that is V0
+    and the slot-scoped repair, where there is nothing to check against. Making
+    it a violation there would reject plans for lacking data the caller never
+    supplied.
+    """
+    assert dish.recipe_id is not None
+    known = safety.ingredients_by_recipe.get(dish.recipe_id)
+    if known is None:
+        return
+
+    where = f"day {key[0]} {key[1]}"
+    for alias, names in dish.variant_removals.items():
+        unknown = sorted(name for name in names if _fold_name(name) not in known)
+        if unknown:
+            violations.append(
+                Violation(
+                    UNKNOWN_REMOVAL,
+                    f"{where}: {dish.recipe_id} contains no {', '.join(unknown)} — "
+                    f"remove only what is in its ingredient list, or nothing",
+                    *key,
+                )
+            )
+
+
+def _fold_name(name: str) -> str:
+    """Case and surrounding space only.
+
+    Deliberately NOT the referential's `normalise`: this module is pure domain
+    and `app.domain.ingredient_names` belongs to resolution. A model echoing a
+    name it was just shown does not need singularisation — and if it paraphrases
+    instead of copying, the honest answer is to reject, not to guess what it meant.
+    """
+    return name.strip().casefold()
+
+
 def _check_eaters_can_eat(
     dish: ProposedDish,
     key: tuple[int, MealType],
@@ -414,6 +477,8 @@ def _check_eaters_can_eat(
     where = f"day {key[0]} {key[1]}"
     carried = safety.allergens_by_recipe.get(dish.recipe_id, frozenset())
     suitable = safety.stages_by_recipe.get(dish.recipe_id)
+
+    _check_removals_are_real(dish, key, safety, violations)
 
     for alias in dish.eater_aliases:
         clashing = sorted(carried & safety.excluded_by_eater.get(alias, frozenset()))
