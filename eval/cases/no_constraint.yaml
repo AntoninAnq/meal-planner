@@ -14,6 +14,24 @@ expected_properties:
   # branché a corrigé (le `degenerate_plan` du §14.6 venait de son absence).
   distinct_dishes: ">= 7"
 
+# ── CE CAS EST AUSSI LE TÉMOIN DE BRUIT ───────────────────────────────────
+#
+# Il ne dit RIEN sur le temps de cuisine. Son écart d'effort devrait donc être
+# nul par construction : aucun mécanisme, aucune phrase, aucune raison de
+# distinguer un mardi d'un dimanche. Mesuré sur trois passes de cinq
+# exécutions : **+0,60, puis -0,33.**
+#
+# C'est l'amplitude du bruit de fond, et elle règle une question qui traînait.
+# Sur les mêmes passes, `founder` — qui demande explicitement « rapide du mardi
+# au vendredi, du temps le week-end », mécanisme branché — a mesuré +0,02 puis
+# -0,08. Le signal recherché est plus petit que le bruit du témoin.
+#
+# Conclusion : à cinq exécutions, l'écart d'effort ne mesure rien du tout, quel
+# que soit le cas. Ce n'est plus une hypothèse prudente, c'est une borne
+# observée. La question « combien d'exécutions faut-il » a maintenant un moyen
+# d'être répondue : relancer CE cas jusqu'à ce que son écart se stabilise
+# autour de zéro donne le nombre, sans dépendre du modèle ni d'une intention.
+
 human_reference:
   note: >-
     Sept à neuf plats distincts sur la semaine, dont deux partageant une base.
