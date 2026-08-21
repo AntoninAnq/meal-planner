@@ -216,6 +216,28 @@ littéralement « je ne veux pas cuisiner deux fois », résolu sans compromis.
 C'est aussi une piste sérieuse pour la déclinaison bébé : dans beaucoup de cas ce
 n'est pas une recette bébé qui manque, c'est une **instruction de service**.
 
+#### Une variante bébé se confirme, elle ne s'affiche pas
+
+Le catalogue ne contient **aucune** recette adaptée à un bébé — zéro sur 3 439.
+Une variante bébé n'est donc jamais adossée à une recette que quelqu'un a jugée
+adaptée à cet âge : c'est une **proposition**, et l'écran doit le dire.
+
+> Une variante portant sur un mangeur `baby` n'entre au plan **qu'après une
+> confirmation explicite du parent, plat par plat**. Tant qu'elle ne l'est pas,
+> elle est visible et marquée comme en attente — jamais comptée comme un repas
+> prévu.
+
+**Pourquoi une confirmation et pas une simple mention.** Un plat affiché comme
+les autres, dans la grille de la semaine, se lit comme validé par le système.
+C'est vrai des huit autres créneaux ; ça ne l'est pas de celui-là. Le mécanisme
+est le même que la mention « écrit à la main » du §15 — sauf qu'ici il ne suffit
+pas d'informer, parce que le risque n'est pas un menu terne mais une fausse
+route.
+
+**Ce que le parent confirme, précisément** : que la texture proposée convient à
+**son** enfant. Le système ne sait pas la juger — la texture dépend de la
+cuisson, pas de l'ingrédient — et il ne fait pas semblant.
+
 Le niveau 3 se **dessine maintenant et reste vide en V0** : il exige les
 ingrédients, donc le catalogue. Sans ça la V1 redessinerait l'écran principal, et
 c'est le seul écran qui compte.

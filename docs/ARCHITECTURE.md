@@ -106,12 +106,16 @@ De même, le **nombre maximal de plats par créneau est une pénalité de scorin
 
 Chaque **membre** a un `life_stage`. Chaque **recette** porte `suitable_stages`, l'ensemble des stades pour lesquels elle constitue **un vrai repas**.
 
-> Une assignation est valide **ssi** `member.life_stage ∈ recipe.suitable_stages`.
+> Une assignation est valide **ssi** `member.life_stage ∈ recipe.suitable_stages`,
+> **ou** si elle porte une variante de service confirmée par le parent — cas
+> réservé au stade `baby`, décrit au §4.9.
 
 Un seul champ, une seule règle, en SQL, qui couvre les deux directions :
 
 - la purée lisse est taguée `{baby}` → un adulte ne peut pas y être assigné ;
-- le curry relevé est tagué `{teen_adult}` → le bébé non plus.
+- le curry relevé est tagué `{teen_adult}` → le bébé non plus, **sauf si le parent a confirmé une variante** pour ce plat-là.
+
+> **Pourquoi l'exception n'existe que dans ce sens.** Elle ouvre un plat adulte à un bébé, jamais l'inverse : une purée lisse reste un non-repas pour un adulte, et personne n'a jamais eu besoin de la lui servir. L'asymétrie suit celle du catalogue — c'est le stade `baby` qui n'a rien, pas les autres.
 
 #### Seuils et transitions
 
@@ -209,6 +213,18 @@ Un plat n'est pas atomique. Il existe **trois mécanismes**, et ils n'ont pas le
 La **variante de service** est portée par l'**assignation** (`planned_dish_member`), pas par le plat : deux personnes peuvent avoir des variantes différentes sur le même plat. Texte libre en V0, structurée en V1 une fois les ingrédients disponibles.
 
 > **La frontière de sécurité ne bouge pas.** Le code décide **si** un membre peut être assigné à ce plat (`suitable_stages`, allergènes) ; la variante décrit seulement **comment** le servir. Une variante ne peut jamais rendre acceptable une assignation qui ne l'était pas — sinon le LLM redeviendrait juge de la sécurité et I1 tombe.
+
+#### L'exception `baby`, et pourquoi elle ne perce pas I1
+
+Le paragraphe ci-dessus interdisait le niveau 2 pour un bébé : aucune recette du catalogue ne porte `baby` (**zéro sur 3 439**, mesuré), donc aucune assignation n'était valide et aucune variante ne pouvait la sauver.
+
+**Cette interdiction est levée pour le seul stade `baby`, et remplacée par une validation humaine explicite.** Une assignation `baby` sur une recette qui ne porte pas ce stade est **proposée** par le système et n'entre au plan qu'après confirmation du parent, plat par plat.
+
+> **I1 tient, parce qu'il interdit qu'un *LLM* décide, pas qu'un *humain* décide.** C'est déjà le modèle du référentiel d'ingrédients : un modèle propose, un humain confirme, et rien n'est actif entre les deux (`confirmed_at`). Ici la confirmation porte sur une assignation plutôt que sur une donnée, et elle n'est jamais implicite.
+
+**Pourquoi ne pas plutôt déclarer les textures.** Ce serait la seule voie entièrement déterministe, et elle ne tient pas : la texture dépend de la **cuisson**, pas de l'ingrédient. Une carotte est dangereuse crue et sans risque en purée, et le référentiel ne connaît que « Carotte ». Déclarer une texture par ingrédient donnerait une complétude illusoire — le « filtre fantôme » que I2 dénonce.
+
+**Le repli reste le niveau 3.** Quand aucune variante n'est possible, le bébé reçoit **une autre recette du catalogue**, dérivée à son tour — jamais un plat inventé. Un plat sans `recipe_id` n'a pas de `recipe_allergen`, donc aucun filtre allergène ne s'y applique : ce serait le seul plat du plan dont personne ne peut dire ce qu'il contient, servi au mangeur le plus vulnérable de la table.
 
 Le niveau 3 exige les ingrédients, donc le catalogue : le lien `derived_from_dish_id` existe dans le contrat dès la V0 mais reste nul.
 
@@ -1238,7 +1254,9 @@ Un modèle qui note le plan généré face à la référence capte des choses qu
 | Sujet | Statut |
 |---|---|
 | Score d'appétence par membre (goûts + historique) | Phase 3+ — le construire trop tôt, c'est calibrer sur du vide |
-| **Le plat bébé dérivé du plat adulte** | Phase 3. Mesuré en phase 2 : **zéro** des 3 439 recettes porte `baby`, comme le §6.4 l'annonçait, donc un foyer avec un enfant de moins de 18 mois ne peut pas être servi par le catalogue scrapé. En V1 il **sort de la grille** plutôt que de produire un `eater_not_served` sur chaque créneau — le système dit une fois ce qu'il ne sait pas faire au lieu de le signaler neuf fois. La forme d'après est un **plat dérivé (niveau 3 du §4.9), pas une variante de service (niveau 2)** : une seconde ligne `planned_dish` portant `derived_from_dish_id`, `source = LLM_SUGGESTION` et `recipe_id` nul — donc dans le plan, jamais au catalogue (I7). Pour que la sécurité reste calculable sans `recipe_id`, la dérivation doit être **structurée** : une liste de `ingredient_id` retirés, dont se déduisent les allergènes du plat dérivé ; le modèle n'écrit que l'instruction de service, ce que le §6.4 lui assigne déjà. Il manque pour ça un **âge minimal par ingrédient** dans `db/ingredients.yaml` — le miel n'y porte aujourd'hui aucune contre-indication alors qu'il est interdit avant 12 mois — et c'est aussi ce qui permettrait de *vérifier* un parent qui ouvrirait `baby` sur une recette, plutôt que de le croire sur parole. |
+| **Le plat bébé dérivé du plat adulte** | **Décidé, plus repoussé** — voir §4.9, « L'exception `baby` ». Le fait qui l'a débloqué : **zéro** des 3 439 recettes porte `baby`, donc en V1 le bébé **sortait de la grille** — le système disait une fois ce qu'il ne savait pas faire plutôt que de le signaler neuf fois. ⟶ **Ce qui a changé, et c'est un revirement.** Ce paragraphe prescrivait un **plat dérivé (niveau 3), pas une variante (niveau 2)**, et une dérivation structurée par `ingredient_id` retirés pour que la sécurité reste calculable sans `recipe_id`. C'est l'inverse qui a été retenu : le niveau 2 **conserve** le `recipe_id`, donc `recipe_allergen`, `ALLERGEN_FOR_EATER` et `allergens_verified` fonctionnent sur le bébé sans une ligne de code de plus. Le chemin le plus simple était aussi le plus sûr. Le niveau 3 reste le **repli** quand aucune variante n'est possible, et il pointe alors une autre recette du catalogue, jamais un plat inventé. ⟶ L'**âge minimal par ingrédient** que ce paragraphe réclamait n'est **pas** retenu : la texture dépend de la cuisson, pas de l'ingrédient, et le déclarer par ingrédient donnerait la complétude illusoire que I2 dénonce. La vérification est humaine et explicite (§4.9). |
+| **Le `skip_slot` par mangeur** | Ouvert par la décision ci-dessus. « Bébé ne mange pas avec nous le midi » désigne **une personne à un créneau**, alors que `skip_slot` annule aujourd'hui le créneau pour tout le monde. Sans lui, la règle « toujours une proposition pour un bébé présent » n'a pas d'échappatoire et le système proposera un déjeuner à un enfant qui dort. |
+| **Un stade entre 0 et 18 mois** | `life_stage` vaut `baby` de la naissance à 18 mois, et le §4.3 refuse d'ajouter un stade — la différenciation fine relève du score d'appétence. Conséquence assumée : les guidelines du prompt visent le cas le plus conservateur, donc un bébé de 16 mois qui mange des morceaux recevra des propositions plus prudentes que nécessaire. C'est le bon sens de l'erreur, et il se voit. |
 | `pgvector` / recherche sémantique | Option future |
 | Désactivation de membres par créneau à la génération | Échappatoire connue, sans nouvelle table, non retenue au MVP |
 | LLM-juge dans le banc d'essai | Phase ultérieure |
