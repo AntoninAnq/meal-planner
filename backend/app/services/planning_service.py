@@ -412,10 +412,27 @@ def generate_plan(
     """
     # A bare string still works — the slot-level repair sends one reason and
     # has no interpretation step behind it.
-    intents = [
-        entry if isinstance(entry, Intent) else Intent(kind="other", label=str(entry))
-        for entry in user_constraints
-    ]
+    #
+    # Anything ELSE raises, and that is the whole point of this branch being
+    # written out rather than left as an `else`. It used to read
+    # `Intent(kind="other", label=str(entry))` for any non-Intent, which
+    # swallowed the `InterpretedConstraint` objects the API route was passing
+    # straight through: every structured constraint became `kind="other"`, so
+    # `skip_slot`, `time_budget` and `repeat` were dead through the interface
+    # for a full day while every test stayed green. A conversion that accepts
+    # anything cannot fail loudly, and this one had to.
+    intents: list[Intent] = []
+    for entry in user_constraints:
+        if isinstance(entry, Intent):
+            intents.append(entry)
+        elif isinstance(entry, str):
+            intents.append(Intent(kind="other", label=entry))
+        else:
+            raise TypeError(
+                f"user_constraints takes Intent or str, got {type(entry).__name__}. "
+                "Convert at the boundary — a silent fallback here loses the kind, "
+                "and with it every mechanism that reads it."
+            )
 
     members = _members_of(db, household_id)
     if member_ids is not None:

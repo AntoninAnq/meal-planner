@@ -50,6 +50,7 @@ from app.schemas import (
 )
 from app.services.planning_service import (
     GuestGroup,
+    Intent,
     SlotTarget,
     catalogue_for,
     generate_plan,
@@ -280,7 +281,19 @@ def create_plan(
                 )
                 for group in payload.guests
             ],
-            user_constraints=payload.constraints,
+            # Converted HERE, explicitly. `InterpretedConstraint` and `Intent`
+            # carry the same three fields and are different types, so passing
+            # the first where the second is expected type-checks nowhere and
+            # fails silently: `generate_plan` fell through to its bare-string
+            # branch and turned every constraint into `kind="other"`.
+            #
+            # Measured cost: a full day of work on `skip_slot`, `time_budget`
+            # and `repeat` that was never once applied through the interface,
+            # while every test passed — the tests built `Intent` directly.
+            user_constraints=[
+                Intent(kind=entry.kind, label=entry.label, detail=entry.detail)
+                for entry in payload.constraints
+            ],
             language=payload.language,
         )
     except ValueError as exc:
