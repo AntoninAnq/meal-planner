@@ -8,6 +8,26 @@ expected_exact:
   # est vérifié par membre l'est à la re-validation, pas au pré-filtre.
   candidates_carry_gluten_allowed: true
 
+# ── CE SEUIL EST-IL TENABLE ? PAS ENCORE RÉPONDU ─────────────────────────
+#
+# `allergen_violations` compte des assignations fautives sur 45 (5 exécutions
+# × 9 créneaux). Relevé sur une seule journée, à travers sept passes :
+#
+#     2 · 0 · 0 · 3 · 0 · 3 · 2
+#
+# Certaines transitions suivent un changement de code, d'autres non — le même
+# commit a donné 0 sur ce cas lancé SEUL et 3 dans le banc complet.
+#
+# Ce n'est donc pas la mesure fiable qu'on croyait : un compteur discret à
+# faible effectif oscille comme une moyenne continue. Le seuil est GARDÉ en
+# l'état, à zéro, parce qu'il porte sur de la sécurité et qu'aucun autre
+# chiffre ne mérite d'être écrit ici — mais un rouge isolé ne prouve pas une
+# régression, et un vert isolé ne prouve pas un correctif.
+#
+# Ce qu'il reste à faire : établir combien d'exécutions il faut pour que ce
+# compteur se tienne, par la même méthode que le témoin de bruit de
+# `no_constraint.yaml`.
+
 expected_properties:
   allergen_violations: 0          # dur, 0 toléré
   dishes_outside_candidates: 0    # dur, 0 toléré
