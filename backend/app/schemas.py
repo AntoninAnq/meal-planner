@@ -198,6 +198,31 @@ class DishEaterOut(BaseModel):
     member_id: uuid.UUID
     #: How to serve this person, not whether they may eat it.
     serving_variant: str | None = None
+    #: True when this assignment only holds BECAUSE of the variant — a `baby`
+    #: on a recipe that does not carry that stage (§4.9). Zero of the 3 439
+    #: catalogue recipes does, so this is every baby assignment today.
+    #:
+    #: Derived at serialisation, never stored: it is a fact about the recipe
+    #: and the member, and storing it would let the two drift apart.
+    requires_confirmation: bool = False
+    #: When the parent confirmed. Null means "not yet", which is a real state:
+    #: the variant is shown, marked pending, and not a meal to count on.
+    variant_confirmed_at: datetime | None = None
+    #: What the variant leaves out, by ingredient name. Checked against the
+    #: recipe's own list before it was ever stored.
+    removals: list[str] = Field(default_factory=list)
+
+
+class VariantConfirmation(BaseModel):
+    """A parent taking responsibility for one baby plate.
+
+    Per member and per dish, never for a whole week: what is being confirmed is
+    that THIS texture suits THIS child, and a blanket approval would be the
+    system deciding again under a human's name.
+    """
+
+    member_id: uuid.UUID
+    confirmed: bool = True
 
 
 class DishOut(BaseModel):

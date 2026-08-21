@@ -15,9 +15,19 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.auth.deps import CurrentHousehold
-from app.db.models import MealHistory, MealPlan, PlannedDish, PlannedDishMember, Recipe
+from app.db.models import (
+    Ingredient,
+    MealHistory,
+    MealPlan,
+    Member,
+    PlannedDish,
+    PlannedDishMember,
+    PlannedDishMemberRemoval,
+    Recipe,
+    RecipeSuitableStage,
+)
 from app.db.session import get_db
-from app.domain.enums import DishSource
+from app.domain.enums import DishSource, LifeStage
 from app.llm.base import LLMClient, LLMError
 from app.llm.factory import get_llm_client
 from app.schemas import (
@@ -35,6 +45,7 @@ from app.schemas import (
     PlanSlotOut,
     SlotGuestsOut,
     SlotScope,
+    VariantConfirmation,
     ViolationOut,
 )
 from app.services.planning_service import (
@@ -92,6 +103,43 @@ def _serialise(db: Session, plan: MealPlan) -> MealPlanOut:
     for assignment in assignments:
         by_dish.setdefault(assignment.planned_dish_id, []).append(assignment)
 
+    # Who is a baby, and which recipes actually suit that stage. Both are read
+    # here so `requires_confirmation` can be DERIVED rather than stored: it is
+    # a fact about a member and a recipe, and the day the catalogue holds real
+    # baby recipes it must stop being true on its own.
+    babies = {
+        member_id
+        for member_id in db.scalars(
+            select(Member.id).where(
+                Member.household_id == plan.household_id, Member.life_stage == LifeStage.BABY
+            )
+        )
+    }
+    suits_baby: set[uuid.UUID] = set()
+    removals: dict[tuple[uuid.UUID, uuid.UUID], list[str]] = {}
+    if babies:
+        suits_baby = set(
+            db.scalars(
+                select(RecipeSuitableStage.recipe_id).where(
+                    RecipeSuitableStage.life_stage == LifeStage.BABY
+                )
+            )
+        )
+        for dish_id, member_id, name in db.execute(
+            select(
+                PlannedDishMemberRemoval.planned_dish_id,
+                PlannedDishMemberRemoval.member_id,
+                Ingredient.canonical_name,
+            )
+            .join(Ingredient, Ingredient.id == PlannedDishMemberRemoval.ingredient_id)
+            .where(
+                PlannedDishMemberRemoval.planned_dish_id.in_(
+                    [dish.id for dish in dishes] or [None]
+                )
+            )
+        ).all():
+            removals.setdefault((dish_id, member_id), []).append(name)
+
     # A catalogue dish carries a `recipe_id` and no label — the title belongs to
     # the recipe, and copying it into the plan would freeze a spelling that a
     # later correction to the catalogue could no longer reach. Read here, in the
@@ -142,6 +190,14 @@ def _serialise(db: Session, plan: MealPlan) -> MealPlanOut:
                     DishEaterOut(
                         member_id=assignment.member_id,
                         serving_variant=assignment.serving_variant,
+                        requires_confirmation=(
+                            assignment.member_id in babies
+                            and dish.recipe_id not in suits_baby
+                        ),
+                        variant_confirmed_at=assignment.variant_confirmed_at,
+                        removals=sorted(
+                            removals.get((dish.id, assignment.member_id), [])
+                        ),
                     )
                     for assignment in by_dish.get(dish.id, [])
                 ],
@@ -406,6 +462,56 @@ def regenerate_dish(
         raise _unavailable(exc) from exc
 
     return _serialise(db, plan)
+
+
+@router.post(
+    "/{plan_id}/dishes/{dish_id}/variant-confirmation",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+def confirm_variant(
+    plan_id: uuid.UUID,
+    dish_id: uuid.UUID,
+    payload: VariantConfirmation,
+    db: DbDep,
+    household_id: CurrentHousehold,
+) -> None:
+    """A parent taking responsibility for one baby plate (§4.9).
+
+    This is the only thing standing between "the model wrote a serving
+    instruction" and "a 16-month-old is served an adult dish". I1 forbids a
+    LLM deciding safety, not a human — but the difference has to be recorded
+    where the code can read it, and this endpoint is that record.
+
+    Per dish and per member, deliberately. What is confirmed is that THIS
+    texture suits THIS child; a week-wide approval would be the system deciding
+    again under someone's name.
+
+    Reversible: `confirmed: false` clears it. A parent who confirmed too
+    quickly must be able to take it back, and a confirmation that cannot be
+    withdrawn teaches people not to give it.
+    """
+    _load_dish(db, plan_id, dish_id, household_id)
+
+    # Scoped to the household, so one household cannot confirm another's plate.
+    member = db.get(Member, payload.member_id)
+    if member is None or member.household_id != household_id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "member not found")
+
+    assignment = db.get(PlannedDishMember, (dish_id, payload.member_id))
+    if assignment is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "this member does not eat this dish")
+
+    # Refused rather than ignored on a dish carrying no variant: confirming
+    # nothing would store a parent's approval of a plate that was never
+    # described to them.
+    if payload.confirmed and not assignment.serving_variant:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_CONTENT,
+            "there is no serving variant to confirm on this dish",
+        )
+
+    assignment.variant_confirmed_at = datetime.now(UTC) if payload.confirmed else None
+    db.commit()
 
 
 @router.post("/{plan_id}/dishes/{dish_id}/rating", status_code=status.HTTP_204_NO_CONTENT)
