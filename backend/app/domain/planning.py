@@ -305,9 +305,69 @@ def repair_shape(
                 )
             adopted.append(dish)
 
-        repaired.append(replace(slot, dishes=tuple(adopted)))
+        repaired.append(replace(slot, dishes=tuple(_without_gratuitous_dishes(adopted, safety))))
 
     return repaired
+
+
+def _without_gratuitous_dishes(
+    dishes: list[ProposedDish], safety: EaterSafety | None
+) -> list[ProposedDish]:
+    """Bring back an eater left alone on a dish they had no need of.
+
+    **This is the only repair that changes a CHOICE.** The others fix shapes —
+    one recipe written twice, an instruction applying to nobody — where the
+    model had decided nothing. Here it decided, and the decision is undone.
+
+    What justifies it is §2.3: the objective function is to minimise
+    PREPARATIONS. A six-year-old put alone on a risotto while the rest of the
+    household eats a leek purée she can perfectly well eat costs a second pot
+    for nothing — measured on a real Saturday dinner.
+
+    Three guards, and each one marks a case where the model may have been
+    right:
+
+    * **A variant means the separation was deliberate.** A baby's own plate is
+      described by its serving instruction; moving them would discard it.
+    * **The target must be edible for them** — same `_may_eat` as everywhere,
+      so a repair can never create an unsafe assignment.
+    * **Only an eater who is ALONE.** Two people sharing a second dish are a
+      group the model formed on purpose, and undoing that would be rewriting
+      the plan rather than trimming it.
+
+    Without `safety` nothing moves: with no way to check edibility, the honest
+    answer is to leave the plan as proposed.
+    """
+    if len(dishes) < 2 or safety is None:
+        return dishes
+
+    # Largest first, so a solitary eater joins the main table rather than
+    # another lone diner. Stable: `sorted` keeps the model's order on ties, and
+    # the ranking would otherwise depend on dictionary iteration.
+    order = sorted(range(len(dishes)), key=lambda i: -len(dishes[i].eater_aliases))
+
+    kept: list[ProposedDish] = list(dishes)
+    dropped: set[int] = set()
+
+    for index, dish in enumerate(dishes):
+        if len(dish.eater_aliases) != 1 or index in dropped:
+            continue
+        alias = dish.eater_aliases[0]
+        if dish.serving_variants.get(alias):
+            continue
+
+        for target in order:
+            if target == index or target in dropped or not kept[target].eater_aliases:
+                continue
+            if not _may_eat(alias, kept[target], safety):
+                continue
+            kept[target] = replace(
+                kept[target], eater_aliases=kept[target].eater_aliases + (alias,)
+            )
+            dropped.add(index)
+            break
+
+    return [dish for position, dish in enumerate(kept) if position not in dropped]
 
 
 def validate_proposal(

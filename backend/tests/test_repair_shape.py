@@ -310,3 +310,143 @@ def test_the_removals_survive_a_merge() -> None:
 
     dishes = repair_shape(plan)[0].dishes
     assert dishes[0].variant_removals == {"m3": ("Noix",), "m4": ("Piment",)}
+
+
+# ---------------------------------------------------------------------------
+# The only repair that undoes a CHOICE
+# ---------------------------------------------------------------------------
+
+
+def test_an_eater_left_alone_for_no_reason_is_brought_back() -> None:
+    """The real Saturday dinner that motivated this.
+
+    Six-year-old Joséphine was put alone on a risotto while the household ate
+    a leek purée she could perfectly well eat — a second pot for nothing, which
+    is exactly what §2.3 makes the objective function refuse.
+    """
+    plan = [
+        ProposedSlot(
+            5,
+            MealType.DINNER,
+            (
+                ProposedDish(eater_aliases=("m1", "m2"), recipe_id="r_001"),
+                ProposedDish(eater_aliases=("m3",), recipe_id="r_002"),
+            ),
+        )
+    ]
+
+    dishes = repair_shape(plan, EaterSafety())[0].dishes
+
+    assert len(dishes) == 1
+    assert set(dishes[0].eater_aliases) == {"m1", "m2", "m3"}
+
+
+def test_a_variant_means_the_separation_was_deliberate() -> None:
+    """A baby's own plate is described by its serving instruction.
+
+    Moving them would throw the instruction away — and it is the only thing
+    saying how that plate is made edible.
+    """
+    plan = [
+        ProposedSlot(
+            5,
+            MealType.DINNER,
+            (
+                ProposedDish(eater_aliases=("m1", "m2"), recipe_id="r_001"),
+                ProposedDish(
+                    eater_aliases=("m4",),
+                    recipe_id="r_002",
+                    serving_variants={"m4": "mixé avec un peu d'eau de cuisson"},
+                ),
+            ),
+        )
+    ]
+
+    assert len(repair_shape(plan, EaterSafety())[0].dishes) == 2
+
+
+def test_nobody_is_moved_onto_a_dish_they_cannot_eat() -> None:
+    """The separation was justified, and this is how it stays justified."""
+    plan = [
+        ProposedSlot(
+            5,
+            MealType.DINNER,
+            (
+                ProposedDish(eater_aliases=("m1", "m2"), recipe_id="r_001"),
+                ProposedDish(eater_aliases=("m3",), recipe_id="r_002"),
+            ),
+        )
+    ]
+    safety = EaterSafety(
+        allergens_by_recipe={"r_001": frozenset({"gluten"})},
+        excluded_by_eater={"m3": frozenset({"gluten"})},
+    )
+
+    assert len(repair_shape(plan, safety)[0].dishes) == 2
+
+
+def test_a_pair_sharing_a_second_dish_is_left_alone() -> None:
+    """Two people on a dish are a group the model formed on purpose.
+
+    Undoing that would be rewriting the plan, not trimming it.
+    """
+    plan = [
+        ProposedSlot(
+            5,
+            MealType.DINNER,
+            (
+                ProposedDish(eater_aliases=("m1", "m2"), recipe_id="r_001"),
+                ProposedDish(eater_aliases=("m3", "m4"), recipe_id="r_002"),
+            ),
+        )
+    ]
+
+    assert len(repair_shape(plan, EaterSafety())[0].dishes) == 2
+
+
+def test_a_lone_eater_joins_the_biggest_table() -> None:
+    """Not another lone diner: the point is fewer preparations."""
+    plan = [
+        ProposedSlot(
+            5,
+            MealType.DINNER,
+            (
+                ProposedDish(eater_aliases=("m1",), recipe_id="r_001"),
+                ProposedDish(eater_aliases=("m2", "m3", "m4"), recipe_id="r_002"),
+            ),
+        )
+    ]
+
+    dishes = repair_shape(plan, EaterSafety())[0].dishes
+
+    assert len(dishes) == 1
+    assert set(dishes[0].eater_aliases) == {"m1", "m2", "m3", "m4"}
+
+
+def test_a_single_dish_slot_is_never_emptied() -> None:
+    """One eater, one dish: there is nowhere to bring them back to."""
+    plan = [
+        ProposedSlot(
+            5,
+            MealType.DINNER,
+            (ProposedDish(eater_aliases=("m1",), recipe_id="r_001"),),
+        )
+    ]
+
+    assert repair_shape(plan, EaterSafety()) == plan
+
+
+def test_without_safety_no_choice_is_undone() -> None:
+    """No way to check edibility, no business rewriting the plan."""
+    plan = [
+        ProposedSlot(
+            5,
+            MealType.DINNER,
+            (
+                ProposedDish(eater_aliases=("m1", "m2"), recipe_id="r_001"),
+                ProposedDish(eater_aliases=("m3",), recipe_id="r_002"),
+            ),
+        )
+    ]
+
+    assert len(repair_shape(plan)[0].dishes) == 2
