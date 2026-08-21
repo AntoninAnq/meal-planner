@@ -19,7 +19,6 @@ from app.domain.enums import MealType
 from app.domain.planning import (
     EATER_NOT_SERVED,
     VARIANT_FOR_NON_EATER,
-    EaterSafety,
     ProposedDish,
     ProposedSlot,
     SlotSpec,
@@ -115,7 +114,8 @@ def test_a_stray_variant_on_someone_already_eating_is_left_alone() -> None:
     ]
 
     repaired = repair_shape(plan)
-    codes = {v.code for v in validate_proposal(repaired, [SlotSpec(5, MealType.DINNER, ("m1", "m2", "m3"))])}
+    spec = [SlotSpec(5, MealType.DINNER, ("m1", "m2", "m3"))]
+    codes = {v.code for v in validate_proposal(repaired, spec)}
 
     assert VARIANT_FOR_NON_EATER in codes
     assert repaired[0].dishes[1].eater_aliases == ("m3",)
