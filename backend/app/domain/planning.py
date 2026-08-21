@@ -274,6 +274,35 @@ def repair_shape(
             if orphans:
                 served |= set(orphans)
                 dish = replace(dish, eater_aliases=dish.eater_aliases + orphans)
+
+            # What could NOT be adopted is dropped rather than left in place.
+            # A serving instruction for someone who does not eat this dish
+            # describes nothing — there is no plate for it to apply to.
+            #
+            # Keeping it was the worst of both worlds, and measured as such:
+            # `VARIANT_FOR_NON_EATER` fired, the plan was rejected, and three
+            # degraded attempts later the retained one was worse than the
+            # first. `member_intolerance` went to 2.80 attempts and 78 s.
+            #
+            # `EATER_NOT_SERVED` still fires for that eater if they really eat
+            # nothing, which is the violation that actually describes the
+            # problem. And `VARIANT_FOR_NON_EATER` stays as the second barrier:
+            # it now catches only what this repair missed.
+            stray = [alias for alias in dish.serving_variants if alias not in dish.eater_aliases]
+            if stray:
+                dish = replace(
+                    dish,
+                    serving_variants={
+                        alias: variant
+                        for alias, variant in dish.serving_variants.items()
+                        if alias not in stray
+                    },
+                    variant_removals={
+                        alias: names
+                        for alias, names in dish.variant_removals.items()
+                        if alias not in stray
+                    },
+                )
             adopted.append(dish)
 
         repaired.append(replace(slot, dishes=tuple(adopted)))

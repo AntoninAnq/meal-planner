@@ -92,12 +92,17 @@ def test_merging_keeps_every_variant() -> None:
     }
 
 
-def test_a_stray_variant_on_someone_already_eating_is_left_alone() -> None:
-    """That one is a real contradiction, not a slip.
+def test_a_stray_variant_is_dropped_rather_than_left_to_be_rejected() -> None:
+    """It describes nothing: there is no plate for it to apply to.
 
-    Someone eating dish A with a variant written on dish B has been described
-    twice, and picking a winner would be choosing for the model.
-    `VARIANT_FOR_NON_EATER` keeps saying so.
+    Someone eating dish A with a variant written on dish B is a real
+    contradiction — and adopting them onto B would serve them twice. The
+    honest repair is to drop the instruction that applies to no one, NOT to
+    change who eats what.
+
+    Leaving it was measured as the worst of both worlds: the plan was rejected,
+    and `member_intolerance` reached 2.80 attempts and 78 s before keeping the
+    least bad of three degraded tries.
     """
     plan = [
         ProposedSlot(
@@ -116,10 +121,11 @@ def test_a_stray_variant_on_someone_already_eating_is_left_alone() -> None:
 
     repaired = repair_shape(plan)
     spec = [SlotSpec(5, MealType.DINNER, ("m1", "m2", "m3"))]
-    codes = {v.code for v in validate_proposal(repaired, spec)}
 
-    assert VARIANT_FOR_NON_EATER in codes
+    # Nobody moved, and the instruction that applied to no one is gone.
     assert repaired[0].dishes[1].eater_aliases == ("m3",)
+    assert repaired[0].dishes[1].serving_variants == {}
+    assert validate_proposal(repaired, spec) == []
 
 
 def test_an_orphan_is_never_adopted_onto_their_allergen() -> None:
@@ -150,9 +156,14 @@ def test_an_orphan_is_never_adopted_onto_their_allergen() -> None:
         excluded_by_eater={"m2": frozenset({"milk"})},
     )
 
-    assert repair_shape(plan, safety)[0].dishes[0].eater_aliases == ("m1",)
-    # And without the allergen, the same orphan IS adopted.
-    assert repair_shape(plan, EaterSafety())[0].dishes[0].eater_aliases == ("m1", "m2")
+    unsafe = repair_shape(plan, safety)[0].dishes[0]
+    assert unsafe.eater_aliases == ("m1",)
+    # …and the instruction that could not be honoured is not left behind.
+    assert unsafe.serving_variants == {}
+    # Without the allergen, the same orphan IS adopted and keeps their variant.
+    safe = repair_shape(plan, EaterSafety())[0].dishes[0]
+    assert safe.eater_aliases == ("m1", "m2")
+    assert safe.serving_variants == {"m2": "sans le gratin"}
 
 
 def test_an_orphan_is_not_adopted_onto_a_dish_wrong_for_their_stage() -> None:
