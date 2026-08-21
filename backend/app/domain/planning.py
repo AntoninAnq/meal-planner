@@ -22,7 +22,7 @@ from __future__ import annotations
 
 from collections import Counter
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 from app.domain.enums import LifeStage, MealType
 
@@ -174,6 +174,71 @@ STAGE_FOR_EATER = "stage_for_eater"
 #: except that here it would be a safety instruction for a 16-month-old, which
 #: a parent has every reason to trust.
 UNKNOWN_REMOVAL = "unknown_removal"
+
+
+def repair_shape(proposal: Sequence[ProposedSlot]) -> list[ProposedSlot]:
+    """Fix what the model MEANT but wrote inconsistently. Never what it chose.
+
+    Two repairs, both purely mechanical, and neither touches an allergen, a
+    life stage or which recipe anyone eats — `validate_proposal` still runs
+    afterwards and rejects on the same terms as before.
+
+    **One recipe twice at the same slot is one dish.** Measured on a Saturday
+    dinner with a baby and six guests: the model emitted `r_004` for `m3` and
+    `r_004` again for `m4`, as two dishes. The prompt already says so in as
+    many words — "producing three dishes all titled X is the same meal written
+    three times" — and it did it anyway. Merging them is not a guess: the
+    recipe id is identical, so it is the same pot.
+
+    **A variant naming someone who eats nothing means they eat that dish.** On
+    the same run, `r_007` carried a variant for `m2` while `m2` was assigned
+    nowhere. The intent is unambiguous — you do not describe how to serve
+    someone who is not eating — and leaving it alone cost three attempts and a
+    rejected plan for a household that was simply forgotten.
+
+    The guard on that second one matters: it only applies when the eater is
+    assigned to NO dish at that slot. Someone already eating elsewhere and
+    named in a stray variant is a real contradiction, and `VARIANT_FOR_NON_EATER`
+    keeps saying so.
+    """
+    repaired: list[ProposedSlot] = []
+
+    for slot in proposal:
+        merged: list[ProposedDish] = []
+        by_identity: dict[str, int] = {}
+
+        for dish in slot.dishes:
+            identity = _dish_identity(dish)
+            seen = by_identity.get(identity)
+            if seen is None:
+                by_identity[identity] = len(merged)
+                merged.append(dish)
+                continue
+            first = merged[seen]
+            merged[seen] = replace(
+                first,
+                eater_aliases=first.eater_aliases
+                + tuple(a for a in dish.eater_aliases if a not in first.eater_aliases),
+                serving_variants={**dish.serving_variants, **first.serving_variants},
+                variant_removals={**dish.variant_removals, **first.variant_removals},
+            )
+
+        served = {alias for dish in merged for alias in dish.eater_aliases}
+        adopted: list[ProposedDish] = []
+        for dish in merged:
+            orphans = tuple(
+                alias
+                for alias in dish.serving_variants
+                if alias not in served and alias not in dish.eater_aliases
+            )
+            if orphans:
+                served |= set(orphans)
+                dish = replace(dish, eater_aliases=dish.eater_aliases + orphans)
+            adopted.append(dish)
+
+        repaired.append(replace(slot, dishes=tuple(adopted)))
+
+    return repaired
 
 
 def validate_proposal(

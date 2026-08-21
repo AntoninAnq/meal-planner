@@ -36,6 +36,7 @@ from app.domain.planning import (
     SlotSpec,
     Violation,
     repair_hint,
+    repair_shape,
     validate_proposal,
 )
 from app.domain.prompt_context import PromptContext
@@ -245,7 +246,7 @@ def build_graph(llm: LLMClient, catalogue: CataloguePort) -> Any:
         )
 
         return {
-            "proposal": parse_proposal(result.data),
+            "proposal": repair_shape(parse_proposal(result.data)),
             "attempt": attempt,
             "llm_results": [result],
         }
