@@ -176,7 +176,45 @@ STAGE_FOR_EATER = "stage_for_eater"
 UNKNOWN_REMOVAL = "unknown_removal"
 
 
-def repair_shape(proposal: Sequence[ProposedSlot]) -> list[ProposedSlot]:
+def _may_eat(alias: str, dish: ProposedDish, safety: EaterSafety | None) -> bool:
+    """Whether adopting this eater onto this dish is safe to do.
+
+    A repair must never MAKE a plan unsafe. Adopting an orphaned variant moves
+    someone from "served nothing" — harmless, and caught by
+    `EATER_NOT_SERVED` — to "served this dish", which is not harmless if the
+    dish carries an allergen they exclude.
+
+    Measured, and it was mine: the first version adopted unconditionally, and
+    `member_intolerance` went from 0 breaches back to 2 on the same harness.
+    Re-validation still caught them, so nothing reached a plate — but the
+    retained best-attempt now held an intolerant eater in front of their
+    allergen where it used to hold an unfed one. Those are not the same defect.
+
+    Refuses when `safety` is absent for a catalogue dish: without the data the
+    honest answer is not to touch it. That keeps V0 and the slot-scoped repair
+    working, where dishes carry no recipe id and nothing was ever checked.
+    """
+    if dish.recipe_id is None:
+        return True
+    if safety is None:
+        return False
+
+    carried = safety.allergens_by_recipe.get(dish.recipe_id, frozenset())
+    if carried & safety.excluded_by_eater.get(alias, frozenset()):
+        return False
+
+    stage = safety.stage_by_eater.get(alias)
+    suitable = safety.stages_by_recipe.get(dish.recipe_id)
+    if suitable is not None and stage is not None and stage not in suitable:
+        # The `baby` exception of §4.9 applies here too: the variant that
+        # orphaned this eater IS the thing that opens the assignment.
+        return stage == BABY_STAGE and bool(dish.serving_variants.get(alias))
+    return True
+
+
+def repair_shape(
+    proposal: Sequence[ProposedSlot], safety: EaterSafety | None = None
+) -> list[ProposedSlot]:
     """Fix what the model MEANT but wrote inconsistently. Never what it chose.
 
     Two repairs, both purely mechanical, and neither touches an allergen, a
@@ -229,7 +267,9 @@ def repair_shape(proposal: Sequence[ProposedSlot]) -> list[ProposedSlot]:
             orphans = tuple(
                 alias
                 for alias in dish.serving_variants
-                if alias not in served and alias not in dish.eater_aliases
+                if alias not in served
+                and alias not in dish.eater_aliases
+                and _may_eat(alias, dish, safety)
             )
             if orphans:
                 served |= set(orphans)

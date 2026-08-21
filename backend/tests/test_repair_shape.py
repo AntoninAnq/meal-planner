@@ -19,6 +19,7 @@ from app.domain.enums import MealType
 from app.domain.planning import (
     EATER_NOT_SERVED,
     VARIANT_FOR_NON_EATER,
+    EaterSafety,
     ProposedDish,
     ProposedSlot,
     SlotSpec,
@@ -60,7 +61,7 @@ def test_the_real_answer_becomes_valid_without_changing_a_choice() -> None:
     Nobody is moved to a different recipe: m2 eats what its own variant
     described, m3 and m4 keep r_004. Only the shape changes.
     """
-    repaired = repair_shape(REAL_ANSWER)
+    repaired = repair_shape(REAL_ANSWER, EaterSafety())
 
     assert validate_proposal(repaired, SPEC) == []
     dishes = repaired[0].dishes
@@ -83,7 +84,7 @@ def test_merging_keeps_every_variant() -> None:
     Losing one would silently drop a baby's texture — the repair must be
     additive or it is worse than the defect.
     """
-    dishes = repair_shape(REAL_ANSWER)[0].dishes
+    dishes = repair_shape(REAL_ANSWER, EaterSafety())[0].dishes
 
     assert dishes[1].serving_variants == {
         "m3": "coupé en bâtonnets tendres",
@@ -119,6 +120,108 @@ def test_a_stray_variant_on_someone_already_eating_is_left_alone() -> None:
 
     assert VARIANT_FOR_NON_EATER in codes
     assert repaired[0].dishes[1].eater_aliases == ("m3",)
+
+
+def test_an_orphan_is_never_adopted_onto_their_allergen() -> None:
+    """A repair must never MAKE a plan unsafe.
+
+    Adopting moves someone from "served nothing" — harmless, and caught by
+    `EATER_NOT_SERVED` — to "served this dish". Measured when the first version
+    adopted unconditionally: `member_intolerance` went from 0 breaches back to
+    2 on the harness. Re-validation still caught them, so nothing reached a
+    plate, but the retained best attempt held an intolerant eater in front of
+    their allergen instead of an unfed one.
+    """
+    plan = [
+        ProposedSlot(
+            5,
+            MealType.DINNER,
+            (
+                ProposedDish(
+                    eater_aliases=("m1",),
+                    recipe_id="r_001",
+                    serving_variants={"m2": "sans le gratin"},
+                ),
+            ),
+        )
+    ]
+    safety = EaterSafety(
+        allergens_by_recipe={"r_001": frozenset({"milk"})},
+        excluded_by_eater={"m2": frozenset({"milk"})},
+    )
+
+    assert repair_shape(plan, safety)[0].dishes[0].eater_aliases == ("m1",)
+    # And without the allergen, the same orphan IS adopted.
+    assert repair_shape(plan, EaterSafety())[0].dishes[0].eater_aliases == ("m1", "m2")
+
+
+def test_an_orphan_is_not_adopted_onto_a_dish_wrong_for_their_stage() -> None:
+    """Same rule, the other half of `_check_eaters_can_eat`."""
+    plan = [
+        ProposedSlot(
+            5,
+            MealType.DINNER,
+            (
+                ProposedDish(
+                    eater_aliases=("m1",),
+                    recipe_id="r_001",
+                    serving_variants={"m3": "sans épices"},
+                ),
+            ),
+        )
+    ]
+    safety = EaterSafety(
+        stages_by_recipe={"r_001": frozenset({"teen_adult"})},
+        stage_by_eater={"m3": "young_child"},
+    )
+
+    assert repair_shape(plan, safety)[0].dishes[0].eater_aliases == ("m1",)
+
+
+def test_a_baby_orphan_is_adopted_because_the_variant_opens_it() -> None:
+    """§4.9 applies here too: the variant that orphaned them is what allows it.
+
+    Refusing would make the baby unservable by the very mechanism written to
+    serve them.
+    """
+    plan = [
+        ProposedSlot(
+            5,
+            MealType.DINNER,
+            (
+                ProposedDish(
+                    eater_aliases=("m1",),
+                    recipe_id="r_001",
+                    serving_variants={"m4": "part prélevée avant salage, écrasée"},
+                ),
+            ),
+        )
+    ]
+    safety = EaterSafety(
+        stages_by_recipe={"r_001": frozenset({"teen_adult"})},
+        stage_by_eater={"m4": "baby"},
+    )
+
+    assert repair_shape(plan, safety)[0].dishes[0].eater_aliases == ("m1", "m4")
+
+
+def test_without_safety_a_catalogue_dish_is_left_alone() -> None:
+    """No data, no repair. Guessing is what this whole file exists to avoid."""
+    plan = [
+        ProposedSlot(
+            5,
+            MealType.DINNER,
+            (
+                ProposedDish(
+                    eater_aliases=("m1",),
+                    recipe_id="r_001",
+                    serving_variants={"m2": "x"},
+                ),
+            ),
+        )
+    ]
+
+    assert repair_shape(plan)[0].dishes[0].eater_aliases == ("m1",)
 
 
 def test_two_different_recipes_are_never_merged() -> None:

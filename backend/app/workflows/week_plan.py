@@ -246,7 +246,7 @@ def build_graph(llm: LLMClient, catalogue: CataloguePort) -> Any:
         )
 
         return {
-            "proposal": repair_shape(parse_proposal(result.data)),
+            "proposal": repair_shape(parse_proposal(result.data), request.safety),
             "attempt": attempt,
             "llm_results": [result],
         }
