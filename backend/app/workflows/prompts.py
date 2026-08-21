@@ -150,6 +150,11 @@ def build_context(
 
     eaters = "\n".join(
         f"- {member.alias}: stage={member.life_stage}"
+        # One alias may stand for several people — a table of guests. Said in
+        # plain words so the model sizes the dish, and NOT by listing them
+        # separately: six identical eaters to place is how it starts dropping
+        # some, and the re-validation then rejects a plan that was fine.
+        + (f", {member.headcount} people" if member.headcount > 1 else "")
         + (f", intolerances={','.join(member.intolerances)}" if member.intolerances else "")
         + (f", dislikes={','.join(member.aversion_tags)}" if member.aversion_tags else "")
         for member in prompt_context.members

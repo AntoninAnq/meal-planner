@@ -42,11 +42,13 @@ class OllamaClient(RetryingLLMClient):
         model: str,
         timeout_seconds: float,
         context_tokens: int,
+        keep_alive: str = "30m",
     ) -> None:
         self._base_url = base_url.rstrip("/")
         self._model = model
         self._timeout = timeout_seconds
         self._context_tokens = context_tokens
+        self._keep_alive = keep_alive
 
     def _generate(
         self,
@@ -70,6 +72,16 @@ class OllamaClient(RetryingLLMClient):
             "format": schema,
             "stream": False,
             "options": options,
+            # Ollama unloads a model after five idle minutes by default, and
+            # the next request pays for reading ~5 GiB back from disk. Between
+            # two things a household does in one sitting — read the week,
+            # regenerate a slot — five minutes is nothing, and the second
+            # action would look inexplicably slower than the first.
+            #
+            # It is a RESERVATION of memory, not of compute: the weights sit in
+            # RAM doing nothing. Same trade as `num_ctx` — memory is cheap here
+            # and latency is what the household feels.
+            "keep_alive": self._keep_alive,
         }
 
         try:

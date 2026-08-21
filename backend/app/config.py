@@ -63,6 +63,11 @@ class Settings(BaseSettings):
     #: in the wrong place (I8) — and the failure it causes reads as "the model
     #: is unreachable", which sends you looking in entirely the wrong place.
     ollama_timeout_seconds: float = 600.0
+    #: How long Ollama keeps the model in memory after a request. Its own
+    #: default is five minutes, after which the next generation pays ~5 GiB of
+    #: disk reads — long enough that regenerating one slot feels slower than
+    #: planning the whole week, which is how it was first noticed.
+    ollama_keep_alive: str = "30m"
     #: The context window, in tokens. Written here because Ollama's own default
     #: is 4 096 while `qwen3:8b` declares 40 960 — so leaving it unset uses a
     #: tenth of the model, chosen by nobody (I8).

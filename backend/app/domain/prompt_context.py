@@ -39,6 +39,12 @@ class MemberContext:
     life_stage: LifeStage
     intolerances: tuple[AllergenCode, ...]
     aversion_tags: tuple[str, ...]
+    #: How many people this alias stands for. Always 1 for a household member;
+    #: a group of guests is ONE alias covering several seats, because nothing
+    #: distinguishes them and asking the model to enumerate six identical
+    #: eaters made it drop some (see `_guest_aliases`). No name, no identity —
+    #: a count, which is all `slot_guests` ever stored either.
+    headcount: int = 1
 
 
 @dataclass(frozen=True)

@@ -847,10 +847,23 @@ def _store_removals(
 
 
 def _guest_aliases(guests: Sequence[GuestGroup]) -> list[str]:
-    aliases: list[str] = []
-    for index, group in enumerate(guests, start=1):
-        aliases.extend(f"g{index}_{seat}" for seat in range(1, group.count + 1))
-    return aliases
+    """ONE alias per group, not one per seat.
+
+    It used to be one per person: `g1_1`…`g1_6`. Six adults invited to a
+    Saturday dinner therefore became six eaters the model had to name
+    individually, on top of the household — ten aliases to place on a single
+    slot, where a whole week of nine slots asks for four. Measured consequence
+    on a real dinner: the model dropped some, `eater_not_served` fired, and the
+    single-slot regeneration ran the full three attempts — slower than
+    generating the entire week.
+
+    Nothing is lost, because nothing distinguished them. §4.9 is about who eats
+    WHAT; six guests sharing a life stage and a constraint set eat the same
+    thing by construction, and the head count is already carried separately by
+    `slot_guests` for the interface. Splitting them made the model enumerate a
+    number it was never asked to reason about.
+    """
+    return [f"g{index}" for index, _ in enumerate(guests, start=1)]
 
 
 def _with_guests(context, guests, guest_aliases):  # type: ignore[no-untyped-def]
@@ -863,21 +876,22 @@ def _with_guests(context, guests, guest_aliases):  # type: ignore[no-untyped-def
     from app.domain.prompt_context import MemberContext
 
     extra: list[MemberContext] = []
-    index = 0
     excluded = list(context.household_excluded_allergens)
 
-    for group in guests:
+    for index, group in enumerate(guests):
         excluded.extend(group.excluded_allergens)
-        for _ in range(group.count):
-            extra.append(
-                MemberContext(
-                    alias=guest_aliases[index],
-                    life_stage=group.life_stage,
-                    intolerances=(),
-                    aversion_tags=tuple(group.dislikes),
-                )
+        extra.append(
+            MemberContext(
+                alias=guest_aliases[index],
+                life_stage=group.life_stage,
+                intolerances=(),
+                aversion_tags=tuple(group.dislikes),
+                # The count travels with the alias so the prompt can say "six
+                # people", which is what a cook needs to know. It is NOT six
+                # eaters to assign — see `_guest_aliases`.
+                headcount=group.count,
             )
-            index += 1
+        )
 
     return replace(
         context,
@@ -922,10 +936,28 @@ def _persist(
 
     # Same rule for the violations: those of the untouched slots still describe
     # what is on the plate there, so only the regenerated ones are replaced.
+    #
+    # A PLAN-LEVEL violation carries no slot, so it matched no regenerated key
+    # and was kept forever — `stage_not_planned` accumulated to seven copies of
+    # the same sentence on one real plan, and went on being displayed after the
+    # stage it described had started being served. A stale diagnosis nobody can
+    # clear is worse than a missing one.
+    #
+    # They are dropped when the regeneration covers the WHOLE week, which is
+    # the only case that re-evaluates them: a slot-scoped run validates one
+    # slot, so `degenerate_plan` cannot fire and clearing it there would delete
+    # a finding nothing recomputed.
+    whole_week = regenerated >= {
+        (dish.day_of_week, dish.meal_type)
+        for dish in db.scalars(
+            select(PlannedDish).where(PlannedDish.meal_plan_id == plan.id)
+        )
+    }
     kept = [
         entry
         for entry in (plan.violations or [])
         if (entry.get("day_of_week"), entry.get("meal_type")) not in regenerated
+        and not (whole_week and entry.get("day_of_week") is None)
     ]
     # Guests are recorded per slot, and only for the slots just generated:
     # regenerating Saturday must not claim the in-laws also came on Tuesday.
