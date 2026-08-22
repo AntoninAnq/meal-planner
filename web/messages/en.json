@@ -14,7 +14,8 @@
     "remove": "Remove",
     "cancel": "Cancel",
     "saving": "Saving…",
-    "genericError": "Something went wrong. Try again."
+    "genericError": "Something went wrong. Try again.",
+    "quotaExceeded": "This household has reached its limit of suggestions for today. It frees up progressively — try again later."
   },
   "lifeStage": {
     "baby": "Baby",

@@ -6,7 +6,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/Spinner";
 import { apiPost } from "@/lib/api/client";
-import { ApiError } from "@/lib/api/error";
+import { displayMessage } from "@/lib/api/error";
 import type { InterpretedConstraint } from "@/lib/api/types";
 
 /**
@@ -49,7 +49,7 @@ export function Composer({
       );
       setConstraints(result.constraints);
     } catch (cause) {
-      setError(cause instanceof ApiError ? cause.message : tCommon("genericError"));
+      setError(displayMessage(cause, tCommon));
     } finally {
       setInterpreting(false);
     }

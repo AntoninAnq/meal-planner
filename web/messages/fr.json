@@ -14,7 +14,8 @@
     "remove": "Retirer",
     "cancel": "Annuler",
     "saving": "Enregistrement…",
-    "genericError": "Quelque chose n'a pas fonctionné. Réessayez."
+    "genericError": "Quelque chose n'a pas fonctionné. Réessayez.",
+    "quotaExceeded": "Ce foyer a atteint sa limite de suggestions pour aujourd'hui. Elle se libère progressivement — réessayez plus tard."
   },
   "lifeStage": {
     "baby": "Bébé",

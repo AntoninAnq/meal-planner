@@ -10,7 +10,7 @@ import { Field, SelectField } from "@/components/ui/Field";
 import { ListRow } from "@/components/ui/ListRow";
 import { useRouter } from "@/i18n/navigation";
 import { apiGet, apiPost, apiPut } from "@/lib/api/client";
-import { ApiError } from "@/lib/api/error";
+import { displayMessage } from "@/lib/api/error";
 import type { Alternative, Dish, GuestGroup, LifeStage, MealType } from "@/lib/api/types";
 
 const LIFE_STAGES: LifeStage[] = ["teen_adult", "young_child", "baby"];
@@ -108,7 +108,7 @@ export function SlotPanel({
     try {
       await action();
     } catch (cause) {
-      setError(cause instanceof ApiError ? cause.message : tCommon("genericError"));
+      setError(displayMessage(cause, tCommon));
       setStartedAt(null);
       setBusy(false);
     }

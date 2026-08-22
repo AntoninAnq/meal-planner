@@ -9,7 +9,7 @@ import { WaitingState } from "@/components/plan/WaitingState";
 import { Button } from "@/components/ui/Button";
 import { useRouter } from "@/i18n/navigation";
 import { apiGet, apiPost } from "@/lib/api/client";
-import { ApiError } from "@/lib/api/error";
+import { displayMessage } from "@/lib/api/error";
 import type { InterpretedConstraint, MealPlan, Violation } from "@/lib/api/types";
 import { cx } from "@/lib/cx";
 import { slotsInViolation, splitViolations } from "@/lib/plan";
@@ -103,7 +103,7 @@ export function WeekBoard({
         // polling effect takes over from here.
         if (controller.signal.aborted) return;
         setStartedAt(null);
-        setError(cause instanceof ApiError ? cause.message : tCommon("genericError"));
+        setError(displayMessage(cause, tCommon));
       }
     },
     [weekStart, locale, done, tCommon],
