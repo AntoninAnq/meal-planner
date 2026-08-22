@@ -8,24 +8,44 @@
 # never injects identity headers — the API would then have to trust them, which
 # is invariant I6 displaced by one hop.
 
-:8080 {
+# Every address is a variable, because the same file serves a laptop and a host
+# (I8). Locally the defaults apply and nothing needs to be set; on a platform
+# whose services carry their own DNS names, the three below are.
+#
+#   PORT      — what the platform tells the container to listen on
+#   API_UPSTREAM / WEB_UPSTREAM — where the two others answer
+#
+# On Railway that is `api.railway.internal:8000` and `web.railway.internal:3000`,
+# and both MUST be listening on `::`: the private network is IPv6-only, so a
+# service bound to 0.0.0.0 is unreachable here while looking perfectly healthy
+# to itself. See the two Dockerfiles.
+:{$PORT:8080} {
 	handle /api/* {
-		reverse_proxy api:8000
+		reverse_proxy {$API_UPSTREAM:api:8000}
 	}
 
 	handle {
-		reverse_proxy web:3000
+		reverse_proxy {$WEB_UPSTREAM:web:3000}
 	}
 }
 
-# Production: replace the block above with your domain so Caddy provisions a
-# certificate automatically.
+# No response timeout is set, and that is deliberate rather than an omission.
+# ARCHITECTURE.md §9 keeps generation SYNCHRONOUS on the argument that nothing
+# in the path browser -> Caddy -> FastAPI imposes one; a week takes ~30 s on the
+# cloud model and was measured at 182 s locally. Adding a timeout here would
+# silently invalidate that decision, and the symptom would be a 504 on the
+# slowest households — the ones the product exists for.
+#
+# TLS: on a platform that terminates it at its own edge, this listens on plain
+# HTTP behind it and there is nothing to configure. To have Caddy do it
+# instead, replace the site address with the domain — a certificate is then
+# provisioned automatically:
 #
 # meal-planner.example.com {
 # 	handle /api/* {
-# 		reverse_proxy api:8000
+# 		reverse_proxy {$API_UPSTREAM:api:8000}
 # 	}
 # 	handle {
-# 		reverse_proxy web:3000
+# 		reverse_proxy {$WEB_UPSTREAM:web:3000}
 # 	}
 # }

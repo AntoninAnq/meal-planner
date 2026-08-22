@@ -43,6 +43,30 @@ class Settings(BaseSettings):
     postgres_db: str = ""
     postgres_host: str = "db"
     postgres_port: int = 5432
+    #: True when the connection goes through a pooler in TRANSACTION mode —
+    #: Supabase's port 6543, pgBouncer, any Supavisor equivalent.
+    #:
+    #: It disables psycopg's server-side prepared statements, and that is not a
+    #: tuning knob: in transaction mode a pooler hands each transaction a
+    #: different backend, so the statement prepared on one is missing on the
+    #: next. The failure is `prepared statement "_pg3_0" already exists`,
+    #: INTERMITTENT — it depends on which backend the pool happens to give you —
+    #: which means it passes every smoke test and appears under load, in
+    #: production, looking like a database problem rather than a configuration
+    #: one.
+    #:
+    #: Leave it False on a session-mode pooler or a direct connection: prepared
+    #: statements are then a free win, and turning them off costs a little on
+    #: every query the application repeats.
+    database_pooled: bool = False
+    #: Connections SQLAlchemy keeps open, plus what it may open beyond them.
+    #:
+    #: Here because a hosted database counts connections and bills or refuses
+    #: on them — the defaults (5 + 10) can reach 15 per replica, which is a
+    #: meaningful share of a small Supabase instance's budget. On a single
+    #: container serving a handful of households, far less is enough.
+    database_pool_size: int = 5
+    database_max_overflow: int = 5
 
     # Session cookie
     session_secret: str

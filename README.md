@@ -77,6 +77,7 @@ meal-planner/
 ├── docker-compose.yml     db / api / llm (hôte) / web + proxy
 ├── Caddyfile              origine unique : / → Next.js, /api → FastAPI
 ├── docs/ARCHITECTURE.md   ← la colonne vertébrale
+├── docs/DEPLOY.md         mise en ligne, manuelle et pas à pas
 ├── backend/               tout le Python — pas seulement l'API
 │   ├── app/domain/        entités et règles pures — ni SQL, ni HTTP, ni LLM
 │   ├── app/llm/           l'interface unique et ses trois implémentations

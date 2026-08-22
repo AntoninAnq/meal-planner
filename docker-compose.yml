@@ -117,6 +117,9 @@ services:
   web:
     build:
       context: ./web
+      # Explicit, because the Dockerfile's default target is the production
+      # one. Locally we want the stage that expects sources from a bind mount.
+      target: dev
     env_file: .env
     depends_on:
       - api

@@ -1013,9 +1013,12 @@ Un formulaire hébergé ou un `mailto:` sont deux valeurs valides. **Le formulai
 ```
 meal-planner/
 ├── docker-compose.yml
+├── Caddyfile                     origine unique, templatée (§11.1)
+├── Dockerfile.proxy              la même, pour un hébergeur qui déploie des images
 ├── .env.example
 ├── docs/
-│   └── ARCHITECTURE.md          ← ce document
+│   ├── ARCHITECTURE.md          ← ce document
+│   └── DEPLOY.md                 procédure de mise en ligne, manuelle
 ├── backend/                      tout le Python — PAS seulement l'API
 │   ├── Dockerfile                image `api`
 │   ├── Dockerfile.catalog        image `catalog` : httpx, extruct, selectolax
@@ -1043,7 +1046,8 @@ meal-planner/
 │       │   └── api/error.ts      `ApiError`, partagé par les deux
 │       └── styles/globals.css    le bloc @theme, seul endroit des jetons
 ├── db/
-│   └── ingredients.yaml          le référentiel, versionné (§11.5)
+│   ├── ingredients.yaml          le référentiel, versionné (§11.5)
+│   └── dump-catalogue.sh         export du catalogue SEUL — aucune donnée de foyer
 └── eval/                         fixtures figées + script d'évaluation
 ```
 

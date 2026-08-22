@@ -1,0 +1,16 @@
+# The proxy, for a host that deploys images rather than mounting files.
+#
+# Compose does NOT use this: locally the Caddyfile is a read-only bind mount, so
+# editing a route costs a `docker compose restart proxy` instead of a rebuild.
+# Same file either way — it is templated (`{$PORT}`, `{$API_UPSTREAM}`,
+# `{$WEB_UPSTREAM}`), so nothing here differs between the two but how it
+# arrives.
+#
+#   docker build -f Dockerfile.proxy -t meal-planner-proxy .
+FROM caddy:2-alpine
+
+COPY Caddyfile /etc/caddy/Caddyfile
+
+# Fails the build rather than the deployment on a syntax error. Caddy validates
+# the whole file, and finding out at boot means finding out in production.
+RUN caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile

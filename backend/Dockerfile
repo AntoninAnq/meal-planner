@@ -17,4 +17,11 @@ COPY . .
 
 EXPOSE 8000
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Shell form so the deployment can set the two, and only the two, that differ
+# between a laptop and a host (I8).
+#
+# BIND_HOST MUST BE `::` ON A HOST WHOSE PRIVATE NETWORK IS IPv6-ONLY —
+# Railway is one. `0.0.0.0` binds IPv4 only, so the container starts, looks
+# healthy, and is unreachable from every other service: a failure that reads as
+# "the proxy is misconfigured" and is not. `::` accepts both families.
+CMD ["sh", "-c", "uvicorn app.main:app --host ${BIND_HOST:-0.0.0.0} --port ${PORT:-8000}"]
