@@ -17,6 +17,10 @@
     "genericError": "Something went wrong. Try again.",
     "quotaExceeded": "This household has reached its limit of suggestions for today. It frees up progressively — try again later."
   },
+  "account": {
+    "signOut": "Sign out",
+    "feedback": "An idea, a problem? Tell us"
+  },
   "lifeStage": {
     "baby": "Baby",
     "young_child": "Young child",

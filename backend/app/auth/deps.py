@@ -45,8 +45,23 @@ def current_household_id(
     subject: Annotated[str, Depends(current_auth_subject)],
     db: Annotated[Session, Depends(get_db)],
 ) -> uuid.UUID:
+    """The one place an identity becomes a household — and the one place a
+    revoked access stops being one.
+
+    `revoked_at` is filtered HERE rather than at each endpoint: this dependency
+    is what every authenticated route already goes through, so a route added
+    tomorrow inherits the check without knowing it exists. Filtering anywhere
+    else would make revocation a rule to remember.
+
+    The refusal is the same 403 an unknown identity gets, deliberately. Someone
+    who was cut off learns nothing from it, and there is nothing they could do
+    with the distinction anyway.
+    """
     household_id = db.scalar(
-        select(HouseholdAccess.household_id).where(HouseholdAccess.auth_subject == subject)
+        select(HouseholdAccess.household_id).where(
+            HouseholdAccess.auth_subject == subject,
+            HouseholdAccess.revoked_at.is_(None),
+        )
     )
     if household_id is None:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "no household linked to this identity")

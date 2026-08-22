@@ -633,6 +633,10 @@ portion_coefficient(life_stage, coefficient)   -- configurable, pas codé en dur
 
 household_settings(household_id, snacks_enabled, max_dishes_soft_limit, ...)
 
+household_access(auth_subject, household_id, created_at,
+                 revoked_at)                      -- NULL = actif ; la ligne
+                                                  -- SURVIT à la révocation (§11.7)
+
 generation_log(id, household_id, created_at,
                kind,                             -- 'week'|'slot'|'regenerate'|'interpret'
                input_tokens, output_tokens,      -- cumulés sur TOUTES les tentatives
@@ -969,6 +973,30 @@ Le prix de ce choix est explicite : **une API facturée à l'appel derrière une
 
 **Le nombre vient d'une mesure, pas d'un goût.** Le banc donne 3 490 jetons en entrée / 640 en sortie pour une semaine, 5 886 / 1 151 quand l'enveloppe rejoue : à la grille Haiku 4.5, entre 0,7 et 1,2 centime l'appel, donc **environ 60 centimes par jour** au pire pour un foyer. Le plafond qui compte est en euros, le réglage est en appels, et seule la grille tarifaire relie les deux — **à recalculer à chaque changement de modèle**.
 
+#### Révoquer un accès
+
+Le quota borne ce qu'un foyer **dépense** ; il ne ferme pas la porte à celui dont on ne veut plus. `household_access.revoked_at` est cette porte.
+
+```sql
+UPDATE household_access SET revoked_at = now() WHERE auth_subject = 'google:…';
+```
+
+**La ligne survit à la révocation, et c'est tout le mécanisme.** `callback` provisionne un foyer exactement quand il ne trouve **aucune** ligne d'accès : supprimer reviendrait donc à offrir un foyer tout neuf à l'identité qu'on vient de couper, à sa prochaine connexion. Révoqué mais présent signifie reconnu, refusé, et incapable de se réinscrire. La requête de `callback` ne filtre **délibérément pas** sur `revoked_at` — ce n'est pas un oubli, c'est la condition.
+
+**Par accès, pas par foyer.** Les deux parents auront chacun leur ligne ; l'un qui abuse n'est pas une raison d'enfermer l'autre dehors avec les repas de la famille.
+
+**Filtré dans `current_household_id`**, la dépendance que toute route authentifiée traverse déjà — donc une route ajoutée demain hérite du contrôle sans le savoir. Le refus est le **même 403** qu'une identité inconnue : celui qu'on a coupé n'apprend rien de la distinction, et n'en ferait rien.
+
+> **Pas d'interface, et pas par économie.** Une interface pour lancer un `UPDATE` annuel serait de la surface d'attaque construite pour un geste rare. L'inverse — `revoked_at = NULL` — est la même instruction, ce qui rend l'erreur de 2 h du matin réparable à 2 h 01.
+
+#### La boîte à idées est un lien, pas une table
+
+`FEEDBACK_URL` en configuration (I8), rendu dans le pied de page de **tous** les écrans, y compris celui de connexion : celui qui lit la promesse et repart sans compte est le retour le plus difficile à obtenir et le plus utile. Vide, il n'y a pas de lien plutôt qu'un lien mort.
+
+Un formulaire hébergé ou un `mailto:` sont deux valeurs valides. **Le formulaire est préférable** : un `mailto:` ouvre un client de messagerie que le visiteur n'a peut-être pas configuré — sur navigateur mobile il ne fait souvent rien — et met une adresse réelle dans le source de la page, là où les moissonneurs la trouvent.
+
+**Pas de table de retours.** Construire un stockage pour cinq testeurs, c'est du travail qui ne sert pas, et ça ramène une question de données personnelles pour rien.
+
 ---
 
 ## 12. Conventions
@@ -1300,9 +1328,8 @@ Un modèle qui note le plan généré face à la référence capte des choses qu
 | **Réparation déterministe d'une assignation** | **Devenu sans objet.** Le problème qu'elle devait corriger a été réglé par le classement (voir l'encadré du §6.2 sur la préférence), qui met les manquements à 0. À rouvrir seulement si un catalogue ou un foyer futur les fait réapparaître. Historique : non retenu pour l'instant, Quand `allergen_for_eater` survit aux trois tentatives, le code pourrait remplacer le plat par le meilleur candidat sûr plutôt que de rendre le plan avec ses violations. Mesuré : 6 manquements sur 45 assignations, contre 30 avant les corrections du §6.2 — signalés, jamais silencieux, et la sécurité **dure** (allergie sévère) est à 0 par exclusion du pool. Le §6.2 prescrit le rejeu, pas la réparation, et faire composer une partie du plan par le côté déterministe est une décision à part entière. **À rouvrir après la comparaison de modèles** (§14.6) : la latence est passée de 28 s à 87 s parce que le rejeu part 2,6 fois sur 3, ce qui désigne le modèle comme sujet — câbler une réparation avant de savoir si un meilleur modèle règle le problème, c'est ajouter une pièce qu'on retirerait peut-être. |
 | Passage en asynchrone (job + polling) | **Non retenu — mesuré.** Une semaine complète prend ~28 s sur `qwen3:8b` en local une fois le pré-filtre branché (§14.6), contre 182 s sans catalogue. L'endpoint synchrone tient. À rouvrir si le rejeu à trois tentatives devient fréquent. |
 | Facturation, multi-foyer réel, gestion de comptes | Après validation du wedge |
-| **Révoquer un accès** | **Ouvert, et c'est le pendant manquant du §11.7.** `household_access` n'a pas de colonne pour couper : une fois entré, on ne sort quelqu'un qu'en `DELETE` à la main. Le quota borne ce qu'un foyer *dépense*, il ne ferme pas la porte à celui dont on ne veut plus. Une colonne `revoked_at` lue par `current_household_id` suffit — une migration, une clause. |
 | **Limitation par IP sur `/auth/*`** | Non retenu au MVP. Seule route anonyme, et elle n'appelle aucun modèle : elle ne coûte donc rien à part la création de comptes en rafale. À faire le jour où des foyers vides apparaissent, pas avant. |
-| **Boîte à idées** | Un lien externe (formulaire hébergé) dans le pied de page, **pas une table**. Construire un stockage de retours pour cinq testeurs, c'est du travail qui ne sert pas, et ça ramène une question de données personnelles pour rien. |
+| **Interface d'administration** | Non retenue, et pas seulement par économie. Révoquer est une instruction SQL, et à cette taille une interface pour la lancer serait une surface d'attaque construite pour un geste annuel. À rouvrir quand la révocation cessera d'être exceptionnelle — ce qui serait en soi l'information la plus intéressante du produit. |
 | Version anglaise du produit | Demande un catalogue distinct, pas seulement des libellés |
 | Login par identifiant / mot de passe | Indolore techniquement (`auth_subject` préfixé), mais ramène l'infrastructure email via la réinitialisation. Seulement si un utilisateur réel le réclame (§11.1) |
 | Stades de vie supplémentaires (`toddler`…) | Seulement si le score d'appétence révèle qu'un stade manque (§4.3) |

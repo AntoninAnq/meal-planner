@@ -1,6 +1,7 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { SettingsForm } from "@/components/settings/SettingsForm";
+import { SignOutButton } from "@/components/SignOutButton";
 import { Link, redirect } from "@/i18n/navigation";
 import { apiGet } from "@/lib/api/server";
 import type {
@@ -49,6 +50,14 @@ export default async function SettingsPage({
         constraints={constraints ?? []}
         slots={slots ?? []}
       />
+
+      {/* Last, and set apart. Signing out is where every product puts it, and
+          putting it in the week's navigation instead would sit it between
+          "previous week" and "next week" — one misplaced tap from a household
+          that meant to look at Thursday. */}
+      <div className="flex justify-start border-t border-border pt-6">
+        <SignOutButton />
+      </div>
     </main>
   );
 }

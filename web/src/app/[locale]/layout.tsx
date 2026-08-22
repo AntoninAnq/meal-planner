@@ -4,6 +4,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 
+import { SiteFooter } from "@/components/SiteFooter";
 import { routing } from "@/i18n/routing";
 
 import "@/styles/globals.css";
@@ -38,7 +39,13 @@ export default async function LocaleLayout({
   return (
     <html lang={locale}>
       <body>
-        <NextIntlClientProvider>{children}</NextIntlClientProvider>
+        <NextIntlClientProvider>
+          {children}
+          {/* In the layout, so it also reaches the sign-in screen: someone who
+              reads the pitch and leaves without an account is the feedback
+              hardest to get. */}
+          <SiteFooter />
+        </NextIntlClientProvider>
       </body>
     </html>
   );

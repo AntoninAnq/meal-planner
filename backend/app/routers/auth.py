@@ -99,6 +99,11 @@ def callback(
     except GoogleAuthError as exc:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, str(exc)) from exc
 
+    # Deliberately NOT filtered on `revoked_at`: a revoked access must still
+    # read as known here, or the very identity that was cut off is handed a
+    # brand-new household on its next login. Recognised, then refused
+    # downstream by `current_household_id` — that is what makes revocation
+    # something other than a delay.
     known = db.scalar(
         select(HouseholdAccess).where(HouseholdAccess.auth_subject == identity.subject)
     )

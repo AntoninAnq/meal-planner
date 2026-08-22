@@ -17,6 +17,10 @@
     "genericError": "Quelque chose n'a pas fonctionné. Réessayez.",
     "quotaExceeded": "Ce foyer a atteint sa limite de suggestions pour aujourd'hui. Elle se libère progressivement — réessayez plus tard."
   },
+  "account": {
+    "signOut": "Se déconnecter",
+    "feedback": "Une idée, un problème ? Dites-le nous"
+  },
   "lifeStage": {
     "baby": "Bébé",
     "young_child": "Jeune enfant",

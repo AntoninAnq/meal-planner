@@ -118,6 +118,13 @@ class HouseholdAccess(Base):
         ForeignKey("household.id", ondelete="CASCADE"), index=True
     )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    #: Set to cut this identity off. NULL — the default — means active.
+    #:
+    #: The row SURVIVES revocation, and that is the whole design: `callback`
+    #: provisions a household exactly when it finds no access row, so deleting
+    #: would let the same identity walk back in on the next login. Revoked but
+    #: present means recognised, refused, and unable to re-register.
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class HouseholdSettings(Base):
