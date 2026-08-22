@@ -58,6 +58,25 @@ class RecipeSourceType(StrEnum):
     LICENSED_API = "licensed_api"
 
 
+class GenerationKind(StrEnum):
+    """Which billable operation a household asked for.
+
+    Every member of this enum costs a call to the model, which is why they are
+    counted together against one quota rather than metered separately: a limit
+    that only watches whole weeks leaves the cheap endpoints as an open,
+    unmetered door, and `INTERPRET` is reachable in a loop just as easily.
+
+    They are told apart for the other reason the log exists — knowing what a
+    real household actually costs per month. `WEEK` is the expensive one;
+    `INTERPRET` is roughly a tenth of it.
+    """
+
+    WEEK = "week"
+    SLOT = "slot"
+    REGENERATE = "regenerate"
+    INTERPRET = "interpret"
+
+
 class ProposalStatus(StrEnum):
     """A proposal is never applied by itself (I4).
 

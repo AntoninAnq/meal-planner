@@ -38,12 +38,28 @@ class LLMUnavailableError(LLMError):
 
 
 class SchemaValidationError(LLMError):
-    """The model never produced output matching the schema, attempts exhausted."""
+    """The model never produced output matching the schema, attempts exhausted.
 
-    def __init__(self, attempts: int, last_error: str) -> None:
+    Carries what the exhausted attempts CONSUMED, and that is not bookkeeping
+    for its own sake: this is the most expensive outcome the system has — three
+    prompts sent, nothing usable back — so it is the one an accounting that
+    only ever sees successes would miss entirely.
+    """
+
+    def __init__(
+        self,
+        attempts: int,
+        last_error: str,
+        input_tokens: int = 0,
+        output_tokens: int = 0,
+        model_id: str = "",
+    ) -> None:
         super().__init__(f"no schema-valid output after {attempts} attempt(s): {last_error}")
         self.attempts = attempts
         self.last_error = last_error
+        self.input_tokens = input_tokens
+        self.output_tokens = output_tokens
+        self.model_id = model_id
 
 
 @dataclass(frozen=True)
@@ -164,4 +180,10 @@ class RetryingLLMClient(ABC):
                 latency_ms=int((time.monotonic() - started) * 1000),
             )
 
-        raise SchemaValidationError(attempts=max_attempts, last_error=last_error)
+        raise SchemaValidationError(
+            attempts=max_attempts,
+            last_error=last_error,
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            model_id=model_id,
+        )

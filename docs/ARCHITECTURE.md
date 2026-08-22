@@ -632,6 +632,13 @@ meal_slot_config(household_id, day_of_week, meal_type, enabled)
 portion_coefficient(life_stage, coefficient)   -- configurable, pas codé en dur
 
 household_settings(household_id, snacks_enabled, max_dishes_soft_limit, ...)
+
+generation_log(id, household_id, created_at,
+               kind,                             -- 'week'|'slot'|'regenerate'|'interpret'
+               input_tokens, output_tokens,      -- cumulés sur TOUTES les tentatives
+               attempts, model_id,
+               succeeded)                        -- un échec a coûté des jetons (§11.7)
+-- index (household_id, created_at) : le quota ne pose jamais d'autre question
 ```
 
 ### 8.2 Catalogue
@@ -748,6 +755,8 @@ Le contrat détaillé et sa justification sont dans **`UX-V0.md` §13** — c'es
 > (`UX-V0.md` §7).
 
 **`household_id` n'apparaît dans aucune signature d'endpoint** — il vient de l'identité (I6).
+
+> **Tout endpoint qui atteint le modèle répond aussi `429`** (§11.7), avec `Retry-After`. Les quatre concernés sont `interpret`, `POST /meal-plans` et `regenerate` ; `alternatives` n'appelle rien et n'est donc pas compté. La règle est vérifiée **sur la table de routage** plutôt que sur une liste de chemins : « utilise le LLM » implique « passe par le quota », de sorte qu'un endpoint ajouté demain ne peut pas l'oublier en silence.
 
 ---
 
@@ -931,6 +940,34 @@ Ce que la mesure impose à l'extracteur :
 
 1. **Workflows en ligne** (à la demande utilisateur) — graphes LangGraph, lisent un index **déjà construit**, ne scrapent **jamais** en direct.
 2. **Pipeline d'alimentation du catalogue** — **tâche d'arrière-plan planifiée** (cron), découvre/extrait/classe depuis des blogs whitelistés, indépendante du trafic utilisateur.
+
+### 11.7 Le quota, seule barrière devant une API payante
+
+**L'inscription reste ouverte.** `provision_household` crée un foyer pour toute identité Google qui se présente. L'alternative — une liste d'invités — a été posée puis **écartée** : l'objectif est qu'un inconnu qui tombe sur le produit puisse l'essayer, et récolter un retour opportuniste vaut plus qu'une porte fermée.
+
+Le prix de ce choix est explicite : **une API facturée à l'appel derrière une porte non gardée**. Le quota est l'intégralité de ce qui comble l'écart.
+
+| Décision | Choix |
+|---|---|
+| Portée du compteur | **Par foyer**, jamais par IP |
+| Ce qui compte | **Tout appel au modèle** — génération, créneau, régénération, interprétation |
+| Fenêtre | **Glissante**, jamais un jour calendaire |
+| Réglage | `GENERATION_DAILY_LIMIT` / `GENERATION_WINDOW_HOURS` (I8) |
+| Refus | **429** nommant la limite, avec `Retry-After` |
+
+> **Pourquoi par foyer et pas par IP.** Ce qui coûte de l'argent est authentifié : aucun appel au modèle n'est atteignable sans session. Une limite par IP protégerait ce qui ne coûte rien et laisserait passer le foyer qui régénère cent fois. La seule route anonyme est `/auth/*`, qui n'appelle aucun modèle — sa protection est un sujet distinct et secondaire.
+
+> **Pourquoi l'interprétation compte aussi.** Elle vaut le dixième d'une semaine. C'est une raison de fixer la limite généreusement, pas de laisser l'endpoint non compté : il se boucle exactement aussi facilement que le coûteux. Un seul compteur pour tous les appels, plutôt que deux mécanismes à maintenir en cohérence.
+
+> **Pourquoi les échecs comptent.** Une génération qui épuise ses trois tentatives envoie trois prompts et les paie tous — c'est **l'issue la plus chère du système**. Un quota qui ne compterait que les succès laisserait la façon la moins chère de brûler une clef API entièrement hors du compte.
+
+> **Pourquoi une table et pas un compte de `meal_plan`.** Une régénération **écrase la semaine sur place** — même ligne, même id. La table des plans ne garde donc aucune trace de la deuxième, de la troisième et de la dixième tentative : précisément les appels qu'un quota existe pour compter.
+
+**La table paie deux fois de plus.** `input_tokens`, `output_tokens` et `model_id` transforment « ça doit coûter quelque chose » en **un chiffre par foyer et par mois** — celui dont la tarification aura besoin, et celui qui manque à §14.6 pour comparer deux modèles sur autre chose que la latence. Et la fréquence à laquelle un vrai foyer régénère est un fait produit que rien d'autre n'enregistre.
+
+> **Limite assumée : aucun verrou.** Deux requêtes simultanées peuvent lire un compte sous la limite et passer toutes les deux, donc le plafond réel est la limite plus les appels en vol. Depuis un navigateur, à 50 par jour, c'est un ou deux appels de glissement — et le verrou qui fermerait la brèche coûterait un point de sérialisation sur chaque génération, pour toujours, afin de récupérer un centime.
+
+**Le nombre vient d'une mesure, pas d'un goût.** Le banc donne 3 490 jetons en entrée / 640 en sortie pour une semaine, 5 886 / 1 151 quand l'enveloppe rejoue : à la grille Haiku 4.5, entre 0,7 et 1,2 centime l'appel, donc **environ 60 centimes par jour** au pire pour un foyer. Le plafond qui compte est en euros, le réglage est en appels, et seule la grille tarifaire relie les deux — **à recalculer à chaque changement de modèle**.
 
 ---
 
@@ -1263,6 +1300,9 @@ Un modèle qui note le plan généré face à la référence capte des choses qu
 | **Réparation déterministe d'une assignation** | **Devenu sans objet.** Le problème qu'elle devait corriger a été réglé par le classement (voir l'encadré du §6.2 sur la préférence), qui met les manquements à 0. À rouvrir seulement si un catalogue ou un foyer futur les fait réapparaître. Historique : non retenu pour l'instant, Quand `allergen_for_eater` survit aux trois tentatives, le code pourrait remplacer le plat par le meilleur candidat sûr plutôt que de rendre le plan avec ses violations. Mesuré : 6 manquements sur 45 assignations, contre 30 avant les corrections du §6.2 — signalés, jamais silencieux, et la sécurité **dure** (allergie sévère) est à 0 par exclusion du pool. Le §6.2 prescrit le rejeu, pas la réparation, et faire composer une partie du plan par le côté déterministe est une décision à part entière. **À rouvrir après la comparaison de modèles** (§14.6) : la latence est passée de 28 s à 87 s parce que le rejeu part 2,6 fois sur 3, ce qui désigne le modèle comme sujet — câbler une réparation avant de savoir si un meilleur modèle règle le problème, c'est ajouter une pièce qu'on retirerait peut-être. |
 | Passage en asynchrone (job + polling) | **Non retenu — mesuré.** Une semaine complète prend ~28 s sur `qwen3:8b` en local une fois le pré-filtre branché (§14.6), contre 182 s sans catalogue. L'endpoint synchrone tient. À rouvrir si le rejeu à trois tentatives devient fréquent. |
 | Facturation, multi-foyer réel, gestion de comptes | Après validation du wedge |
+| **Révoquer un accès** | **Ouvert, et c'est le pendant manquant du §11.7.** `household_access` n'a pas de colonne pour couper : une fois entré, on ne sort quelqu'un qu'en `DELETE` à la main. Le quota borne ce qu'un foyer *dépense*, il ne ferme pas la porte à celui dont on ne veut plus. Une colonne `revoked_at` lue par `current_household_id` suffit — une migration, une clause. |
+| **Limitation par IP sur `/auth/*`** | Non retenu au MVP. Seule route anonyme, et elle n'appelle aucun modèle : elle ne coûte donc rien à part la création de comptes en rafale. À faire le jour où des foyers vides apparaissent, pas avant. |
+| **Boîte à idées** | Un lien externe (formulaire hébergé) dans le pied de page, **pas une table**. Construire un stockage de retours pour cinq testeurs, c'est du travail qui ne sert pas, et ça ramène une question de données personnelles pour rien. |
 | Version anglaise du produit | Demande un catalogue distinct, pas seulement des libellés |
 | Login par identifiant / mot de passe | Indolore techniquement (`auth_subject` préfixé), mais ramène l'infrastructure email via la réinitialisation. Seulement si un utilisateur réel le réclame (§11.1) |
 | Stades de vie supplémentaires (`toddler`…) | Seulement si le score d'appétence révèle qu'un stade manque (§4.3) |

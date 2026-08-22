@@ -27,8 +27,8 @@ from app.db.models import (
     RecipeSuitableStage,
 )
 from app.db.session import get_db
-from app.domain.enums import DishSource, LifeStage
-from app.llm.base import LLMClient, LLMError
+from app.domain.enums import DishSource, GenerationKind, LifeStage
+from app.llm.base import LLMClient, LLMError, SchemaValidationError
 from app.llm.factory import get_llm_client
 from app.schemas import (
     AlternativeOut,
@@ -57,7 +57,9 @@ from app.services.planning_service import (
     load_plan,
     monday_of,
 )
+from app.services.usage import WithinQuota, record
 from app.workflows.prompts import INTERPRETATION_INSTRUCTIONS, INTERPRETATION_SCHEMA
+from app.workflows.week_plan import PlanOutcome
 
 router = APIRouter(prefix="/meal-plans", tags=["meal-plans"])
 
@@ -73,8 +75,37 @@ logger = logging.getLogger(__name__)
 LLM_UNAVAILABLE = "the meal suggestion service is unavailable, try again in a moment"
 
 
-def _unavailable(exc: LLMError) -> HTTPException:
+def _unavailable(
+    db: Session, household_id: uuid.UUID, kind: GenerationKind, exc: LLMError
+) -> HTTPException:
+    """Bill the failed call, then turn it into a 503.
+
+    A failure is not a free call. Three attempts that never matched the schema
+    send three prompts and pay for all of them, which makes an exhausted
+    generation the single most expensive outcome the system has — so it is
+    logged and it counts against the quota. Skipping it would leave the
+    cheapest way to burn an API key uncounted.
+
+    `SchemaValidationError` is the one that knows what it spent. The provider
+    being unreachable spent nothing, and the row then says so: zero tokens,
+    `succeeded=False` — which is a different fact from "spent nothing because
+    it was never called", and the reason `succeeded` is a column of its own.
+    """
     logger.exception("LLM call failed", exc_info=exc)
+    spent = exc if isinstance(exc, SchemaValidationError) else None
+    # The caller may have left a half-written plan behind; the accounting of a
+    # call that really happened must not be rolled back with it.
+    db.rollback()
+    record(
+        db,
+        household_id=household_id,
+        kind=kind,
+        input_tokens=spent.input_tokens if spent else 0,
+        output_tokens=spent.output_tokens if spent else 0,
+        attempts=spent.attempts if spent else 1,
+        model_id=spent.model_id if spent else "",
+        succeeded=False,
+    )
     return HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, LLM_UNAVAILABLE)
 
 
@@ -217,8 +248,9 @@ def _serialise(db: Session, plan: MealPlan) -> MealPlanOut:
 @router.post("/interpret", response_model=InterpretResponse)
 def interpret(
     payload: InterpretRequest,
+    db: DbDep,
     llm: LLMDep,
-    household_id: CurrentHousehold,
+    household_id: WithinQuota,
 ) -> InterpretResponse:
     """Free text -> structured constraints, shown to the user before generating.
 
@@ -229,6 +261,10 @@ def interpret(
     Cheap and short compared with a generation, which is exactly the point: a
     misunderstanding is corrected in one click rather than by rerunning a
     20-30 second arbitration.
+
+    Cheap, and still under the quota. Roughly a tenth of a week's cost — which
+    is a reason to set the limit generously, not a reason to leave the endpoint
+    unmetered: it is reachable in a loop exactly as easily as the expensive one.
     """
     try:
         result = llm.complete_structured(
@@ -237,7 +273,17 @@ def interpret(
             schema=INTERPRETATION_SCHEMA,
         )
     except LLMError as exc:
-        raise _unavailable(exc) from exc
+        raise _unavailable(db, household_id, GenerationKind.INTERPRET, exc) from exc
+
+    record(
+        db,
+        household_id=household_id,
+        kind=GenerationKind.INTERPRET,
+        input_tokens=result.input_tokens,
+        output_tokens=result.output_tokens,
+        attempts=result.attempts,
+        model_id=result.model_id,
+    )
 
     return InterpretResponse(
         constraints=[
@@ -248,7 +294,7 @@ def interpret(
 
 @router.post("", response_model=MealPlanOut)
 def create_plan(
-    payload: GeneratePlanRequest, db: DbDep, llm: LLMDep, household_id: CurrentHousehold
+    payload: GeneratePlanRequest, db: DbDep, llm: LLMDep, household_id: WithinQuota
 ) -> MealPlanOut:
     """One parameterised operation: whole week, or a single slot with guests.
 
@@ -260,9 +306,11 @@ def create_plan(
         targets: list[SlotTarget] | None = [
             SlotTarget(payload.scope.day.weekday(), payload.scope.meal_type)
         ]
+        kind = GenerationKind.SLOT
     else:
         week_start = payload.scope.week_start
         targets = None
+        kind = GenerationKind.WEEK
 
     try:
         plan, outcome = generate_plan(
@@ -297,13 +345,37 @@ def create_plan(
             language=payload.language,
         )
     except ValueError as exc:
+        # Not billed: all three of these are refused before a prompt is built.
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(exc)) from exc
     except LLMError as exc:
-        raise _unavailable(exc) from exc
+        raise _unavailable(db, household_id, kind, exc) from exc
+
+    _bill(db, household_id, kind, outcome)
 
     # A plan that never satisfied the envelope is returned WITH what is wrong.
     # Nothing here pretends a rejected plan passed.
     return _serialise(db, plan)
+
+
+def _bill(
+    db: Session, household_id: uuid.UUID, kind: GenerationKind, outcome: PlanOutcome
+) -> None:
+    """Record what a completed generation consumed, over every attempt.
+
+    A rejected plan still went to the model and still counts — the envelope
+    loop is where the tokens go, not where they stop mattering.
+    """
+    record(
+        db,
+        household_id=household_id,
+        kind=kind,
+        input_tokens=outcome.input_tokens,
+        output_tokens=outcome.output_tokens,
+        attempts=outcome.attempts,
+        # What the provider says it ran. The generation may have taken several
+        # attempts; they all go to the same model, so the last one names it.
+        model_id=outcome.llm_results[-1].model_id if outcome.llm_results else "",
+    )
 
 
 @router.get("", response_model=MealPlanOut | None)
@@ -446,7 +518,7 @@ def regenerate_dish(
     payload: DishRegenerate,
     db: DbDep,
     llm: LLMDep,
-    household_id: CurrentHousehold,
+    household_id: WithinQuota,
 ) -> MealPlanOut:
     """Directed repair — one slot only, never the whole week.
 
@@ -472,7 +544,9 @@ def regenerate_dish(
             exclude_recipe_ids=[dish.recipe_id] if dish.recipe_id else [],
         )
     except LLMError as exc:
-        raise _unavailable(exc) from exc
+        raise _unavailable(db, household_id, GenerationKind.REGENERATE, exc) from exc
+
+    _bill(db, household_id, GenerationKind.REGENERATE, outcome)
 
     return _serialise(db, plan)
 

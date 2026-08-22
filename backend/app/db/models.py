@@ -23,6 +23,7 @@ from sqlalchemy import (
     Enum,
     ForeignKey,
     ForeignKeyConstraint,
+    Index,
     Integer,
     Numeric,
     SmallInteger,
@@ -41,6 +42,7 @@ from app.domain.enums import (
     ConstraintSeverity,
     DishSource,
     DishType,
+    GenerationKind,
     LifeStage,
     MealType,
     ProposalStatus,
@@ -79,6 +81,7 @@ allergen_enum = _pg_enum(AllergenCode, "allergen_code")
 recipe_source_enum = _pg_enum(RecipeSourceType, "recipe_source_type")
 proposal_status_enum = _pg_enum(ProposalStatus, "proposal_status")
 dish_type_enum = _pg_enum(DishType, "dish_type")
+generation_kind_enum = _pg_enum(GenerationKind, "generation_kind")
 
 
 class Household(Base):
@@ -452,6 +455,64 @@ class SnackSuggestion(Base):
         ForeignKey("recipe.id", ondelete="RESTRICT")
     )
     source: Mapped[DishSource] = mapped_column(dish_source_enum)
+
+
+class GenerationLog(Base):
+    """One row per model call a household paid for. Append-only.
+
+    Three jobs, and it exists because none of them can be done without it:
+
+      * **The quota.** Signing up is open — any Google identity that arrives
+        gets a household (`provision_household`). Nothing else stands between a
+        stranger, or a loop, and a metered API. This table is the only
+        mechanism that bounds what one household can spend in a day.
+      * **The bill.** Tokens and `model_id` are what turn "it seems to cost
+        something" into a figure per household per month — the number pricing
+        will need, and the one the model comparison of §14.6 needs to compare
+        anything but latency.
+      * **Usage.** How often a real household regenerates is a product fact
+        nothing else records.
+
+    **Counting `meal_plan` rows would not have worked.** A regeneration
+    overwrites the week in place — same row, same id — so the table that holds
+    the plans holds no trace of the second, third and tenth attempt. Those are
+    exactly the calls a quota exists to count.
+
+    Written even when the call FAILED, and the tokens are then the ones the
+    exhausted attempts really consumed. A failed generation is the most
+    expensive kind — three attempts, three prompts — so a log that only records
+    successes understates the bill precisely where it is highest, and leaves
+    the cheapest way to burn an API key uncounted.
+    """
+
+    __tablename__ = "generation_log"
+    __table_args__ = (
+        Index("ix_generation_log_household_created", "household_id", "created_at"),
+    )
+
+    id: Mapped[uuid.UUID] = _pk()
+    household_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("household.id", ondelete="CASCADE")
+    )
+    #: Indexed WITH `household_id`, because the quota only ever asks one
+    #: question: how many rows for this household since a moment. On the
+    #: household alone the index stops being useful the day a tester has
+    #: thousands of rows — which is the day the quota matters.
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    kind: Mapped[GenerationKind] = mapped_column(generation_kind_enum)
+    #: Cumulative over every attempt, not just the accepted one.
+    input_tokens: Mapped[int] = mapped_column(Integer, default=0)
+    output_tokens: Mapped[int] = mapped_column(Integer, default=0)
+    attempts: Mapped[int] = mapped_column(SmallInteger, default=1)
+    #: What the provider says it ran, not what was configured. The two differ
+    #: the day an alias moves, and the bill follows the first.
+    model_id: Mapped[str] = mapped_column(String(80), default="")
+    #: False when the call raised. Kept as a column rather than inferred from
+    #: zero tokens: a provider that was unreachable also spent zero, and the
+    #: two are not the same fact.
+    succeeded: Mapped[bool] = mapped_column(Boolean, default=True)
 
 
 # ---------------------------------------------------------------------------

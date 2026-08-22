@@ -84,6 +84,28 @@ class Settings(BaseSettings):
     anthropic_api_key: str = ""
     anthropic_model: str = "claude-haiku-4-5"
 
+    # Quota
+    #: Model calls one household may make in `generation_window_hours`.
+    #:
+    #: This is a SPEND ceiling, not a fairness rule. Signing up is open — every
+    #: Google identity that arrives gets a household — so nothing but this
+    #: number stands between a stranger, or a loop, and a metered API.
+    #:
+    #: 50 is set from measurement, not from taste. The eval harness gives 3 490
+    #: input / 640 output tokens for a full week, 5 886 / 1 151 when the
+    #: envelope loop retries; at Haiku 4.5 rates that is 0.7 to 1.2 cents a
+    #: call, so the worst case one household can reach in a day is about 60
+    #: cents. Recompute it when the model changes — the ceiling is in euros,
+    #: the setting is in calls, and only the rate card connects them.
+    #:
+    #: Generous on purpose: a household testing seriously does ten or fifteen,
+    #: and a limit that bites a real user to stop an imaginary bot is the wrong
+    #: trade at this size.
+    generation_daily_limit: int = 50
+    #: Rolling, not a calendar day. A window that resets at midnight is a window
+    #: someone waits out, and it hands a household two full quotas back to back.
+    generation_window_hours: int = 24
+
     # Catalogue
     #: Path to the whitelist. It is deliberately NOT part of the source tree.
     #:
