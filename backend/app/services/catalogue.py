@@ -49,21 +49,9 @@ from app.db.models import (
     RecipeIngredient,
     RecipeSuitableStage,
 )
-from app.domain.enums import DishType, LifeStage
+from app.domain.enums import NOT_A_MEAL, LifeStage
 from app.domain.ingredient_names import normalise, variants
 from app.domain.planning import SlotSpec
-
-#: Dish types a meal slot never accepts. `main` and `starter` pass, and so does
-#: NULL — 961 catalogue recipes carry no rubric anyone mapped, and excluding
-#: them would spend a fifth of the catalogue on a comfort guarantee.
-NOT_A_MEAL = (
-    DishType.DESSERT,
-    DishType.SNACK,
-    DishType.BREAKFAST,
-    DishType.DRINK,
-    DishType.SIDE,
-    DishType.COMPONENT,
-)
 
 
 def offerable() -> ColumnElement[bool]:

@@ -139,3 +139,22 @@ class DishType(StrEnum):
     BREAKFAST = "breakfast"
     DRINK = "drink"
     COMPONENT = "component"
+
+
+#: Dish types a meal slot never accepts. `main` and `starter` pass, and so does
+#: NULL — a recipe nobody classified is unclassified, not excluded.
+#:
+#: Here rather than in the pre-filter because both sides of the wall need it and
+#: neither may import the other (`tests/test_catalog_boundaries.py`). The API
+#: uses it to choose what to serve; the collection pipeline uses it to know
+#: where a referential entry is worth adding — of 417 recipes one line short of
+#: verification, 237 are a dessert, a snack or a side, and an entry written for
+#: one of those buys a week nothing.
+NOT_A_MEAL = (
+    DishType.DESSERT,
+    DishType.SNACK,
+    DishType.BREAKFAST,
+    DishType.DRINK,
+    DishType.SIDE,
+    DishType.COMPONENT,
+)

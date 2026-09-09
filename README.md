@@ -160,11 +160,22 @@ docker compose run --rm catalog ingest --source <clé> --limit 60 --dry-run
 docker compose run --rm catalog ingest --source <clé>
 docker compose run --rm catalog load-referential # db/ingredients.yaml, idempotent
 docker compose run --rm catalog resolve          # rejouable, idempotent
+docker compose run --rm catalog gaps            # quelle entrée écrire ensuite, et ce qu'elle débloque
+docker compose run --rm catalog gaps --yaml     # les mêmes, en gabarits à coller dans db/ingredients.yaml
 docker compose run --rm catalog review           # les propositions I4, à confirmer
 docker compose run --rm catalog dish-types       # rubrique source → moment du repas
 docker compose run --rm catalog complexity       # temps + étapes + ingrédients → 1..3
 docker compose run --rm catalog food-categories  # composition, pour le signal de rotation
 ```
+
+`gaps` classe par **recettes complétées**, jamais par fréquence : un nom vu deux
+cents fois dans des recettes qui ont trois autres trous ne débloque rien, un nom
+vu deux fois comme dernière ligne manquante débloque deux recettes. Il ignore ce
+qu'un créneau n'accepte jamais — mesuré avant ce filtre, 237 des 417 recettes à
+une ligne près étaient un dessert, un en-cas ou un accompagnement, donc plus de
+la moitié du travail n'aurait rien apporté à une semaine. Ses gabarits sortent
+avec `allergens: []` : c'est le seul champ qui puisse blesser quelqu'un, et
+aucune correspondance de chaîne n'a d'avis dessus.
 
 `review` est le seul de ces sept qui demande un humain, et c'est voulu : il porte
 sur des allergènes (I1). `dish-types` n'en porte aucun — sa relecture est celle

@@ -102,6 +102,19 @@ def build_parser() -> argparse.ArgumentParser:
         "--report", action="store_true", help="change nothing; print the distribution"
     )
 
+    gaps = sub.add_parser(
+        "gaps",
+        help="what one more referential entry would unlock, as YAML you can paste",
+    )
+    gaps.add_argument("--top", type=int, default=40, help="how many entries to propose")
+    gaps.add_argument(
+        "--yaml",
+        action="store_true",
+        help="emit stubs shaped like db/ingredients.yaml instead of the summary. "
+        "`allergens` comes out empty on purpose: it is the one field that can "
+        "hurt someone, and nothing here has an opinion about it (I1).",
+    )
+
     review = sub.add_parser("review", help="confirm the proposed referential entries (I1, I3)")
     review.add_argument(
         "--bulk-safe",
@@ -251,6 +264,20 @@ def _food_categories(args) -> int:
     return 0
 
 
+def _gaps(args) -> int:
+    from app.catalog.gaps import as_yaml, gaps, render
+    from app.db.session import get_session_factory
+
+    with get_session_factory()() as db:
+        # Asked for more than is shown, so the header can say how many are out
+        # there rather than how many fitted on the screen.
+        found = gaps(db, limit=max(args.top, 10_000))
+    blocked = sum(gap.completes for gap in found)
+    shown = found[: args.top]
+    print(as_yaml(shown) if args.yaml else render(shown, total_blocked=blocked), end="")
+    return 0
+
+
 def _review(args) -> int:
     from app.catalog.review import ReadOnlyConfirmations, run_review
     from app.db.session import get_session_factory
@@ -273,6 +300,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         "dish-types": _dish_types,
         "complexity": _complexity,
         "food-categories": _food_categories,
+        "gaps": _gaps,
         "review": _review,
     }
     return handlers[args.command](args)
