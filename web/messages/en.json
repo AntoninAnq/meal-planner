@@ -201,7 +201,16 @@
     "choose": "Choose",
     "clearHeading": "Empty this slot",
     "clearHint": "Removes every dish from this meal. Useful when a habitual meal has to make way for an invitation.",
-    "clearSlot": "Empty this slot"
+    "clearSlot": "Empty this slot",
+    "reportOpen": "Report this dish",
+    "reportHint": "If the problem is the recipe itself, not your taste. Someone will look at it.",
+    "reportCancel": "Cancel",
+    "reportDone": "Reported. Thank you.",
+    "reportCategory": {
+      "not_a_meal": "This is not a meal",
+      "dead_link": "The link goes nowhere",
+      "bad_recipe": "The recipe is unusable"
+    }
   },
   "invitation": {
     "create": "Have people over",
@@ -301,6 +310,18 @@
       "breakfast": "Breakfast",
       "drink": "Drink",
       "component": "Component"
+    },
+    "reportsHeading": "Reports",
+    "reportsIntro": "Households say these recipes are at fault. Retag, withdraw, or dismiss if the report was mistaken.",
+    "reportsDone": "No reports waiting.",
+    "households": "{count, plural, one {# household} other {# households}}",
+    "withdraw": "Withdraw from the catalogue",
+    "dismiss": "Dismiss",
+    "queueHeading": "Recipes to classify",
+    "reportCategory": {
+      "not_a_meal": "Not a meal",
+      "dead_link": "Dead link",
+      "bad_recipe": "Unusable recipe"
     }
   }
 }

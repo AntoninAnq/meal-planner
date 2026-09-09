@@ -186,22 +186,31 @@
     "empty": "Rien de prévu pour ce repas.",
     "titleLabel": "Le plat",
     "save": "Enregistrer",
-    "rate": "Ce plat a plu ?",
+    "rate": "Ce plat a plu ?",
     "liked": "Oui",
     "disliked": "Non",
     "elseHeading": "Proposer autre chose",
-    "elseHint": "Dites pourquoi : la raison devient une contrainte, elle ne se perd pas.",
+    "elseHint": "Dites pourquoi : la raison devient une contrainte, elle ne se perd pas.",
     "reasonLabel": "Pourquoi",
     "reasonPlaceholder": "pas de poisson mardi, trop long à préparer…",
     "regenerate": "Proposer autre chose",
     "generateSlot": "Générer ce repas",
-    "alternativesHeading": "Autre chose ?",
+    "alternativesHeading": "Autre chose ?",
     "alternativesHint": "Des candidats que le pré-filtre a retenus et que le modèle n'a pas choisis. Aucun appel de modèle, réponse immédiate.",
     "alternativesEmpty": "Aucune autre recette ne convient à ce créneau.",
     "choose": "Choisir",
     "clearHeading": "Vider ce créneau",
     "clearHint": "Retire tous les plats de ce repas. Utile quand un repas habituel doit laisser la place à une invitation.",
-    "clearSlot": "Vider ce créneau"
+    "clearSlot": "Vider ce créneau",
+    "reportOpen": "Signaler ce plat",
+    "reportHint": "Si le problème vient de la recette elle-même, pas de vos goûts. Un correcteur le verra.",
+    "reportCancel": "Annuler",
+    "reportDone": "Signalé. Merci.",
+    "reportCategory": {
+      "not_a_meal": "Ce n'est pas un plat",
+      "dead_link": "Le lien ne mène nulle part",
+      "bad_recipe": "La recette est inutilisable"
+    }
   },
   "invitation": {
     "create": "Inviter du monde",
@@ -290,7 +299,7 @@
     "noRubric": "Aucune rubrique",
     "ingredients": "Ingrédients",
     "source": "voir la recette",
-    "shortcut": "Choisissez au clavier : touches 1 à 8.",
+    "shortcut": "Choisissez au clavier : touches 1 à 8.",
     "failed": "L'enregistrement a échoué. Réessayez.",
     "dishType": {
       "main": "Plat",
@@ -301,6 +310,18 @@
       "breakfast": "Petit déjeuner",
       "drink": "Boisson",
       "component": "Composant"
+    },
+    "reportsHeading": "Signalements",
+    "reportsIntro": "Des foyers disent que ces recettes sont fautives. Retaguer, retirer, ou écarter si le signalement est infondé.",
+    "reportsDone": "Aucun signalement en attente.",
+    "households": "{count, plural, one {# foyer} other {# foyers}}",
+    "withdraw": "Retirer du catalogue",
+    "dismiss": "Écarter",
+    "queueHeading": "Recettes à classer",
+    "reportCategory": {
+      "not_a_meal": "Ce n'est pas un plat",
+      "dead_link": "Lien mort",
+      "bad_recipe": "Recette inutilisable"
     }
   }
 }

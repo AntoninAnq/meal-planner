@@ -272,3 +272,22 @@ export type Operator = {
   granted_at: string;
   granted_by: string | null;
 };
+
+/** What a household says is wrong with a suggestion — for everyone, not for
+ * them. Each one exists because the back office can act on it: `not_a_meal` is
+ * retagged, the other two are withdrawn. There is deliberately no "we did not
+ * fancy it": that is `Proposer autre chose`, which becomes a constraint on this
+ * household instead. */
+export type ReportCategory = "not_a_meal" | "dead_link" | "bad_recipe";
+
+/** One recipe households have complained about, grouped: ten reports of the
+ * same tart are one decision. */
+export type ReportedRecipe = {
+  recipe_id: string;
+  title: string;
+  dish_type: DishType | null;
+  source_url: string | null;
+  households: number;
+  categories: ReportCategory[];
+  notes: string[];
+};

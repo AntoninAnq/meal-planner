@@ -3,6 +3,7 @@
 import { useFormatter, useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
+import { ReportDish } from "@/components/plan/ReportDish";
 import { VariantConfirm } from "@/components/plan/VariantConfirm";
 import { WaitingState } from "@/components/plan/WaitingState";
 import { Button } from "@/components/ui/Button";
@@ -334,6 +335,16 @@ export function SlotPanel({
                         </ul>
                       )}
                     </section>
+                  )}
+
+                  {/* Last of the dish section, and quiet. "Proposer autre
+                      chose" below is the frequent gesture and stays the loud
+                      one; this one says the catalogue is wrong, which is rare
+                      and changes what every household sees. Only for a
+                      catalogue dish: a hand-written one has nothing
+                      catalogue-wide to fix. */}
+                  {planId && dish.recipe_id && (
+                    <ReportDish planId={planId} dishId={dish.id} />
                   )}
 
                   <div className="flex items-center gap-2">
