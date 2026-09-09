@@ -30,7 +30,7 @@ from sqlalchemy.orm import Session
 
 from app.auth.deps import current_household_id
 from app.config import Settings, get_settings
-from app.db.models import GenerationLog
+from app.db.models import GenerationLog, Household
 from app.db.session import get_db
 from app.domain.enums import GenerationKind
 
@@ -80,6 +80,23 @@ def calls_since(db: Session, household_id: uuid.UUID, since: datetime) -> int:
     )
 
 
+def limit_for(db: Session, settings: Settings, household_id: uuid.UUID) -> int:
+    """This household's ceiling: its own if it has one, the rate card otherwise.
+
+    NULL is not "unset", it is the answer — most households are on the standard
+    card, and storing 50 on every row would turn one number into a thousand
+    copies to migrate the day the rate card moves.
+
+    Zero is honoured, and that is the point of reading the override before
+    comparing rather than taking `max` of the two: a household throttled to
+    nothing must actually be stopped.
+    """
+    override = db.scalar(
+        select(Household.generation_limit_override).where(Household.id == household_id)
+    )
+    return settings.generation_daily_limit if override is None else override
+
+
 def enforce_quota(
     household_id: Annotated[uuid.UUID, Depends(current_household_id)],
     db: Annotated[Session, Depends(get_db)],
@@ -100,8 +117,9 @@ def enforce_quota(
     recover a cent.
     """
     now = datetime.now(UTC)
+    limit = limit_for(db, settings, household_id)
     used = calls_since(db, household_id, _window_start(settings, now))
-    if used < settings.generation_daily_limit:
+    if used < limit:
         return household_id
 
     # When the oldest call in the window ages out — that is the first moment
@@ -117,8 +135,11 @@ def enforce_quota(
     frees_at = (_as_utc(oldest) + window) if oldest else (now + window)
     raise HTTPException(
         status.HTTP_429_TOO_MANY_REQUESTS,
+        # The household's own ceiling, not the rate card: the message names the
+        # limit precisely so the reader can tell a refusal from a breakage, and
+        # naming a number they were never held to would defeat that.
         QUOTA_EXCEEDED.format(
-            limit=settings.generation_daily_limit,
+            limit=limit,
             hours=settings.generation_window_hours,
         ),
         headers={"Retry-After": str(max(1, int((frees_at - now).total_seconds())))},

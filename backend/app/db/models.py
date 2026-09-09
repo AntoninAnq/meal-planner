@@ -90,6 +90,22 @@ class Household(Base):
     id: Mapped[uuid.UUID] = _pk()
     name: Mapped[str] = mapped_column(String(120))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    #: This household's ceiling on model calls per window. NULL — the default —
+    #: means the one in `Settings`, which is the rate card everyone gets.
+    #:
+    #: Here and NOT on `household_settings`, which is what the household itself
+    #: chooses and edits through `/household/settings`. This is what the
+    #: OPERATOR allows, and the two must not share a table: one careless field
+    #: on `HouseholdSettingsUpdate` and a household sets its own quota.
+    #:
+    #: Three uses, one column. A paid tier is a high ceiling, not the absence of
+    #: one — an account whose session is stolen spends the operator's money
+    #: either way, so "unlimited" is a ceiling nobody should offer. A suspected
+    #: bot gets a low one, which throttles without cutting off. And 0 is a real
+    #: value: no generation at all, while the household can still read the weeks
+    #: it already has. Cutting someone off entirely is `HouseholdAccess.
+    #: revoked_at`, a different decision with a different blast radius.
+    generation_limit_override: Mapped[int | None] = mapped_column(SmallInteger)
 
     members: Mapped[list[Member]] = relationship(back_populates="household")
     settings: Mapped[HouseholdSettings | None] = relationship(back_populates="household")

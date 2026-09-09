@@ -96,6 +96,33 @@ Le dossier s'appelle `backend/` et non `api/` : la façade HTTP n'en est qu'un
 sous-dossier. Le service Docker, le hostname `api:8000` et la route `/api`
 gardent le nom `api`, eux.
 
+## Administration
+
+Trois choses qu'un exploitant a besoin de faire, et aucune n'a d'endpoint :
+
+```bash
+docker compose run --rm api python -m app.admin list              # qui est là, et qui dépense
+docker compose run --rm api python -m app.admin revoke  google:…  # couper un accès
+docker compose run --rm api python -m app.admin restore google:…  # le rétablir
+docker compose run --rm api python -m app.admin limit <foyer> 500 # plafond propre au foyer
+docker compose run --rm api python -m app.admin limit <foyer> default
+```
+
+Une ligne de commande et pas un back-office, tant qu'il n'y a qu'un exploitant :
+un rôle admin, une autorisation sur chaque route, une piste d'audit et une UI,
+c'est beaucoup de surface exposée à Internet pour servir une personne. Les
+verbes les plus dangereux du système n'ont ainsi aucun endpoint à mal garder.
+
+`list` identifie les gens par leur `auth_subject` parce que rien d'autre ne les
+identifie : `household_access` ne stocke pas d'e-mail, volontairement. On ne peut
+donc pas blacklister une adresse — il faudrait commencer à en conserver une.
+
+Trois sanctions, de la plus douce à la plus dure : `limit <foyer> 0` arrête la
+dépense en laissant les semaines déjà générées lisibles ; un plafond bas freine
+un bot présumé sans couper un vrai foyer ; `revoke` ferme la porte. Un palier
+payant est un **plafond haut**, jamais l'absence de plafond : une session volée
+dépense l'argent de l'exploitant quoi qu'ait payé le client.
+
 ## Catalogue (phase 1)
 
 Le pipeline de collecte tourne dans **sa propre image**, sur un service que
