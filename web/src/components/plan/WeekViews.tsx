@@ -150,7 +150,9 @@ export async function DayList(props: WeekViewProps) {
           <section key={date} className={cx("flex flex-col gap-2", isPast && "opacity-55")}>
             <h3
               className={cx(
-                "text-sm capitalize",
+                // Not `capitalize`, which produced "Mardi 8 Septembre": French
+                // capitalises the weekday here and nothing else.
+                "text-sm first-letter:uppercase",
                 isToday ? "font-semibold text-accent" : "text-ink-muted",
               )}
             >

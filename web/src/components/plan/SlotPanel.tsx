@@ -1,8 +1,9 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { useFormatter, useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
+import { VariantConfirm } from "@/components/plan/VariantConfirm";
 import { WaitingState } from "@/components/plan/WaitingState";
 import { Button } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
@@ -55,6 +56,7 @@ export function SlotPanel({
   //: The link back to the source is worded once, in `plan`, because the week
   //: view and this panel must not name the same thing two different ways.
   const tPlan = useTranslations("plan");
+  const format = useFormatter();
   const router = useRouter();
 
   const [labels, setLabels] = useState<Record<string, string>>({});
@@ -170,8 +172,22 @@ export function SlotPanel({
     <Dialog open={open} onClose={close} title={t("title", { meal: tMeal(mealType) })}>
       <header className="flex items-start justify-between gap-3 border-b border-border px-5 py-4">
         <div>
-          <p className="text-xs tracking-wide text-ink-faint uppercase">{tMeal(mealType)}</p>
-          <h2 className="text-lg font-semibold">{t("day", { day: dayOfWeek, date })}</h2>
+          {/* `ink-muted`, not `ink-faint`: a label that names which meal you
+              are editing is load-bearing, and it sat under 4.5:1. */}
+          <p className="text-xs tracking-[0.06em] text-ink-muted uppercase">{tMeal(mealType)}</p>
+          {/* "Jeudi 10 septembre", not "2026-09-10": this header is read by a
+              person deciding what to cook, and it was printing the ISO string
+              the URL travels as. `first-letter` rather than `capitalize`,
+              because French does not capitalise the month. */}
+          <h2 className="mt-1.5 text-lg leading-[1.2] font-semibold first-letter:uppercase">
+            {t("day", {
+              date: format.dateTime(new Date(`${date}T12:00:00Z`), {
+                weekday: "long",
+                day: "numeric",
+                month: "long",
+              }),
+            })}
+          </h2>
         </div>
         <Button variant="ghost" size="sm" onClick={close}>
           {t("close")}
@@ -214,16 +230,47 @@ export function SlotPanel({
                     </Button>
                   </div>
 
+                  {/* One row for everyone eating the dish as it comes, one row
+                      per divergence. A row each would repeat three names that
+                      say nothing, and bury the one line that does (UX §5). */}
                   {dish.eaters.length > 0 && (
                     <ul className="flex flex-col gap-1.5">
-                      {dish.eaters.map((eater) => (
-                        <ListRow key={eater.member_id}>
-                          {memberNames[eater.member_id] ?? "?"}
-                          {eater.serving_variant && (
-                            <span className="text-accent"> — {eater.serving_variant}</span>
-                          )}
-                        </ListRow>
-                      ))}
+                      {(() => {
+                        const plain = dish.eaters.filter((e) => !e.serving_variant);
+                        return plain.length > 0 ? (
+                          <ListRow>
+                            {plain.map((e) => memberNames[e.member_id] ?? "?").join(", ")}
+                          </ListRow>
+                        ) : null;
+                      })()}
+
+                      {dish.eaters
+                        .filter((eater) => eater.serving_variant)
+                        .map((eater) => {
+                          const name = memberNames[eater.member_id] ?? "?";
+                          return (
+                            <ListRow
+                              key={eater.member_id}
+                              action={
+                                eater.requires_confirmation && planId ? (
+                                  <VariantConfirm
+                                    planId={planId}
+                                    dishId={dish.id}
+                                    memberId={eater.member_id}
+                                    name={name}
+                                    confirmed={eater.variant_confirmed_at !== null}
+                                  />
+                                ) : undefined
+                              }
+                            >
+                              {name}
+                              <span className="text-accent-hover">
+                                {" "}
+                                — {eater.serving_variant}
+                              </span>
+                            </ListRow>
+                          );
+                        })}
                     </ul>
                   )}
 
@@ -254,10 +301,13 @@ export function SlotPanel({
                               }
                             >
                               <span className="text-sm">{alternative.title}</span>
+                              {/* Worded through `plan.minutes` like everywhere
+                                  else: the panel and the grid must not spell
+                                  the same duration two different ways. */}
                               {alternative.minutes !== null && (
-                                <span className="text-xs text-ink-faint">
+                                <span className="text-ink-body">
                                   {" "}
-                                  — {alternative.minutes} min
+                                  — {tPlan("minutes", { count: alternative.minutes })}
                                 </span>
                               )}
                               {/* Deciding between two dishes on a title alone is
@@ -313,13 +363,19 @@ export function SlotPanel({
               {dishes.length > 0 ? (
                 <Button
                   variant="primary"
+                  className="w-full"
                   disabled={busy || !reason.trim()}
                   onClick={() => regenerate(dishes[0])}
                 >
                   {t("regenerate")}
                 </Button>
               ) : (
-                <Button variant="primary" disabled={busy} onClick={generateSlot}>
+                <Button
+                  variant="primary"
+                  className="w-full"
+                  disabled={busy}
+                  onClick={generateSlot}
+                >
                   {t("generateSlot")}
                 </Button>
               )}
