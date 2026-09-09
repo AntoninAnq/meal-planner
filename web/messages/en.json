@@ -158,7 +158,6 @@
   },
   "waiting": {
     "srLabel": "Generating",
-    "announced": "Give it about {seconds} seconds.",
     "playful": {
       "0": "Leafing through the recipe book…",
       "1": "Working out who eats what…",
@@ -172,7 +171,9 @@
     "stillCooking": "Your week is still being prepared.",
     "stillCookingBody": "It will show up here on its own: nothing is lost, the generation finishes without you.",
     "retry": "Try again",
-    "failed": "The generation did not go through."
+    "failed": "The generation did not go through.",
+    "announcedSeconds": "Give it about {seconds} seconds.",
+    "announcedMinutes": "Give it about {minutes} minutes."
   },
   "panel": {
     "title": "{meal} slot",

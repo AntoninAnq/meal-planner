@@ -158,7 +158,6 @@
   },
   "waiting": {
     "srLabel": "Génération en cours",
-    "announced": "Comptez une {seconds}aine de secondes.",
     "playful": {
       "0": "On feuillette le carnet de recettes…",
       "1": "On regarde qui mange quoi…",
@@ -172,7 +171,9 @@
     "stillCooking": "Votre semaine continue de se préparer.",
     "stillCookingBody": "Elle apparaîtra ici toute seule : rien n'est perdu, la génération se termine sans vous.",
     "retry": "Réessayer",
-    "failed": "La génération n'a pas abouti."
+    "failed": "La génération n'a pas abouti.",
+    "announcedSeconds": "Comptez environ {seconds} secondes.",
+    "announcedMinutes": "Comptez environ {minutes} minutes."
   },
   "panel": {
     "title": "Créneau du {meal}",

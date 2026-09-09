@@ -11,6 +11,25 @@ import { playfulIndex, waitPhase } from "@/lib/waiting";
 /** How many light messages exist per locale. Keep in step with the `waiting.playful.*` keys. */
 const PLAYFUL_COUNT = 5;
 
+/** Past this, a duration is read in minutes. Below it, seconds are what people
+ * count in — "environ 90 secondes" is a wait you sit through, "1 minute" is a
+ * wait you leave. */
+const READS_IN_MINUTES = 90;
+
+/** The expected duration, in a unit that survives its own configuration.
+ *
+ * `expectedMs` is a deployment setting — 30 s on the cloud model, 182 measured
+ * on the local 8B — so the sentence has to hold at every value it can take. It
+ * did not: the French string interpolated the number into "-aine", which reads
+ * "une 30aine de secondes" on the cloud and "une 180aine" on the local model.
+ * Only visible by rendering it, which is how it was found. */
+function announce(t: (key: string, values?: Record<string, number>) => string, expectedMs: number) {
+  const seconds = Math.round(expectedMs / 1000);
+  return seconds < READS_IN_MINUTES
+    ? t("announcedSeconds", { seconds })
+    : t("announcedMinutes", { minutes: Math.round(seconds / 60) });
+}
+
 /** The place where the result is going to appear.
  *
  * Everything about a generation — the wait, the stall, the failure — is drawn
@@ -71,7 +90,7 @@ export function WaitingState({
   const detail = polling
     ? t("stillCookingBody")
     : phase === "playful"
-      ? t("announced", { seconds: Math.round(expectedMs / 1000) })
+      ? announce(t, expectedMs)
       : null;
 
   return (
