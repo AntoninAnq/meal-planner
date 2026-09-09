@@ -62,15 +62,19 @@ export function VariantConfirm({
         onClick={toggle}
         disabled={pending}
         aria-pressed={confirmed}
+        // The variant line right above already names the person, so repeating
+        // it on the button made the card stutter. The name stays in the
+        // accessible name, where the button is read out of that context.
+        aria-label={t("variantConfirm", { name })}
         className={cx(
-          "rounded-full px-2 py-0.5 text-xs transition-colors disabled:opacity-50",
+          "rounded-full px-[9px] py-[3px] text-[11.5px] leading-[1.4] transition-colors disabled:opacity-50",
           "focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent",
           confirmed
             ? "bg-surface-sunken text-ink-muted hover:text-ink"
             : "bg-warn-soft text-ink font-medium hover:brightness-95",
         )}
       >
-        {confirmed ? t("variantConfirmed") : t("variantConfirm", { name })}
+        {confirmed ? t("variantConfirmed") : t("variantConfirmShort")}
       </button>
       {failed && <span className="text-xs text-danger">{t("variantConfirmFailed")}</span>}
     </span>

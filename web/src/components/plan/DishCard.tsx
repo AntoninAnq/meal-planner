@@ -29,12 +29,17 @@ import type { Dish } from "@/lib/api/types";
 export async function DishCard({
   dish,
   memberNames,
-  showEaters,
+  multiple,
   planId,
 }: {
   dish: Dish;
   memberNames: Record<string, string>;
-  showEaters: boolean;
+  /** True only when the slot holds SEVERAL dishes — then, and only then, does a
+   * card need a box around it and the names of who eats it. A single dish with
+   * a serving variant is not that case: the variant line already names the one
+   * person it concerns, and listing the other three underneath is the wall of
+   * names the grid used to be (UX §5). */
+  multiple: boolean;
   /** Null when there is no plan to act on — the empty-week placeholder. The
    * confirmation button needs it and nothing else on this card does. */
   planId?: string | null;
@@ -47,11 +52,15 @@ export async function DishCard({
   ].filter(Boolean);
 
   return (
-    <div className={cx(showEaters && "rounded-control border border-border px-2.5 py-2")}>
-      <p className="text-sm leading-snug font-medium text-ink">{dish.label ?? t("untitled")}</p>
+    <div className={cx(multiple && "rounded-control border border-border px-2.5 py-2")}>
+      <p className="text-sm leading-[1.3] font-semibold text-ink text-pretty">
+        {dish.label ?? t("untitled")}
+      </p>
 
       {(effort.length > 0 || dish.source_url) && (
-        <p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-ink-faint">
+        // `ink-muted`, not `ink-faint`: this line was one of the greys doing
+        // the work of size, and it sat under 4.5:1 at this body size.
+        <p className="mt-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11.5px] text-ink-muted">
           {effort.length > 0 && <span>{effort.join(" · ")}</span>}
 
           {/* `pointer-events-auto` is load-bearing: the whole slot card is a
@@ -83,7 +92,22 @@ export async function DishCard({
         <p className="mt-0.5 text-xs text-ink-muted italic">{t("handWritten")}</p>
       )}
 
-      {showEaters && dish.eaters.length > 0 && (
+      {/* The wedge, made visible: two meals built on one base is the whole
+          argument of the product, and it showed up nowhere.
+          `derived_from_dish_id` is what carries it, and the API leaves it null
+          in V0 — overlap is not computable without ingredients — so this marker
+          is wired and silent until the generation starts declaring it. Better
+          silent than guessed from two titles sharing a word. */}
+      {dish.derived_from_dish_id && (
+        <p className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-accent-soft px-2 py-[3px]">
+          <span aria-hidden className="h-[5px] w-[5px] flex-none rounded-full bg-accent" />
+          <span className="text-[11px] leading-none font-semibold text-accent">
+            {t("sharedBase")}
+          </span>
+        </p>
+      )}
+
+      {multiple && dish.eaters.length > 0 && (
         <p className="mt-1 flex flex-wrap gap-1">
           {dish.eaters.map((eater) => (
             <span
@@ -110,8 +134,8 @@ export async function DishCard({
         const pending = eater.requires_confirmation && !eater.variant_confirmed_at;
 
         return (
-          <div key={eater.member_id} className="mt-1">
-            <p className={cx("text-xs", pending ? "text-ink" : "text-accent")}>
+          <div key={eater.member_id} className="mt-[7px]">
+            <p className={cx("text-xs leading-[1.35]", pending ? "text-ink" : "text-accent")}>
               {t("variant", { name, variant: eater.serving_variant ?? "" })}
             </p>
 
@@ -121,8 +145,12 @@ export async function DishCard({
               </p>
             )}
 
+            {/* The button says "to confirm" and that is the whole message. It
+                used to be followed by a sentence saying the same thing again,
+                which made the state look like a warning rather than a thing to
+                click. */}
             {eater.requires_confirmation && planId && (
-              <p className="mt-0.5 flex flex-wrap items-center gap-1.5">
+              <p className="mt-1.5 flex flex-wrap items-center gap-1.5">
                 <VariantConfirm
                   planId={planId}
                   dishId={dish.id}
@@ -130,9 +158,6 @@ export async function DishCard({
                   name={name}
                   confirmed={eater.variant_confirmed_at !== null}
                 />
-                {pending && (
-                  <span className="text-xs text-ink-muted">{t("variantPending")}</span>
-                )}
               </p>
             )}
           </div>

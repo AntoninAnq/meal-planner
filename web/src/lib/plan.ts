@@ -1,4 +1,4 @@
-import type { Dish, MealPlan, MealType, PlanSlot, Violation } from "@/lib/api/types";
+import type { Invitation, MealPlan, MealType, PlanSlot, Violation } from "@/lib/api/types";
 
 /** Reading a plan. Pure, so it survives every redesign of the components that
  * display it — which is the point, not the tests. */
@@ -68,17 +68,16 @@ export function slotsInViolation(violations: Violation[]): number {
   return keys.size;
 }
 
-/**
- * Whether a slot needs the multi-dish presentation.
- *
- * A household eating the same thing four nights out of seven should not see
- * four walls of "eaten by: Antonin, Camille, Léo, baby". The eaters and the
- * variants are shown only where the household actually diverges — which is
- * where the information means something.
- */
-export function hasDivergence(dishes: Dish[]): boolean {
-  if (dishes.length > 1) return true;
-  return (dishes[0]?.eaters ?? []).some((eater) => eater.serving_variant !== null);
+/** Invitations, addressed the way slots are, because an invitation now takes
+ * over the cell of its meal rather than living in a list of its own. Keyed on
+ * the week the caller asked for; an invitation from another week never reaches
+ * here. */
+export function invitationsByKey(invitations: Invitation[]): Map<SlotKey, Invitation> {
+  const map = new Map<SlotKey, Invitation>();
+  for (const invitation of invitations) {
+    map.set(slotKey(invitation.day_of_week, invitation.meal_type), invitation);
+  }
+  return map;
 }
 
 /** Eaters are stored per assignment, so a member appears once per dish. */

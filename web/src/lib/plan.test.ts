@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import type { Dish, DishEater, MealPlan, Violation } from "@/lib/api/types";
+import type { Dish, DishEater, Invitation, MealPlan, Violation } from "@/lib/api/types";
 import {
-  hasDivergence,
+  invitationsByKey,
   parseSlotKey,
   slotKey,
   slotsByKey,
@@ -76,35 +76,24 @@ describe("slotsByKey", () => {
   });
 });
 
-describe("hasDivergence", () => {
-  it("is false when everyone eats the same thing, off the same plate", () => {
-    expect(hasDivergence([dish({ eaters: [
-      eater("m1"),
-      eater("m2"),
-    ] })])).toBe(false);
+describe("invitationsByKey", () => {
+  const invitation = (id: string, day: number, meal: "lunch" | "dinner"): Invitation => ({
+    id,
+    week_start: "2026-09-07",
+    day_of_week: day,
+    meal_type: meal,
+    guests: [{ life_stage: "teen_adult", count: 4 }],
+    dislikes: [],
   });
 
-  it("is true with a second dish", () => {
-    expect(hasDivergence([dish(), dish({ id: "d2", label: "Purée" })])).toBe(true);
+  it("addresses an invitation the way a slot is addressed", () => {
+    const map = invitationsByKey([invitation("i1", 5, "dinner")]);
+    expect(map.get("5-dinner")?.id).toBe("i1");
+    expect(map.get("5-lunch")).toBeUndefined();
   });
 
-  it("is true with a serving variant, which is the shape the product wants", () => {
-    // One preparation, a different plate — the best outcome, and it must be
-    // visible or nobody knows to set Léo's portion aside.
-    expect(
-      hasDivergence([
-        dish({
-          eaters: [
-            eater("m1"),
-            eater("m2", "sans olives"),
-          ],
-        }),
-      ]),
-    ).toBe(true);
-  });
-
-  it("is false for an empty slot", () => {
-    expect(hasDivergence([])).toBe(false);
+  it("is empty when nobody is coming, which is most weeks", () => {
+    expect(invitationsByKey([]).size).toBe(0);
   });
 });
 

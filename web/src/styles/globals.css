@@ -35,8 +35,11 @@
   --color-accent-strong: oklch(40% 0.11 155);
 
   /* Guests. Deliberately not `danger`, which stays reserved below: an
-   * invitation is an event, not a warning. */
+   * invitation is an event, not a warning. Three rungs, because an invitation
+   * owns a whole slot card and needs a ground, a rule and a text colour. */
   --color-guest: oklch(52% 0.12 40);
+  --color-guest-soft: oklch(95% 0.03 40);
+  --color-guest-strong: oklch(45% 0.12 40);
 
   /* Reserved for the allergen notice and destructive actions. Deliberately
    * scarce: if warnings are everywhere, none of them is read. */

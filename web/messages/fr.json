@@ -116,9 +116,8 @@
     },
     "today": "Aujourd'hui",
     "emptySlot": "Rien de prévu",
-    "noSlot": "—",
     "untitled": "Plat sans titre",
-    "variant": "Pour {name} : {variant}",
+    "variant": "{name} : {variant}",
     "slotIncomplete": "Ce repas n'a pas pu être complété",
     "violationsHeading": "{count, plural, one {Un repas n'a pas pu être complété} other {# repas n'ont pas pu être complétés}}",
     "violationsBody": "Ils sont signalés dans la semaine. Vous pouvez les régénérer ou écrire le plat vous-même.",
@@ -140,10 +139,11 @@
     "variantConfirm": "À valider pour {name}",
     "variantConfirmed": "Validé ✓",
     "variantConfirmFailed": "Échec, réessayez",
-    "variantPending": "Cette adaptation n'a pas été validée",
     "variantRemovals": "Sans : {items}",
     "notPlannedHeading": "Certains repas ne sont pas planifiés",
-    "notPlannedBody": "Le catalogue ne contient aucune recette adaptée à un bébé de moins de 18 mois. Ses repas restent à votre main."
+    "notPlannedBody": "Le catalogue ne contient aucune recette adaptée à un bébé de moins de 18 mois. Ses repas restent à votre main.",
+    "sharedBase": "même base",
+    "variantConfirmShort": "À valider"
   },
   "composer": {
     "collapsed": "Une précision pour cette semaine ?",
@@ -218,7 +218,9 @@
     "tastesPlaceholder": "pas de coriandre, peu épicé…",
     "noGuarantee": "Pour ce repas, rien n'est garanti au-delà de ce que vous avez déclaré. Demandez à vos invités.",
     "save": "Enregistrer et générer le repas",
-    "remove": "Supprimer l'invitation"
+    "remove": "Supprimer l'invitation",
+    "dayMark": "invités",
+    "atTable": "{count} à table"
   },
   "settings": {
     "heading": "Réglages",

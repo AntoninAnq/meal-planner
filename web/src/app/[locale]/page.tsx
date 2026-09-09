@@ -1,11 +1,10 @@
-import { getFormatter, getTranslations, setRequestLocale } from "next-intl/server";
+import { getTranslations, setRequestLocale } from "next-intl/server";
 import { cookies } from "next/headers";
 
 import { InvitationPanel } from "@/components/plan/InvitationPanel";
 import { WeekBoard } from "@/components/plan/WeekBoard";
 import { SlotPanel } from "@/components/plan/SlotPanel";
 import { DayList, WeekGrid, type WeekViewProps } from "@/components/plan/WeekViews";
-import { ListRow } from "@/components/ui/ListRow";
 import { Link, redirect } from "@/i18n/navigation";
 import { apiGet } from "@/lib/api/server";
 import { cx } from "@/lib/cx";
@@ -17,7 +16,13 @@ import type {
   MealSlot,
   Member,
 } from "@/lib/api/types";
-import { parseSlotKey, slotKey, slotsByKey, violationsByKey } from "@/lib/plan";
+import {
+  invitationsByKey,
+  parseSlotKey,
+  slotKey,
+  slotsByKey,
+  violationsByKey,
+} from "@/lib/plan";
 import { addDays, mondayOf, resolveWeek, weekDates } from "@/lib/week";
 import { resolveView, VIEW_COOKIE } from "@/lib/week-view";
 
@@ -308,13 +313,10 @@ async function Week({
 }) {
   const t = await getTranslations("plan");
   const tInv = await getTranslations("invitation");
-  const tMeal = await getTranslations("mealType");
-  const format = await getFormatter();
   const search = await searchParams;
 
   const today = new Date().toISOString().slice(0, 10);
   const weekStart = resolveWeek(search.week, today);
-  const dates = weekDates(weekStart);
 
   // The view loads the plan itself rather than displaying the response of the
   // generation POST. That is what makes a lost response survivable: the plan
@@ -337,6 +339,7 @@ async function Week({
     slots: slotsByKey(plan),
     violations: violationsByKey(plan?.violations ?? []),
     memberNames,
+    invitations: invitationsByKey(invitations ?? []),
     planId: plan?.id ?? null,
   };
 
@@ -356,9 +359,6 @@ async function Week({
       ? ((invitations ?? []).find((invitation) => invitation.id === inviteParam) ?? null)
       : null;
   const inviteOpen = inviteParam === "new" || editInvitation !== null;
-
-  const totalGuests = (invitation: Invitation) =>
-    invitation.guests.reduce((count, group) => count + group.count, 0);
 
   return (
     <main className="mx-auto flex max-w-5xl flex-col gap-6 px-5 py-8">
@@ -422,37 +422,10 @@ async function Week({
         list={<DayList {...viewProps} />}
       />
 
-      {/* Beside the plan, not part of it: an invitation outlives any one
-          generation of its slot, and a seating plan will hang off it later.
-          Only shown once there is one to find — the header link is the way in. */}
-      {(invitations ?? []).length > 0 && (
-        <section className="flex flex-col gap-2">
-          <h2 className="text-sm text-ink-muted">{tInv("sectionHeading")}</h2>
-          <ul className="flex flex-col gap-1.5">
-            {(invitations ?? []).map((invitation) => (
-              <ListRow
-                key={invitation.id}
-                action={
-                  <Link
-                    href={{ pathname: "/", query: { week: weekStart, invite: invitation.id } }}
-                    className="rounded-control px-2 py-1 text-sm text-ink-muted hover:bg-surface-sunken hover:text-ink"
-                  >
-                    {tInv("edit")}
-                  </Link>
-                }
-              >
-                <span className="capitalize">
-                  {format.dateTime(new Date(`${dates[invitation.day_of_week]}T12:00:00Z`), {
-                    weekday: "long",
-                  })}
-                </span>{" "}
-                {tMeal(invitation.meal_type).toLowerCase()} ·{" "}
-                {tInv("guestCount", { count: totalGuests(invitation) })}
-              </ListRow>
-            ))}
-          </ul>
-        </section>
-      )}
+      {/* No reminder list under the plan any more. It existed only because
+          nothing in the grid showed an invitation; now the invitation IS the
+          cell, banner and all, and a list repeating it below was a third place
+          to look for the same thing. */}
 
       {openSlot && (
         <SlotPanel

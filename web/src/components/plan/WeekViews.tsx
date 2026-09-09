@@ -1,8 +1,9 @@
+import { Fragment } from "react";
 import { getFormatter, getTranslations } from "next-intl/server";
 
 import { SlotCard } from "@/components/plan/SlotCard";
 import { cx } from "@/lib/cx";
-import type { MealSlot, MealType, PlanSlot, Violation } from "@/lib/api/types";
+import type { Invitation, MealSlot, MealType, PlanSlot, Violation } from "@/lib/api/types";
 import { slotKey, type SlotKey } from "@/lib/plan";
 import { weekDates } from "@/lib/week";
 
@@ -21,65 +22,112 @@ export type WeekViewProps = {
   slots: Map<SlotKey, PlanSlot>;
   violations: Map<SlotKey | "", Violation[]>;
   memberNames: Record<string, string>;
+  /** Keyed like the slots: an invitation takes over the cell of its meal. */
+  invitations: Map<SlotKey, Invitation>;
   /** Needed only to confirm a baby's serving variant, which is an action on a
    * dish of THIS plan. Null on a week with no plan yet. */
   planId: string | null;
 };
 
-function mealsOf(enabledSlots: MealSlot[], dayOfWeek: number): MealType[] {
-  return enabledSlots
-    .filter((slot) => slot.day_of_week === dayOfWeek && slot.enabled)
-    .map((slot) => slot.meal_type);
+/** Both rows exist on every day. Which of them the household actually plans is
+ * a household setting, and an unplanned meal is an empty cell — not a hollow
+ * card, not an invented dotted state. */
+const MEALS: MealType[] = ["lunch", "dinner"];
+
+function isEnabled(enabledSlots: MealSlot[], dayOfWeek: number, mealType: MealType): boolean {
+  return enabledSlots.some(
+    (slot) => slot.day_of_week === dayOfWeek && slot.meal_type === mealType && slot.enabled,
+  );
 }
 
+function mealsOf(enabledSlots: MealSlot[], dayOfWeek: number): MealType[] {
+  return MEALS.filter((mealType) => isEnabled(enabledSlots, dayOfWeek, mealType));
+}
+
+/**
+ * Fixed Lunch/Dinner rows.
+ *
+ * This was seven columns, each day stacking whatever meals it had — so a
+ * Saturday with two meals pushed the rest of the week down and nothing lined
+ * up across the days. The meal is now the row, which is the axis people
+ * actually compare along, and a day that plans no lunch simply leaves its cell
+ * empty.
+ */
 export async function WeekGrid(props: WeekViewProps) {
   const format = await getFormatter();
-  const t = await getTranslations("plan");
+  const tMeal = await getTranslations("mealType");
+  const tInv = await getTranslations("invitation");
   const dates = weekDates(props.weekStart);
 
+  const day = (date: string) => new Date(`${date}T12:00:00Z`);
+
   return (
-    <div className="grid grid-cols-7 gap-2">
+    <div className="grid grid-cols-[50px_repeat(7,minmax(0,1fr))] gap-2">
+      {/* The corner above the row labels. */}
+      <div />
+
       {dates.map((date, dayOfWeek) => {
-        const meals = mealsOf(props.enabledSlots, dayOfWeek);
         const isToday = date === props.today;
+        const invited = MEALS.some((mealType) =>
+          props.invitations.has(slotKey(dayOfWeek, mealType)),
+        );
 
         return (
-          <div key={date} className="flex min-w-0 flex-col gap-2">
-            <div
-              className={cx(
-                "px-1 text-sm",
-                isToday ? "font-semibold text-accent" : "text-ink-muted",
-              )}
-            >
-              <span className="capitalize">
-                {format.dateTime(new Date(`${date}T12:00:00Z`), { weekday: "short" })}
-              </span>{" "}
-              <span className="text-ink-faint">
-                {format.dateTime(new Date(`${date}T12:00:00Z`), { day: "numeric" })}
-              </span>
-            </div>
-
-            {meals.length === 0 ? (
-              <p className="px-1 text-xs text-ink-faint">{t("noSlot")}</p>
-            ) : (
-              meals.map((mealType) => {
-                const key = slotKey(dayOfWeek, mealType);
-                return (
-                  <SlotCard
-                    key={key}
-                    mealType={mealType}
-                    slot={props.slots.get(key)}
-                    memberNames={props.memberNames}
-                    violations={props.violations.get(key) ?? []}
-                    planId={props.planId}
-                    href={{ pathname: "/", query: { week: props.weekStart, slot: key } }}
-                  />
-                );
-              })
+          <div
+            key={date}
+            className={cx(
+              "pb-[7px] text-sm",
+              isToday
+                ? "font-semibold text-accent"
+                : invited
+                  ? "font-medium text-guest"
+                  : "text-ink-muted",
             )}
+          >
+            <span className="capitalize">
+              {format.dateTime(day(date), { weekday: "short" })}
+            </span>{" "}
+            {format.dateTime(day(date), { day: "numeric" })}
+            {invited && ` · ${tInv("dayMark")}`}
           </div>
         );
       })}
+
+      {MEALS.map((mealType) => (
+        <Fragment key={mealType}>
+          <div className="pt-3.5 text-[11px] leading-none font-semibold tracking-[0.05em] text-ink-muted uppercase">
+            {tMeal(mealType)}
+          </div>
+
+          {dates.map((date, dayOfWeek) => {
+            if (!isEnabled(props.enabledSlots, dayOfWeek, mealType)) {
+              return <div key={date} />;
+            }
+
+            const key = slotKey(dayOfWeek, mealType);
+            return (
+              <SlotCard
+                key={key}
+                mealType={mealType}
+                showMeal={false}
+                slot={props.slots.get(key)}
+                memberNames={props.memberNames}
+                violations={props.violations.get(key) ?? []}
+                planId={props.planId}
+                invitation={props.invitations.get(key)}
+                href={{ pathname: "/", query: { week: props.weekStart, slot: key } }}
+                inviteHref={{
+                  pathname: "/",
+                  query: {
+                    week: props.weekStart,
+                    invite: props.invitations.get(key)?.id ?? "new",
+                  },
+                }}
+              />
+            );
+          })}
+        </Fragment>
+      ))}
     </div>
   );
 }
@@ -125,7 +173,15 @@ export async function DayList(props: WeekViewProps) {
                   memberNames={props.memberNames}
                   violations={props.violations.get(key) ?? []}
                   planId={props.planId}
+                  invitation={props.invitations.get(key)}
                   href={{ pathname: "/", query: { week: props.weekStart, slot: key } }}
+                  inviteHref={{
+                    pathname: "/",
+                    query: {
+                      week: props.weekStart,
+                      invite: props.invitations.get(key)?.id ?? "new",
+                    },
+                  }}
                 />
               );
             })}
