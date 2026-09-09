@@ -93,10 +93,16 @@ class Household(Base):
     #: This household's ceiling on model calls per window. NULL — the default —
     #: means the one in `Settings`, which is the rate card everyone gets.
     #:
-    #: Here and NOT on `household_settings`, which is what the household itself
-    #: chooses and edits through `/household/settings`. This is what the
-    #: OPERATOR allows, and the two must not share a table: one careless field
-    #: on `HouseholdSettingsUpdate` and a household sets its own quota.
+    #: Here and NOT on `household_settings`, which holds what the household
+    #: itself chooses through `/household/settings`. This is what the OPERATOR
+    #: allows — a different owner, so a different table.
+    #:
+    #: Not because the endpoint would leak it: that route names its fields one
+    #: by one, in and out, so a new column reaches nobody until three separate
+    #: edits say it should. The reason is that a reader looking for "what this
+    #: household picked" must not find a policy they cannot change, and the
+    #: next person to add a field to the settings patch must not have to
+    #: remember which of its columns are theirs.
     #:
     #: Three uses, one column. A paid tier is a high ceiling, not the absence of
     #: one — an account whose session is stolen spends the operator's money
