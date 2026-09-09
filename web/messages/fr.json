@@ -169,7 +169,10 @@
     "slow": "C'est plus long que d'habitude.",
     "stalled": "La génération n'est pas arrivée.",
     "stopWaiting": "Arrêter d'attendre",
-    "stillCooking": "Votre semaine continue de se préparer, elle apparaîtra ici toute seule."
+    "stillCooking": "Votre semaine continue de se préparer.",
+    "stillCookingBody": "Elle apparaîtra ici toute seule : rien n'est perdu, la génération se termine sans vous.",
+    "retry": "Réessayer",
+    "failed": "La génération n'a pas abouti."
   },
   "panel": {
     "title": "Créneau du {meal}",

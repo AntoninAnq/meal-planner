@@ -169,7 +169,10 @@
     "slow": "This is taking longer than usual.",
     "stalled": "The plan never arrived.",
     "stopWaiting": "Stop waiting",
-    "stillCooking": "Your week is still being prepared — it will show up here on its own."
+    "stillCooking": "Your week is still being prepared.",
+    "stillCookingBody": "It will show up here on its own: nothing is lost, the generation finishes without you.",
+    "retry": "Try again",
+    "failed": "The generation did not go through."
   },
   "panel": {
     "title": "{meal} slot",

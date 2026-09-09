@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 
 import { Composer } from "@/components/plan/Composer";
-import { WaitingState } from "@/components/plan/WaitingState";
+import { GenerationError, WaitingState } from "@/components/plan/WaitingState";
 import { Button } from "@/components/ui/Button";
 import { useRouter } from "@/i18n/navigation";
 import { apiGet, apiPost } from "@/lib/api/client";
@@ -198,8 +198,6 @@ export function WeekBoard({
         </div>
       )}
 
-      {error && <p className="text-sm text-danger">{error}</p>}
-
       {busy ? (
         <WaitingState
           startedAt={startedAt}
@@ -207,6 +205,12 @@ export function WeekBoard({
           polling={polling}
           onStopWaiting={stopWaiting}
         />
+      ) : error ? (
+        // In the grid's place, not above it: a failure about the week belongs
+        // where the week was going to be. Retrying re-opens the composer rather
+        // than firing a second generation blind — the constraints are still
+        // there, and the reason it failed may be one of them.
+        <GenerationError message={error} onRetry={() => setError(null)} />
       ) : (
         // Both trees are in the DOM; globals.css decides. Without an explicit
         // choice the attribute is `auto` and the media query answers, which is
