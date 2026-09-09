@@ -87,7 +87,15 @@ def plan_output_schema(*, with_catalogue: bool) -> dict[str, Any]:
                 "items": {
                     "type": "object",
                     "properties": {
-                        "day_of_week": {"type": "integer", "minimum": 0, "maximum": 6},
+                        # An enum, not a bounded integer: the API refuses
+                        # `minimum`/`maximum` on integers in a structured output
+                        # schema ("For 'integer' type, properties maximum,
+                        # minimum are not supported" — a 400, so every week
+                        # failed). Seven listed values say the same thing and
+                        # say it better: a day of the week IS one of seven, and
+                        # a range would still admit 3.5 in a schema that had no
+                        # `type` to stop it.
+                        "day_of_week": {"type": "integer", "enum": list(range(7))},
                         "meal_type": {"type": "string", "enum": MEAL_TYPES},
                         "dishes": {
                             "type": "array",
