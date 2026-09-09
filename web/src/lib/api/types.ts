@@ -261,3 +261,14 @@ export type RecipeToType = {
   minutes: number | null;
   ingredients: string[];
 };
+
+/** Who may run the instance. Two levels, one asymmetry: a `contributor` retags
+ * the catalogue, only an `owner` grants — because granting is privilege
+ * escalation, and a helper who can add helpers can remove the person who
+ * invited them. */
+export type Operator = {
+  auth_subject: string;
+  level: "owner" | "contributor";
+  granted_at: string;
+  granted_by: string | null;
+};

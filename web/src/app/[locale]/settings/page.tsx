@@ -10,6 +10,7 @@ import type {
   HouseholdSettings,
   MealSlot,
   Member,
+  Operator,
 } from "@/lib/api/types";
 
 /** Screen 6. Everything the onboarding deliberately did not ask. */
@@ -25,11 +26,15 @@ export default async function SettingsPage({
   const household = await apiGet<Household>("/household");
   if (household === null) return redirect({ href: "/", locale });
 
-  const [settings, members, constraints, slots] = await Promise.all([
+  const [settings, members, constraints, slots, operator] = await Promise.all([
     apiGet<HouseholdSettings>("/household/settings"),
     apiGet<Member[]>("/members"),
     apiGet<DietaryConstraint[]>("/household/constraints"),
     apiGet<MealSlot[]>("/household/slots"),
+    // Null for almost everyone: `/admin/*` answers 404 to anyone who is not an
+    // operator, so the absence of the link and the absence of the page say the
+    // same thing.
+    apiGet<Operator>("/admin/me"),
   ]);
 
   if (!settings?.onboarded_at) return redirect({ href: "/onboarding", locale });
@@ -50,6 +55,22 @@ export default async function SettingsPage({
         constraints={constraints ?? []}
         slots={slots ?? []}
       />
+
+      {/* Here rather than in the week's navigation, which is about WHICH week
+          you are looking at — the same reason the invitation left that bar.
+          This screen is where the things about you and this instance live. */}
+      {operator && (
+        <section className="border-t border-border pt-6">
+          <h2 className="text-sm font-medium">{t("operatorHeading")}</h2>
+          <p className="mt-1 text-sm text-ink-muted text-pretty">{t("operatorHint")}</p>
+          <Link
+            href="/admin"
+            className="mt-2.5 inline-flex h-10 items-center justify-center rounded-control border border-border bg-surface-raised px-4 text-sm font-medium text-ink transition-colors hover:bg-surface-sunken focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          >
+            {t("operatorLink")}
+          </Link>
+        </section>
+      )}
 
       {/* The one thing that makes a bug report actionable. Nothing else here
           identifies a household to the operator: no email is stored, and the

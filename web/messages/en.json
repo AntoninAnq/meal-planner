@@ -276,7 +276,10 @@
     "snacks": "Also suggest an afternoon snack",
     "snacksHint": "No effect in V0: the snack is a distinct object, planned for later.",
     "supportHeading": "Your household code",
-    "supportHint": "Quote it if you report a problem: it is how we find your week. It is not a secret and it grants access to nothing."
+    "supportHint": "Quote it if you report a problem: it is how we find your week. It is not a secret and it grants access to nothing.",
+    "operatorHeading": "Administration",
+    "operatorHint": "You can classify the recipes nobody has sorted. Without a meal moment, a sweet tart can be offered on a Thursday evening.",
+    "operatorLink": "Classify recipes"
   },
   "admin": {
     "heading": "Classify recipes",

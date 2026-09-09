@@ -276,7 +276,10 @@
     "snacks": "Proposer aussi le goûter",
     "snacksHint": "Sans effet en V0 : le goûter est un objet à part, prévu plus tard.",
     "supportHeading": "Code de votre foyer",
-    "supportHint": "Donnez-le si vous nous signalez un problème : c'est ce qui nous permet de retrouver votre semaine. Il n'est pas secret et ne donne accès à rien."
+    "supportHint": "Donnez-le si vous nous signalez un problème : c'est ce qui nous permet de retrouver votre semaine. Il n'est pas secret et ne donne accès à rien.",
+    "operatorHeading": "Administration",
+    "operatorHint": "Vous pouvez classer les recettes que personne n'a rangées. Sans moment de repas, une tarte sucrée peut être proposée un jeudi soir.",
+    "operatorLink": "Classer les recettes"
   },
   "admin": {
     "heading": "Classer les recettes",

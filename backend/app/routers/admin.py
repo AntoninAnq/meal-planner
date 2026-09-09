@@ -61,6 +61,23 @@ class GrantRequest(BaseModel):
     level: OperatorLevel = OperatorLevel.CONTRIBUTOR
 
 
+@router.get("/me", response_model=OperatorOut)
+def me(operator: CurrentOperator) -> Operator:
+    """Am I an operator, and at which level?
+
+    Exists so the interface can show a way in without guessing. The alternative
+    was a flag on `/household`, and it is the wrong place for the same reason
+    the operator table is not a column on `household_access`: operating the
+    instance is not a property of owning a household, and a reader looking at a
+    household should not find one there.
+
+    Answers 404 like everything else under `/admin`, so a household that is not
+    an operator learns nothing — the absence of a link and the absence of the
+    page say the same thing.
+    """
+    return operator
+
+
 @router.get("/operators", response_model=list[OperatorOut])
 def list_operators(db: DbDep, operator: CurrentOperator) -> list[Operator]:
     """Readable by any operator: a contributor should be able to see who else
