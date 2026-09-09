@@ -8,6 +8,7 @@ from functools import lru_cache
 from typing import Literal
 from urllib.parse import quote
 
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 LLMProvider = Literal["ollama", "anthropic", "fake"]
@@ -193,6 +194,62 @@ class Settings(BaseSettings):
     def cookie_secure(self) -> bool:
         """Never send the session cookie over plain HTTP outside local dev."""
         return self.environment == "prod"
+
+    @model_validator(mode="after")
+    def _refuse_a_deployment_that_only_looks_deployed(self) -> "Settings":
+        """Fail at startup rather than serve a subtly unsafe instance.
+
+        Every check here guards a failure that is SILENT: the application boots,
+        answers, signs people in, and is wrong in a way no page displays.
+
+        The one that matters most is the pair `app_base_url` / `environment`.
+        `cookie_secure` reads the second, so a deployment behind HTTPS that
+        forgot `ENVIRONMENT=prod` issues its session cookie without `Secure` —
+        and nothing anywhere says so. That is exactly the shape of mistake a
+        deployment checklist cannot catch, because the checklist was followed
+        and one line of it was not.
+        """
+        public = self.app_base_url.startswith("https://")
+
+        if public and self.environment != "prod":
+            raise ValueError(
+                f"APP_BASE_URL is {self.app_base_url} but ENVIRONMENT is "
+                f"{self.environment!r}: the session cookie would be issued without "
+                "Secure. Set ENVIRONMENT=prod."
+            )
+
+        if self.environment == "prod":
+            if len(self.session_secret) < MINIMUM_SECRET_LENGTH:
+                raise ValueError(
+                    f"SESSION_SECRET is {len(self.session_secret)} characters; "
+                    f"at least {MINIMUM_SECRET_LENGTH} are needed. "
+                    "openssl rand -base64 48"
+                )
+            if not public:
+                raise ValueError(
+                    f"ENVIRONMENT is prod but APP_BASE_URL is {self.app_base_url!r}: "
+                    "the OAuth redirect and the cookie both derive from it, and "
+                    "neither is safe over plain HTTP."
+                )
+            missing = [
+                name
+                for name, value in (
+                    ("GOOGLE_CLIENT_ID", self.google_client_id),
+                    ("GOOGLE_CLIENT_SECRET", self.google_client_secret),
+                )
+                if not value
+            ]
+            if missing:
+                # Without these the app starts and only fails when the first
+                # visitor clicks the one button on the page.
+                raise ValueError(f"missing in prod: {', '.join(missing)}")
+
+        return self
+
+
+#: Shorter than this is not a secret. `secrets.token_urlsafe(24)` produces 32
+#: characters and the README suggests 48 — both clear it, `changeme` does not.
+MINIMUM_SECRET_LENGTH = 32
 
 
 @lru_cache(maxsize=1)

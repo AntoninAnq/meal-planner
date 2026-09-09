@@ -65,9 +65,13 @@ psql 'postgresql://…' -v ON_ERROR_STOP=1 -f catalogue.sql
 >
 > Le script exclut aussi `portion_coefficient` et `life_stage_threshold` : la migration 0001 les sème elle-même, et les dumper fait mourir le chargement sur `duplicate key value` **à mi-parcours**, recettes déjà chargées et ingrédients non. Il a fallu une restauration sur base vierge pour s'en apercevoir.
 
-**Vérifié** sur une base vierge : 3 439 recettes, 727 vérifiées allergènes, 311 ingrédients, 596 alias, **0 foyer**, `alembic_version = 0011`. Puis une inscription neuve donne 9 créneaux, **1 900 recettes éligibles et 60 candidats classés**.
+**Vérifié** sur une base vierge : 3 439 recettes, 727 vérifiées allergènes, 311 ingrédients, 596 alias, **0 foyer**, `alembic_version = 0014`.
+
+Depuis 0013, 1 984 de ces recettes sont **retirées** (`deprecated_at` non nul) : leur source ne répond plus. Une inscription neuve donne donc 9 créneaux et **664 recettes éligibles par stade de vie**, dont 388 vérifiées allergènes — au-dessus du plancher de 60 candidats, mais c'est le chiffre à surveiller si la variété des semaines déçoit.
 
 Le fichier `catalogue.sql` fait ~6 Mo et **n'a pas sa place dans le dépôt** — il est régénérable en une commande.
+
+> ⚠️ **Régénérer, jamais réutiliser un ancien dump.** `pg_dump --data-only` écrit la liste des colonnes telle qu'elle était le jour du dump. Un export antérieur à la migration 0013 ne contient donc pas `recipe.deprecated_at` : le chargement met la colonne à NULL partout, et `cuisine-libre` — dont le site répond 404, 1 984 recettes — redevient proposable en production. L'ordre du §3 y contribue : 0013 marque une table `recipe` encore vide, et c'est le dump qui apporte les lignes. Un export régénéré porte la colonne et les horodatages, vérifié.
 
 > La pipeline catalogue ne tourne **jamais** en production : le service `catalog` est derrière un `profiles` dans Compose, donc `docker compose up` ne le démarre pas, et il n'est pas déployé du tout. Il sort chercher chez des tiers (I9).
 
@@ -99,6 +103,7 @@ ANTHROPIC_MODEL=claude-haiku-4-5
 GENERATION_DAILY_LIMIT=50                # §11.7 — recalculer si le modèle change
 BIND_HOST=::
 PORT=8000
+LOG_LEVEL=INFO                           # DEBUG le temps d'une investigation
 ```
 
 Commande de démarrage : `alembic upgrade head && uvicorn app.main:app --host :: --port 8000`.
@@ -138,6 +143,8 @@ GET  /            → la promesse et le bouton Google
 GET  /api/auth/logout → 405   (seul POST déconnecte — sinon une balise <img> suffit)
 ```
 
+> **Une configuration incohérente ne démarre pas**, et c'est voulu : `Settings` refuse un `APP_BASE_URL` en `https://` sans `ENVIRONMENT=prod` — le cas où le cookie de session partirait sans `Secure` alors que tout fonctionne par ailleurs —, un `SESSION_SECRET` de moins de 32 caractères, et des identifiants Google absents en prod. Si l'API ne démarre pas, son message dit laquelle des quatre.
+
 Puis, la seule requête à connaître par cœur — **ce que ça coûte vraiment** :
 
 ```sql
@@ -152,11 +159,31 @@ group by 1 order by 1 desc;
 
 À la grille Haiku 4.5 : `entrée × 1 € / 1M + sortie × 5 € / 1M`. Le banc donne 3 490 / 640 pour une semaine, soit **~0,7 centime l'appel** — et 1,2 quand l'enveloppe rejoue.
 
-Couper un accès dont on ne veut plus (§11.7) :
+## 6 bis. Réagir, et depuis où
 
-```sql
-UPDATE household_access SET revoked_at = now() WHERE auth_subject = 'google:…';
+**Les commandes d'exploitation n'ont besoin que de `DATABASE_URL`.** Elles se lancent donc **depuis votre poste, contre la base de production** — pas besoin d'un shell chez l'hébergeur, ce qui est précisément ce qu'on ne veut pas chercher le jour où il faut couper quelqu'un.
+
+```sh
+export DATABASE_URL='postgresql+psycopg://…'   # celle de Supabase
+cd backend
+
+poetry run python -m app.admin list                 # qui est là, et qui dépense
+poetry run python -m app.admin find 335C-58F8       # le foyer derrière un code de support
+poetry run python -m app.admin limit <foyer> 0      # arrêter la dépense, semaines lisibles
+poetry run python -m app.admin limit <foyer> 500    # au contraire, un plafond haut
+poetry run python -m app.admin revoke google:…      # fermer la porte
+poetry run python -m app.admin restore google:…     # rouvrir
 ```
+
+Trois sanctions, de la plus douce à la plus dure : plafond à 0, plafond bas, révocation. Un plafond bas freine un bot présumé **sans couper un vrai foyer** — c'est le bon premier geste, parce qu'un faux positif reste utilisable. `revoke` garde la ligne d'accès, donc l'identité coupée ne peut pas se réinscrire en se reconnectant.
+
+Un foyer qui signale un bug donne le **code affiché dans son écran Réglages**. `find` le traduit en `household_id`, et toutes les lignes de log de ses requêtes portent ce code — `logs | grep 335C-58F8`.
+
+> Le plafond global reste `GENERATION_DAILY_LIMIT`. L'inscription est ouverte (§11.7) et le quota est **par foyer** : il n'existe aucun plafond à l'échelle de l'instance, donc quelqu'un qui industrialiserait la création de comptes Google se verrait sur la facture avant de se voir ailleurs. C'est un risque accepté, pas un oubli.
+
+## 6 ter. Les sauvegardes
+
+Elles dépendent de l'offre Supabase, et **c'est à vérifier avant d'avoir de vraies familles dedans** : `dietary_constraint` est une donnée de santé, `member.birth_date` une date de naissance de mineur. Une restauration doit avoir été essayée une fois, pas seulement configurée.
 
 ## 7. Ce que la mise en ligne débloque
 
