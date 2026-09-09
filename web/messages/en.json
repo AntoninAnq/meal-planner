@@ -277,5 +277,27 @@
     "snacksHint": "No effect in V0: the snack is a distinct object, planned for later.",
     "supportHeading": "Your household code",
     "supportHint": "Quote it if you report a problem: it is how we find your week. It is not a secret and it grants access to nothing."
+  },
+  "admin": {
+    "heading": "Classify recipes",
+    "intro": "These recipes carry no meal moment. Without one, a sweet tart can be offered on a Thursday evening. The ingredients almost always settle it.",
+    "remaining": "{count, plural, one {# recipe to classify} other {# recipes to classify}}",
+    "done": "Nothing to classify. Everything servable carries a type.",
+    "rubric": "Source rubric",
+    "noRubric": "No rubric",
+    "ingredients": "Ingredients",
+    "source": "view recipe",
+    "shortcut": "Choose with the keyboard: keys 1 to 8.",
+    "failed": "Saving failed. Try again.",
+    "dishType": {
+      "main": "Main",
+      "starter": "Starter",
+      "side": "Side",
+      "dessert": "Dessert",
+      "snack": "Snack",
+      "breakfast": "Breakfast",
+      "drink": "Drink",
+      "component": "Component"
+    }
   }
 }

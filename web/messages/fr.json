@@ -277,5 +277,27 @@
     "snacksHint": "Sans effet en V0 : le goûter est un objet à part, prévu plus tard.",
     "supportHeading": "Code de votre foyer",
     "supportHint": "Donnez-le si vous nous signalez un problème : c'est ce qui nous permet de retrouver votre semaine. Il n'est pas secret et ne donne accès à rien."
+  },
+  "admin": {
+    "heading": "Classer les recettes",
+    "intro": "Ces recettes n'ont pas de moment de repas. Sans lui, une tarte sucrée peut être proposée un jeudi soir. Les ingrédients tranchent presque toujours.",
+    "remaining": "{count, plural, one {# recette à classer} other {# recettes à classer}}",
+    "done": "Rien à classer pour l'instant. Tout ce qui peut être servi porte un type.",
+    "rubric": "Rubrique de la source",
+    "noRubric": "Aucune rubrique",
+    "ingredients": "Ingrédients",
+    "source": "voir la recette",
+    "shortcut": "Choisissez au clavier : touches 1 à 8.",
+    "failed": "L'enregistrement a échoué. Réessayez.",
+    "dishType": {
+      "main": "Plat",
+      "starter": "Entrée",
+      "side": "Accompagnement",
+      "dessert": "Dessert",
+      "snack": "Goûter",
+      "breakfast": "Petit déjeuner",
+      "drink": "Boisson",
+      "component": "Composant"
+    }
   }
 }

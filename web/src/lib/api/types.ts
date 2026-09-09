@@ -233,3 +233,31 @@ export type GeneratePlanRequest = {
   /** The frontend knows the active locale; the model does not. */
   language?: string;
 };
+
+
+/** When a recipe can be eaten. A quality axis, never a safety one — no member
+ * of this union gates the allergen filter. */
+export type DishType =
+  | "main"
+  | "starter"
+  | "side"
+  | "dessert"
+  | "snack"
+  | "breakfast"
+  | "drink"
+  | "component";
+
+/** A recipe nobody has classified, with exactly what is needed to judge it.
+ *
+ * The rubric is usually the reason it is here: either absent, or one the
+ * mapping refuses to read because it groups two different things — `Tartes,
+ * Clafoutis` holds an onion tart and a strawberry one. The ingredients are what
+ * settle it. */
+export type RecipeToType = {
+  id: string;
+  title: string;
+  source_categories: string[];
+  source_url: string | null;
+  minutes: number | null;
+  ingredients: string[];
+};
