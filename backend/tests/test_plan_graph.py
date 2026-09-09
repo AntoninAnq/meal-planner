@@ -94,17 +94,48 @@ def test_the_repair_hint_carries_the_violations_back_to_the_model() -> None:
     assert "eater_not_served" in second["context"]
 
 
-def test_retries_are_bounded_and_the_failure_is_not_hidden() -> None:
-    """A plan that never passes is returned WITH its violations, never as success."""
+def test_an_unchanged_verdict_stops_the_loop_before_the_last_attempt() -> None:
+    """A model repeating itself is refusing, not misreading — stop paying for it.
+
+    `FakeLLMClient` replays its last response, so this is the household whose
+    week never works: on the harness, `baby_only` spent all three attempts on
+    the same nine assignments, every run, for three times the tokens and 33 s
+    instead of 12 s — to return exactly what the first attempt returned.
+
+    The second attempt is still made, and always will be: it takes a second
+    answer to learn that it is the same as the first. What stops is the third.
+    """
     broken = _plan(_slot(0, _dish("m1")), _slot(1, _dish("m1", "m2")))
     llm = FakeLLMClient([broken])
 
     outcome = run_plan(_request(), llm=llm)
 
+    assert len(llm.calls) == 2
+    assert MAX_ENVELOPE_ATTEMPTS == 3, "the saving this test measures is one call in three"
+
+    # Nothing about the outcome changes: a plan that never passed is returned
+    # WITH its violations, never as a success.
     assert not outcome.accepted
     assert outcome.violations
-    assert outcome.attempts == MAX_ENVELOPE_ATTEMPTS
+
+
+def test_a_different_verdict_still_earns_the_last_attempt() -> None:
+    """Because the retry raises the temperature, and a hot draw can be worse.
+
+    `validate` carries the measurement: an attempt with two violations followed
+    by one with eighteen. Stopping on "no better" would forfeit the third try
+    after one bad draw; stopping on "identical" only forfeits it when nothing
+    moved at all. These two failures are the same count and the same code —
+    what differs is the day — so a rule watching the count would confuse them.
+    """
+    monday = _plan(_slot(0, _dish("m1")), _slot(1, _dish("m1", "m2")))
+    tuesday = _plan(_slot(0, _dish("m1", "m2")), _slot(1, _dish("m1")))
+    llm = FakeLLMClient([monday, tuesday, monday])
+
+    outcome = run_plan(_request(), llm=llm)
+
     assert len(llm.calls) == MAX_ENVELOPE_ATTEMPTS
+    assert not outcome.accepted
 
 
 def test_v0_catalogue_is_unbounded_not_empty() -> None:

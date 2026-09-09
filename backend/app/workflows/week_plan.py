@@ -155,6 +155,9 @@ class PlanState(TypedDict, total=False):
     best_proposal: Annotated[list[ProposedSlot], _keep_last]
     best_violations: Annotated[list[Violation] | None, _keep_last]
     attempt: Annotated[int, _keep_last]
+    #: The retry produced the very same complaints as the attempt before it.
+    #: See `should_retry` — this is what tells a bad draw apart from a refusal.
+    stalled: Annotated[bool, _keep_last]
     llm_results: Annotated[list[StructuredResult], _append]
 
 
@@ -270,6 +273,12 @@ def build_graph(llm: LLMClient, catalogue: CataloguePort) -> Any:
             request.safety,
         )
 
+        # What the PREVIOUS attempt complained about — still in the state, since
+        # this node has not written its own update yet. Kept as a flag rather
+        # than as a second list: only the comparison is ever read.
+        previous = state.get("violations") or []
+        stalled = bool(previous) and set(previous) == set(violations)
+
         proposal = state.get("proposal", [])
         best = state.get("best_violations")
         if best is None or len(violations) < len(best):
@@ -277,11 +286,35 @@ def build_graph(llm: LLMClient, catalogue: CataloguePort) -> Any:
                 "violations": violations,
                 "best_violations": violations,
                 "best_proposal": proposal,
+                "stalled": stalled,
             }
-        return {"violations": violations}
+        return {"violations": violations, "stalled": stalled}
 
     def should_retry(state: PlanState) -> str:
+        """Retry a bad draw, not a refusal.
+
+        The old rule asked "are there violations", which for some households is
+        yes forever: `baby_only` on the harness spent all three attempts, every
+        run, on the same nine assignments — three times the tokens and 33 s
+        instead of 12 s, to return exactly what the first attempt returned. The
+        repair prompt already NAMES the mistake (`arbitrate` appends
+        `repair_hint`), so a model that repeats it verbatim has not misread the
+        instruction: it is declining to follow it.
+
+        Identical, not "no better". The retry raises the temperature on purpose
+        and the variance is real — `validate` carries the measurement of an
+        attempt with two violations followed by one with eighteen — so a worse
+        draw must still be allowed a third try. An UNCHANGED set is the one
+        signal that says nothing moved.
+
+        Costs one wasted attempt by construction: it takes a second answer to
+        learn that it is the same as the first. Going lower would mean deciding
+        in advance which violation codes a model can never fix, which is a bet
+        on today's model written into the control flow.
+        """
         if not state.get("violations"):
+            return END
+        if state.get("stalled"):
             return END
         if state.get("attempt", 0) >= MAX_ENVELOPE_ATTEMPTS:
             return END
