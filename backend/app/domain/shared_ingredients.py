@@ -30,7 +30,6 @@ one household's shortlist.
 from __future__ import annotations
 
 from collections.abc import Hashable, Mapping, Sequence
-from typing import TypeVar
 
 #: An ingredient in more than this share of the catalogue is a cupboard, not a
 #: base. Measured: 10 % cuts below pepper (12.2 %) and above tomato (7.6 %),
@@ -45,11 +44,7 @@ PANTRY_SHARE = 0.10
 #: separates them with room on both sides.
 SHARED_MINIMUM = 3
 
-Ingredient = TypeVar("Ingredient", bound=Hashable)
-Dish = TypeVar("Dish", bound=Hashable)
-
-
-def pantry(
+def pantry[Ingredient: Hashable](
     recipes_per_ingredient: Mapping[Ingredient, int], catalogue_size: int
 ) -> set[Ingredient]:
     """The ingredients too common to mean anything."""
@@ -61,7 +56,7 @@ def pantry(
     }
 
 
-def shared_ingredient_links(
+def shared_ingredient_links[Dish: Hashable, Ingredient: Hashable](
     order: Sequence[Dish],
     ingredients: Mapping[Dish, frozenset[Ingredient]],
 ) -> dict[Dish, Dish]:

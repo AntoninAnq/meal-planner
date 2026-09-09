@@ -48,10 +48,10 @@ from app.domain.planning import (
 from app.domain.prompt_context import MemberInput, PromptContext, build_prompt_context
 from app.llm.base import LLMClient
 from app.services.catalogue import (
-    NOT_A_MEAL,
     HouseholdFilter,
     SqlCatalogue,
     candidate_count,
+    offerable,
 )
 from app.workflows.week_plan import PlanOutcome, PlanRequest, run_plan
 
@@ -329,10 +329,7 @@ def stages_without_candidates(db: Session, stages: frozenset[LifeStage]) -> set[
         exists = db.scalar(
             select(Recipe.id)
             .join(RecipeSuitableStage, RecipeSuitableStage.recipe_id == Recipe.id)
-            .where(
-                RecipeSuitableStage.life_stage == stage,
-                Recipe.dish_type.is_(None) | Recipe.dish_type.not_in(NOT_A_MEAL),
-            )
+            .where(RecipeSuitableStage.life_stage == stage, offerable())
             .limit(1)
         )
         if exists is None:

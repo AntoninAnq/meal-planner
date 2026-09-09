@@ -748,6 +748,20 @@ class Recipe(Base):
     #: Blogs move and delete pages. Without periodic re-checking the index
     #: drifts silently (§11.3).
     last_checked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    #: Withdrawn from what may be proposed, and KEPT. NULL — the default —
+    #: means offerable.
+    #:
+    #: Deleting was the alternative and it is wrong twice. `planned_dish`
+    #: points here with `ondelete="RESTRICT"`, so weeks already cooked would
+    #: block the delete or lose their dish; and a source that goes down may
+    #: come back, at which point re-scraping restores the rows rather than
+    #: re-discovering them. Set on the whole of `cuisine-libre` in 0013, whose
+    #: site now answers 404 — 58 % of the catalogue, which is exactly why it is
+    #: marked and not dropped. `catalog.ingest` clears it on a successful
+    #: re-scrape, so a source coming back needs no intervention.
+    deprecated_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), index=True
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     ingredients: Mapped[list[RecipeIngredient]] = relationship(

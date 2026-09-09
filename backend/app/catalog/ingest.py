@@ -183,6 +183,10 @@ def _upsert(db: Session, source: Source, url: str, parsed: ParsedRecipe) -> bool
     recipe.servings_raw = parsed.servings_raw
     recipe.source_categories = list(parsed.categories)
     recipe.last_checked_at = datetime.now(UTC)
+    # A page that answers again is offerable again. This is what makes 0013
+    # reversible without a hand-written UPDATE: the source comes back, the
+    # crawl restores its rows, and the withdrawal lifts itself.
+    recipe.deprecated_at = None
     # `allergens_verified` and `recipe_allergen` are NOT touched here: they are
     # derived by the resolution pass, and only from resolved ingredients (I3).
 

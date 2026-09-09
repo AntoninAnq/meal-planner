@@ -37,6 +37,7 @@ from datetime import date
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
+from sqlalchemy.sql.elements import ColumnElement
 
 from app.db.models import (
     Ingredient,
@@ -63,6 +64,25 @@ NOT_A_MEAL = (
     DishType.SIDE,
     DishType.COMPONENT,
 )
+
+
+def offerable() -> ColumnElement[bool]:
+    """May this recipe be proposed to a household at all?
+
+    One predicate, in one place, because the answer has two independent halves
+    and a query that remembers only the first is silently wrong: it is a meal
+    rather than a dessert, AND it has not been withdrawn. Withdrawal is what
+    keeps a dead source out of new plans without deleting the rows that weeks
+    already cooked point at (0013).
+
+    Every SELECT that chooses what to serve goes through here. Anything that
+    reads a recipe already ON a plan does not — a week does not stop being what
+    the household ate because the source went down.
+    """
+    return (Recipe.dish_type.is_(None) | Recipe.dish_type.not_in(NOT_A_MEAL)) & (
+        Recipe.deprecated_at.is_(None)
+    )
+
 
 #: How many candidates reach the prompt. Sized on the grid rather than guessed:
 #: the default week is 9 slots and `max_dishes_soft_limit` is 2, so 18 dishes
@@ -544,9 +564,7 @@ class SqlCatalogue:
     # -- Ranking ----------------------------------------------------------
 
     def _eligible(self) -> list[uuid.UUID]:
-        statement = select(Recipe.id).where(
-            Recipe.dish_type.is_(None) | Recipe.dish_type.not_in(NOT_A_MEAL)
-        )
+        statement = select(Recipe.id).where(offerable())
 
         if self._household.require_verified:
             statement = statement.where(Recipe.allergens_verified.is_(True))
