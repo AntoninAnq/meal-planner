@@ -324,6 +324,33 @@
       "not_a_meal": "Ce n'est pas un plat",
       "dead_link": "Lien mort",
       "bad_recipe": "Recette inutilisable"
+    },
+    "operators": "Administrateurs"
+  },
+  "operators": {
+    "heading": "Qui peut administrer",
+    "intro": "Un contributeur classe et retire des recettes. Un propriétaire peut en plus accorder et retirer ce droit.",
+    "backToQueue": "Classement",
+    "you": "vous",
+    "noCode": "accès révoqué",
+    "since": "depuis le {date, date, long}",
+    "level": {
+      "owner": "Propriétaire",
+      "contributor": "Contributeur"
+    },
+    "revoke": "Retirer le droit",
+    "grantHeading": "Ajouter quelqu'un",
+    "grantIntro": "Demandez-lui de se connecter, puis de vous envoyer le code affiché dans ses Réglages. Aucune adresse e-mail n'est conservée : le code est la seule façon de désigner quelqu'un.",
+    "codeLabel": "Code de support",
+    "codeHint": "Huit caractères, tirets optionnels.",
+    "levelLabel": "Niveau",
+    "grant": "Accorder",
+    "contributorNote": "Seul un propriétaire peut accorder ou retirer ce droit.",
+    "error": {
+      "unknownCode": "Aucun foyer ne porte ce code. Vérifiez la recopie.",
+      "malformedCode": "Ce n'est pas un code de support : huit caractères hexadécimaux attendus.",
+      "conflict": "Refusé : soit deux foyers partagent ce code, soit c'est le dernier propriétaire — sans lui personne ne pourrait plus accorder l'accès.",
+      "failed": "L'opération a échoué. Réessayez."
     }
   }
 }

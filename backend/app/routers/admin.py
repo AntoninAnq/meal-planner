@@ -52,6 +52,31 @@ class OperatorOut(BaseModel):
     level: OperatorLevel
     granted_at: datetime
     granted_by: str | None
+    #: The code this person reads in their own settings screen, so a list of
+    #: operators can be compared to what someone sent you. `auth_subject` is a
+    #: twenty-one digit Google identifier: correct, unique, and impossible to
+    #: recognise on a screen — granting by code and revoking by identifier would
+    #: mean removing a row nobody can put a person behind.
+    #:
+    #: None when the identity has no live household access — revoked, or an
+    #: operator whose household was removed. Blank rather than wrong.
+    support_code: str | None
+
+
+def with_support_code(db: Session, operator: Operator) -> OperatorOut:
+    access = db.get(HouseholdAccess, operator.auth_subject)
+    code = (
+        support_code(access.household_id)
+        if access is not None and access.revoked_at is None
+        else None
+    )
+    return OperatorOut(
+        auth_subject=operator.auth_subject,
+        level=operator.level,
+        granted_at=operator.granted_at,
+        granted_by=operator.granted_by,
+        support_code=code,
+    )
 
 
 class GrantRequest(BaseModel):
@@ -69,7 +94,7 @@ class GrantRequest(BaseModel):
 
 
 @router.get("/me", response_model=OperatorOut)
-def me(operator: CurrentOperator) -> Operator:
+def me(db: DbDep, operator: CurrentOperator) -> OperatorOut:
     """Am I an operator, and at which level?
 
     Exists so the interface can show a way in without guessing. The alternative
@@ -82,18 +107,19 @@ def me(operator: CurrentOperator) -> Operator:
     an operator learns nothing — the absence of a link and the absence of the
     page say the same thing.
     """
-    return operator
+    return with_support_code(db, operator)
 
 
 @router.get("/operators", response_model=list[OperatorOut])
-def list_operators(db: DbDep, operator: CurrentOperator) -> list[Operator]:
+def list_operators(db: DbDep, operator: CurrentOperator) -> list[OperatorOut]:
     """Readable by any operator: a contributor should be able to see who else
     can change the catalogue they are working on."""
-    return list(db.scalars(select(Operator).order_by(Operator.granted_at)))
+    rows = db.scalars(select(Operator).order_by(Operator.granted_at))
+    return [with_support_code(db, row) for row in rows]
 
 
 @router.post("/operators", response_model=OperatorOut, status_code=status.HTTP_201_CREATED)
-def grant(payload: GrantRequest, db: DbDep, owner: CurrentOwner) -> Operator:
+def grant(payload: GrantRequest, db: DbDep, owner: CurrentOwner) -> OperatorOut:
     if not looks_like_code(payload.support_code):
         raise HTTPException(
             status.HTTP_422_UNPROCESSABLE_CONTENT,
@@ -125,7 +151,7 @@ def grant(payload: GrantRequest, db: DbDep, owner: CurrentOwner) -> Operator:
         existing.granted_by = owner.auth_subject
         existing.granted_at = datetime.now(UTC)
         db.commit()
-        return existing
+        return with_support_code(db, existing)
 
     operator = Operator(
         auth_subject=subject,
@@ -134,7 +160,7 @@ def grant(payload: GrantRequest, db: DbDep, owner: CurrentOwner) -> Operator:
     )
     db.add(operator)
     db.commit()
-    return operator
+    return with_support_code(db, operator)
 
 
 @router.delete("/operators/{auth_subject}", status_code=status.HTTP_204_NO_CONTENT)

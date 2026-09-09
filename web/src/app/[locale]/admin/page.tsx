@@ -22,6 +22,11 @@ import type { RecipeToType, ReportedRecipe } from "@/lib/api/types";
  * written twice is a check that will disagree with itself, and the copy that
  * matters is the one in front of the data.
  */
+const NAV =
+  "rounded-control border border-border px-3 py-1.5 text-sm text-ink-muted transition-colors " +
+  "hover:bg-surface-sunken hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 " +
+  "focus-visible:outline-accent";
+
 export default async function AdminPage({
   params,
 }: {
@@ -48,12 +53,14 @@ export default async function AdminPage({
         {/* Named, not a bare arrow. The back office is a different place from
             the application, reached by typing a URL, and an operator classifying
             recipes for twenty minutes needs a way out that reads as one. */}
-        <Link
-          href="/"
-          className="flex-none rounded-control border border-border px-3 py-1.5 text-sm text-ink-muted transition-colors hover:bg-surface-sunken hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-        >
-          ← {t("back")}
-        </Link>
+        <nav className="flex flex-none gap-2">
+          <Link href="/admin/operators" className={NAV}>
+            {t("operators")}
+          </Link>
+          <Link href="/" className={NAV}>
+            ← {t("back")}
+          </Link>
+        </nav>
       </header>
 
       {/* Reports first: somebody complained, and their week is already wrong.

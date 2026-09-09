@@ -324,6 +324,33 @@
       "not_a_meal": "Not a meal",
       "dead_link": "Dead link",
       "bad_recipe": "Unusable recipe"
+    },
+    "operators": "Operators"
+  },
+  "operators": {
+    "heading": "Who may operate",
+    "intro": "A contributor classifies and withdraws recipes. An owner can also grant and remove that right.",
+    "backToQueue": "Classifying",
+    "you": "you",
+    "noCode": "access revoked",
+    "since": "since {date, date, long}",
+    "level": {
+      "owner": "Owner",
+      "contributor": "Contributor"
+    },
+    "revoke": "Remove the right",
+    "grantHeading": "Add somebody",
+    "grantIntro": "Ask them to sign in, then to send you the code shown in their Settings. No email address is stored: the code is the only way to name somebody.",
+    "codeLabel": "Support code",
+    "codeHint": "Eight characters, dashes optional.",
+    "levelLabel": "Level",
+    "grant": "Grant",
+    "contributorNote": "Only an owner can grant or remove this right.",
+    "error": {
+      "unknownCode": "No household carries this code. Check how it was copied.",
+      "malformedCode": "Not a support code: eight hexadecimal characters expected.",
+      "conflict": "Refused: either two households share this code, or this is the last owner — without one, nobody could grant access again.",
+      "failed": "The operation failed. Try again."
     }
   }
 }

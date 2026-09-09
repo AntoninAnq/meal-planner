@@ -266,11 +266,18 @@ export type RecipeToType = {
  * the catalogue, only an `owner` grants — because granting is privilege
  * escalation, and a helper who can add helpers can remove the person who
  * invited them. */
+export type OperatorLevel = "owner" | "contributor";
+
 export type Operator = {
   auth_subject: string;
-  level: "owner" | "contributor";
+  level: OperatorLevel;
   granted_at: string;
   granted_by: string | null;
+  /** The code this person reads in their own settings screen, and the only
+   * thing about them a human can recognise: `auth_subject` is a twenty-one
+   * digit Google identifier. Null when the identity has no live household
+   * access, which is blank rather than wrong. */
+  support_code: string | null;
 };
 
 /** What a household says is wrong with a suggestion — for everyone, not for
