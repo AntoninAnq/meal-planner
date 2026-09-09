@@ -266,6 +266,31 @@ export type RecipeToType = {
  * the catalogue, only an `owner` grants — because granting is privilege
  * escalation, and a helper who can add helpers can remove the person who
  * invited them. */
+/** One household as an operator needs to see it.
+ *
+ * `subjects` is what identifies a person here, because nothing else does: no
+ * email is stored, by design. `code` is the same string they read in their own
+ * settings screen — the only name both sides of a support conversation can say
+ * out loud. */
+export type AdminHousehold = {
+  household_id: string;
+  code: string;
+  name: string;
+  members: number;
+  subjects: string[];
+  revoked: string[];
+  /** Null means "on the rate card", which is why the default is sent alongside
+   * rather than left for the reader to remember. */
+  limit_override: number | null;
+  calls_in_window: number;
+};
+
+export type AdminHouseholds = {
+  default_limit: number;
+  window_hours: number;
+  households: AdminHousehold[];
+};
+
 export type OperatorLevel = "owner" | "contributor";
 
 export type Operator = {

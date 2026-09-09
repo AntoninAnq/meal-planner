@@ -316,7 +316,7 @@
     "reportsHeading": "Signalements",
     "reportsIntro": "Des foyers disent que ces recettes sont fautives. Retaguer, retirer, ou écarter si le signalement est infondé.",
     "reportsDone": "Aucun signalement en attente.",
-    "households": "{count, plural, one {# foyer} other {# foyers}}",
+    "households": "Foyers",
     "withdraw": "Retirer du catalogue",
     "dismiss": "Écarter",
     "queueHeading": "Recettes à classer",
@@ -350,6 +350,31 @@
       "unknownCode": "Aucun foyer ne porte ce code. Vérifiez la recopie.",
       "malformedCode": "Ce n'est pas un code de support : huit caractères hexadécimaux attendus.",
       "conflict": "Refusé : soit deux foyers partagent ce code, soit c'est le dernier propriétaire — sans lui personne ne pourrait plus accorder l'accès.",
+      "failed": "L'opération a échoué. Réessayez."
+    }
+  },
+  "households": {
+    "heading": "Les foyers",
+    "intro": "Qui est là, ce que chacun dépense, et les deux sanctions : plafonner, ou couper un accès.",
+    "backToQueue": "Classement",
+    "searchLabel": "Retrouver un foyer",
+    "searchHint": "Le code qu'un client vous communique. Huit caractères, tirets optionnels.",
+    "search": "Chercher",
+    "clearSearch": "Revenir à la liste",
+    "found": "{count, plural, =0 {Aucun foyer ne porte ce code.} one {Un foyer porte ce code.} other {# foyers partagent ce code.}}",
+    "busiest": "{count, plural, =0 {Aucun foyer pour l'instant.} other {Les # foyers qui ont le plus appelé le modèle sur {hours} h.}}",
+    "members": "{count, plural, one {# mangeur} other {# mangeurs}}",
+    "spend": "{calls} sur {ceiling} appels en {hours} h",
+    "onRateCard": "plafond par défaut",
+    "limitLabel": "Plafond",
+    "limitHint": "Par défaut : {defaultLimit}. Zéro arrête la génération sans effacer les semaines déjà produites.",
+    "applyLimit": "Appliquer",
+    "clearLimit": "Revenir au défaut",
+    "cut": "Couper l'accès",
+    "restore": "Rétablir",
+    "revoked": "coupé",
+    "error": {
+      "malformedCode": "Ce n'est pas un code de support : huit caractères hexadécimaux attendus.",
       "failed": "L'opération a échoué. Réessayez."
     }
   }

@@ -101,23 +101,45 @@ def _dependencies_of(call: object) -> set[object]:
     return found
 
 
-#: Routes that change WHO MAY OPERATE. Not "every write": retagging a recipe is
-#: a write, and it is the exact work the back office exists to delegate.
-PRIVILEGE_PREFIX = "/admin/operators"
+#: Routes that act on PEOPLE rather than on the catalogue. Not "every write":
+#: retagging a recipe is a write, and it is the exact work the back office
+#: exists to delegate.
+#:
+#: `/admin/operators` is privilege escalation — a contributor who could grant
+#: could make themselves an owner, or remove the person who invited them. Its
+#: reads stay open to any operator, because someone changing the catalogue
+#: should see who else can.
+#:
+#: `/admin/households` is owner-only ALL THE WAY DOWN, reads included. A helper
+#: recruited to classify tarts has no business reading the list of families on
+#: the instance, and cutting an access off has nothing to do with the work they
+#: were invited for.
+GRANTING = "/admin/operators"
+PEOPLE = "/admin/households"
 
 
 def test_changing_who_may_operate_requires_an_owner() -> None:
-    """The one asymmetry the two levels encode.
-
-    A contributor who could grant could make themselves an owner, or remove the
-    person who invited them. Reading the list stays open to any operator:
-    someone changing the catalogue should see who else can.
-    """
     for route in _admin_routes():
-        if not route.path.startswith(PRIVILEGE_PREFIX):  # type: ignore[attr-defined]
+        if not route.path.startswith(GRANTING):  # type: ignore[attr-defined]
             continue
         if getattr(route, "methods", set()) & {"POST", "PUT", "PATCH", "DELETE"}:
             assert current_owner in _dependencies(route), route.path  # type: ignore[attr-defined]
+
+
+def test_every_household_route_requires_an_owner_including_the_reads() -> None:
+    """Reading who is on the instance is itself the privileged act.
+
+    The names, the codes, the identities and what each household spends: there
+    is no version of that a contributor needs in order to retag a recipe.
+    """
+    people = [
+        route
+        for route in _admin_routes()
+        if route.path.startswith(PEOPLE)  # type: ignore[attr-defined]
+    ]
+    assert people, "no household route to check"
+    for route in people:
+        assert current_owner in _dependencies(route), route.path  # type: ignore[attr-defined]
 
 
 def test_catalogue_work_does_not_require_an_owner() -> None:
@@ -129,7 +151,7 @@ def test_catalogue_work_does_not_require_an_owner() -> None:
     catalogue = [
         route
         for route in _admin_routes()
-        if not route.path.startswith(PRIVILEGE_PREFIX)  # type: ignore[attr-defined]
+        if not route.path.startswith((GRANTING, PEOPLE))  # type: ignore[attr-defined]
     ]
     assert catalogue, "no catalogue route to check"
     for route in catalogue:

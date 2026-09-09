@@ -316,7 +316,7 @@
     "reportsHeading": "Reports",
     "reportsIntro": "Households say these recipes are at fault. Retag, withdraw, or dismiss if the report was mistaken.",
     "reportsDone": "No reports waiting.",
-    "households": "{count, plural, one {# household} other {# households}}",
+    "households": "Households",
     "withdraw": "Withdraw from the catalogue",
     "dismiss": "Dismiss",
     "queueHeading": "Recipes to classify",
@@ -350,6 +350,31 @@
       "unknownCode": "No household carries this code. Check how it was copied.",
       "malformedCode": "Not a support code: eight hexadecimal characters expected.",
       "conflict": "Refused: either two households share this code, or this is the last owner — without one, nobody could grant access again.",
+      "failed": "The operation failed. Try again."
+    }
+  },
+  "households": {
+    "heading": "Households",
+    "intro": "Who is here, what each one spends, and the two sanctions: cap the spend, or cut an access off.",
+    "backToQueue": "Classifying",
+    "searchLabel": "Find a household",
+    "searchHint": "The code a customer gives you. Eight characters, dashes optional.",
+    "search": "Search",
+    "clearSearch": "Back to the list",
+    "found": "{count, plural, =0 {No household carries this code.} one {One household carries this code.} other {# households share this code.}}",
+    "busiest": "{count, plural, =0 {No households yet.} other {The # households that called the model most over {hours} h.}}",
+    "members": "{count, plural, one {# eater} other {# eaters}}",
+    "spend": "{calls} of {ceiling} calls over {hours} h",
+    "onRateCard": "default ceiling",
+    "limitLabel": "Ceiling",
+    "limitHint": "Default: {defaultLimit}. Zero stops generation without erasing the weeks already produced.",
+    "applyLimit": "Apply",
+    "clearLimit": "Back to default",
+    "cut": "Cut access",
+    "restore": "Restore",
+    "revoked": "cut off",
+    "error": {
+      "malformedCode": "Not a support code: eight hexadecimal characters expected.",
       "failed": "The operation failed. Try again."
     }
   }

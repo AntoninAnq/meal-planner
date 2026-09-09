@@ -98,7 +98,13 @@ gardent le nom `api`, eux.
 
 ## Administration
 
-Trois choses qu'un exploitant a besoin de faire, et aucune n'a d'endpoint :
+Tout se fait depuis `/admin` : classer les recettes, traiter les signalements,
+accorder le back office, et — pour un propriétaire — voir les foyers, plafonner
+une dépense, couper ou rétablir un accès.
+
+La ligne de commande fait les mêmes choses et garde deux prérogatives : elle est
+le seul endroit où créer le **premier** propriétaire, et le seul retour possible
+si le dernier est perdu.
 
 ```bash
 docker compose run --rm api python -m app.admin operators         # qui opère l'instance
@@ -125,10 +131,16 @@ Personne n'est identifié par une adresse : la personne se connecte, lit son
 **code** dans Réglages, vous l'envoie, et le droit est accordé à une identité que
 Google a déjà vérifiée.
 
-La gestion des foyers reste en ligne de commande, tant qu'il n'y a qu'un exploitant :
-un rôle admin, une autorisation sur chaque route, une piste d'audit et une UI,
-c'est beaucoup de surface exposée à Internet pour servir une personne. Les
-verbes les plus dangereux du système n'ont ainsi aucun endpoint à mal garder.
+La gestion des foyers est **réservée aux propriétaires, lecture comprise**. Un
+contributeur recruté pour classer des tartes n'a rien à faire dans la liste des
+familles, et couper un accès n'a aucun rapport avec le travail pour lequel on
+l'a invité. `tests/test_admin_authorisation.py` parcourt les routes déclarées et
+le vérifie mécaniquement, dans les deux sens : `/admin/households` exige un
+propriétaire, le catalogue ne doit surtout pas en exiger un.
+
+La logique, elle, n'existe qu'une fois : `app/admin/actions.py`, appelé par la
+CLI comme par l'API. Ce sont les verbes qu'on cherche une mauvaise nuit, et de
+deux implémentations c'est toujours celle que personne n'a exercée qui diverge.
 
 `list` identifie les gens par leur `auth_subject` parce que rien d'autre ne les
 identifie : `household_access` ne stocke pas d'e-mail, volontairement. On ne peut

@@ -5,7 +5,7 @@ import { ReportQueue } from "@/components/admin/ReportQueue";
 import { TypeQueue } from "@/components/admin/TypeQueue";
 import { Link } from "@/i18n/navigation";
 import { apiGet } from "@/lib/api/server";
-import type { RecipeToType, ReportedRecipe } from "@/lib/api/types";
+import type { Operator, RecipeToType, ReportedRecipe } from "@/lib/api/types";
 
 /**
  * The back office — one screen, for the judgement no rule reaches.
@@ -35,9 +35,10 @@ export default async function AdminPage({
   const { locale } = await params;
   setRequestLocale(locale);
 
-  const [queue, reported] = await Promise.all([
+  const [queue, reported, me] = await Promise.all([
     apiGet<RecipeToType[]>("/admin/recipes/untyped"),
     apiGet<ReportedRecipe[]>("/admin/reports"),
+    apiGet<Operator>("/admin/me"),
   ]);
   if (queue === null) notFound();
 
@@ -54,6 +55,13 @@ export default async function AdminPage({
             the application, reached by typing a URL, and an operator classifying
             recipes for twenty minutes needs a way out that reads as one. */}
         <nav className="flex flex-none gap-2">
+          {/* Households are owner-only, reads included. Showing the link to a
+              contributor would offer a door that answers not-found. */}
+          {me?.level === "owner" && (
+            <Link href="/admin/households" className={NAV}>
+              {t("households")}
+            </Link>
+          )}
           <Link href="/admin/operators" className={NAV}>
             {t("operators")}
           </Link>

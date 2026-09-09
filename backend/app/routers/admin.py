@@ -22,12 +22,14 @@ import uuid
 from datetime import UTC, datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.admin import actions
 from app.auth.deps import CurrentOperator, CurrentOwner
+from app.config import Settings, get_settings
 from app.db.models import (
     HouseholdAccess,
     Ingredient,
@@ -41,6 +43,7 @@ from app.domain.enums import DishType, OperatorLevel, ReportCategory
 from app.domain.support_code import looks_like_code, normalise, support_code
 
 DbDep = Annotated[Session, Depends(get_db)]
+SettingsDep = Annotated[Settings, Depends(get_settings)]
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -187,6 +190,137 @@ def revoke(auth_subject: str, db: DbDep, owner: CurrentOwner) -> None:
 
     db.delete(operator)
     db.commit()
+
+
+# -- The households -----------------------------------------------------------
+#
+# The other half of the back office, and a different kind of thing entirely.
+# Everything below acts on PEOPLE rather than on the catalogue, so all of it is
+# `CurrentOwner`: a contributor recruited to retag recipes has no business
+# reading the list of households, and none of these verbs has anything to do
+# with the work they were invited for.
+#
+# The logic is `app.admin.actions`, unchanged and unduplicated. Those functions
+# already ran from a terminal on the worst nights; a second implementation
+# behind HTTP would be a second set of edge cases, and the one that diverges is
+# always the one nobody exercised.
+
+#: How many households the screen shows. Ordered by recent spend, so the top of
+#: the list is the reason anybody opened it. A complete list would grow with the
+#: instance and be read by nobody.
+HOUSEHOLDS_SHOWN = 25
+
+
+class HouseholdOut(BaseModel):
+    household_id: uuid.UUID
+    #: What the person themselves reads in their settings screen — the only
+    #: name both sides of a support conversation can say out loud.
+    code: str
+    name: str
+    members: int
+    #: Live identities, then cut-off ones. No email anywhere: none is stored.
+    subjects: list[str]
+    revoked: list[str]
+    limit_override: int | None
+    calls_in_window: int
+
+
+class HouseholdsOut(BaseModel):
+    """The rows, and the two numbers needed to read them.
+
+    `limit_override` is null for most households, which means "on the rate
+    card" — and a screen showing a blank there would be asking the operator to
+    remember what the rate card says. It is sent once rather than per row.
+    """
+
+    default_limit: int
+    window_hours: int
+    households: list[HouseholdOut]
+
+
+class LimitDecision(BaseModel):
+    """Null clears the override; zero is a value.
+
+    Zero stops the spend and leaves the weeks already generated readable — the
+    softest useful sanction, and the right first move on a household that looks
+    like a bot but might be a family with a slow week.
+    """
+
+    limit: int | None = Field(default=None, ge=0)
+
+
+@router.get("/households", response_model=HouseholdsOut)
+def households(
+    db: DbDep,
+    settings: SettingsDep,
+    owner: CurrentOwner,
+    code: Annotated[str | None, Query()] = None,
+) -> HouseholdsOut:
+    """Who is here, and who is spending — or the one household behind a code.
+
+    The two questions an operator actually has, and they are the two commands
+    the CLI grew: `list` and `find`. Searching by code goes to the server rather
+    than filtering a list in the browser, so the page does not quietly depend on
+    the instance being small.
+    """
+    window = settings.generation_window_hours
+    if code is not None:
+        try:
+            rows = actions.find(db, code)
+        except ValueError as bad:
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, str(bad)) from bad
+    else:
+        rows = actions.survey(db, window_hours=window)[:HOUSEHOLDS_SHOWN]
+
+    return HouseholdsOut(
+        default_limit=settings.generation_daily_limit,
+        window_hours=window,
+        households=[
+            HouseholdOut(
+                household_id=row.household_id,
+                code=row.code,
+                name=row.name,
+                members=row.members,
+                subjects=list(row.subjects),
+                revoked=list(row.revoked),
+                limit_override=row.limit_override,
+                calls_in_window=row.calls_in_window,
+            )
+            for row in rows
+        ],
+    )
+
+
+@router.put("/households/{household_id}/limit", status_code=status.HTTP_204_NO_CONTENT)
+def set_limit(
+    household_id: uuid.UUID, payload: LimitDecision, db: DbDep, owner: CurrentOwner
+) -> None:
+    try:
+        actions.set_limit(db, household_id, payload.limit)
+    except actions.UnknownHousehold as unknown:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "no such household") from unknown
+
+
+@router.post("/households/access/{auth_subject}/revoke", status_code=status.HTTP_204_NO_CONTENT)
+def revoke_access(auth_subject: str, db: DbDep, owner: CurrentOwner) -> None:
+    """Cut an identity off. The access row SURVIVES, and that is the mechanism.
+
+    `callback` provisions a household exactly when it finds no access row, so a
+    delete would hand the identity that was just cut off a brand-new household
+    on its next login.
+    """
+    try:
+        actions.revoke(db, auth_subject)
+    except actions.UnknownSubject as unknown:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "no such identity") from unknown
+
+
+@router.post("/households/access/{auth_subject}/restore", status_code=status.HTTP_204_NO_CONTENT)
+def restore_access(auth_subject: str, db: DbDep, owner: CurrentOwner) -> None:
+    try:
+        actions.restore(db, auth_subject)
+    except actions.UnknownSubject as unknown:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "no such identity") from unknown
 
 
 # -- The retagging queue ----------------------------------------------------
