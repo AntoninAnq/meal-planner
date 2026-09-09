@@ -107,6 +107,8 @@ class DishTypeReport:
     recipes: int = 0
     classified: int = 0
     unclassified: int = 0
+    #: Recipes a person typed. Left untouched by this pass.
+    by_hand: int = 0
     per_type: dict[str, int] = field(default_factory=dict)
     #: Rubrics present in the catalogue that the file says nothing about. This
     #: is the work list: each one is a line to add, or to record as examined.
@@ -118,6 +120,8 @@ class DishTypeReport:
             f"classées          {self.classified}",
             f"sans rubrique     {self.unclassified} — elles passent le pré-filtre",
         ]
+        if self.by_hand:
+            lines.append(f"décidées à la main {self.by_hand} — non touchées")
         lines += [f"  {code:<10} {count}" for code, count in sorted(self.per_type.items())]
         if self.unmapped:
             lines.append("")
@@ -133,6 +137,16 @@ def derive(db: Session, *, report_only: bool = False, path: Path | None = None) 
 
     for recipe in db.scalars(select(Recipe)):
         report.recipes += 1
+
+        # A person decided this one. The pass is idempotent precisely so a
+        # mapping change can correct the whole catalogue — and that is what
+        # would wipe the back office's work on the next run. Counted, not
+        # silently skipped: a number that grows is how anyone notices the
+        # mapping is being worked around by hand.
+        if recipe.dish_type_set_by is not None:
+            report.by_hand += 1
+            continue
+
         categories = list(recipe.source_categories or [])
         for label in categories:
             if label not in mapping.examined:

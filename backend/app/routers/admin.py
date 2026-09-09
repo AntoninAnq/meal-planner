@@ -18,6 +18,7 @@ not.
 
 from __future__ import annotations
 
+import uuid
 from datetime import UTC, datetime
 from typing import Annotated
 
@@ -27,9 +28,9 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.auth.deps import CurrentOperator, CurrentOwner
-from app.db.models import HouseholdAccess, Operator
+from app.db.models import HouseholdAccess, Ingredient, Operator, Recipe, RecipeIngredient
 from app.db.session import get_db
-from app.domain.enums import OperatorLevel
+from app.domain.enums import DishType, OperatorLevel
 from app.domain.support_code import looks_like_code, normalise, support_code
 
 DbDep = Annotated[Session, Depends(get_db)]
@@ -136,3 +137,117 @@ def revoke(auth_subject: str, db: DbDep, owner: CurrentOwner) -> None:
 
     db.delete(operator)
     db.commit()
+
+
+# -- The retagging queue ----------------------------------------------------
+#
+# The reason the back office exists. `Tartes, Clafoutis` groups an onion tart
+# with a strawberry one, so `db/dish_types.yaml` maps it to nothing on purpose
+# and its recipes stay untyped — which is how a dessert tart came to be offered
+# for a Thursday dinner. No rubric rule can be right for both; a person reading
+# one title can.
+
+#: How many the queue hands over at once. Enough to keep working without
+#: refetching, short enough that a decision made now is on a row still on
+#: screen.
+QUEUE_PAGE = 25
+
+#: What the ingredient list shows. Sweet or savoury is usually settled by the
+#: first few, and a full list would turn a one-second judgement into reading.
+INGREDIENTS_SHOWN = 8
+
+
+class ToTypeOut(BaseModel):
+    """One recipe, with what is needed to judge it and nothing more."""
+
+    id: uuid.UUID
+    title: str
+    #: The rubric its source published. Usually the reason it is here: either
+    #: absent, or one the mapping deliberately refuses to read.
+    source_categories: list[str]
+    source_url: str | None
+    minutes: int | None
+    ingredients: list[str]
+
+
+class TypeDecision(BaseModel):
+    dish_type: DishType
+
+
+@router.get("/recipes/untyped", response_model=list[ToTypeOut])
+def untyped(db: DbDep, operator: CurrentOperator) -> list[ToTypeOut]:
+    """Recipes a meal slot may currently be offered, that nobody has classified.
+
+    Withdrawn sources are out: a judgement spent on a site that answers 404
+    buys nothing (0013). Verified recipes come first — they are the ones that
+    reach a household with an allergy today, so a wrong type there costs the
+    most.
+    """
+    recipes = list(
+        db.scalars(
+            select(Recipe)
+            .where(Recipe.deprecated_at.is_(None), Recipe.dish_type.is_(None))
+            .order_by(Recipe.allergens_verified.desc(), Recipe.title)
+            .limit(QUEUE_PAGE)
+        )
+    )
+    if not recipes:
+        return []
+
+    lines: dict[uuid.UUID, list[str]] = {}
+    for recipe_id, name in db.execute(
+        select(RecipeIngredient.recipe_id, Ingredient.canonical_name)
+        .join(Ingredient, Ingredient.id == RecipeIngredient.ingredient_id)
+        .where(RecipeIngredient.recipe_id.in_([r.id for r in recipes]))
+        .order_by(RecipeIngredient.position)
+    ).all():
+        lines.setdefault(recipe_id, []).append(name)
+
+    return [
+        ToTypeOut(
+            id=recipe.id,
+            title=recipe.title,
+            source_categories=list(recipe.source_categories or []),
+            source_url=recipe.source_url,
+            minutes=(
+                (recipe.prep_minutes or 0) + (recipe.cook_minutes or 0)
+                if recipe.prep_minutes is not None or recipe.cook_minutes is not None
+                else None
+            ),
+            ingredients=lines.get(recipe.id, [])[:INGREDIENTS_SHOWN],
+        )
+        for recipe in recipes
+    ]
+
+
+@router.put("/recipes/{recipe_id}/dish-type", response_model=ToTypeOut)
+def set_dish_type(
+    recipe_id: uuid.UUID, payload: TypeDecision, db: DbDep, operator: CurrentOperator
+) -> ToTypeOut:
+    """Record a person's decision, and who made it.
+
+    `dish_type_set_by` is what stops `catalog dish-types` from overwriting this
+    on its next run — that pass rewrites every recipe from the rubric mapping,
+    which is the property that makes a mapping change correctable and the one
+    that would erase this work.
+
+    A contributor may do this: it is the work the back office exists to
+    delegate, it is reversible, and it hurts nobody.
+    """
+    recipe = db.get(Recipe, recipe_id)
+    if recipe is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "no such recipe")
+
+    recipe.dish_type = payload.dish_type
+    recipe.dish_type_set_by = operator.auth_subject
+    recipe.dish_type_set_at = datetime.now(UTC)
+    db.commit()
+
+    return ToTypeOut(
+        id=recipe.id,
+        title=recipe.title,
+        source_categories=list(recipe.source_categories or []),
+        source_url=recipe.source_url,
+        minutes=None,
+        ingredients=[],
+    )

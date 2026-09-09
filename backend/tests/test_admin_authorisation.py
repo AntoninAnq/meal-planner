@@ -101,15 +101,36 @@ def _dependencies_of(call: object) -> set[object]:
     return found
 
 
-def test_writing_routes_require_an_owner() -> None:
-    """Granting and revoking are privilege escalation, and stay behind `owner`.
+#: Routes that change WHO MAY OPERATE. Not "every write": retagging a recipe is
+#: a write, and it is the exact work the back office exists to delegate.
+PRIVILEGE_PREFIX = "/admin/operators"
+
+
+def test_changing_who_may_operate_requires_an_owner() -> None:
+    """The one asymmetry the two levels encode.
 
     A contributor who could grant could make themselves an owner, or remove the
-    person who invited them — the exact reason the two levels exist. Reading the
-    list stays open to any operator: someone changing the catalogue should be
-    able to see who else can.
+    person who invited them. Reading the list stays open to any operator:
+    someone changing the catalogue should see who else can.
     """
     for route in _admin_routes():
-        methods = getattr(route, "methods", set())
-        if methods & {"POST", "PUT", "PATCH", "DELETE"}:
+        if not route.path.startswith(PRIVILEGE_PREFIX):  # type: ignore[attr-defined]
+            continue
+        if getattr(route, "methods", set()) & {"POST", "PUT", "PATCH", "DELETE"}:
             assert current_owner in _dependencies(route), route.path  # type: ignore[attr-defined]
+
+
+def test_catalogue_work_does_not_require_an_owner() -> None:
+    """Otherwise the two levels buy nothing.
+
+    The whole point of a contributor is that they can retag without being
+    handed the keys; a queue only an owner can work is a queue with one worker.
+    """
+    catalogue = [
+        route
+        for route in _admin_routes()
+        if not route.path.startswith(PRIVILEGE_PREFIX)  # type: ignore[attr-defined]
+    ]
+    assert catalogue, "no catalogue route to check"
+    for route in catalogue:
+        assert current_owner not in _dependencies(route), route.path  # type: ignore[attr-defined]

@@ -780,6 +780,20 @@ class Recipe(Base):
     #: 111 of the 555 verified recipes carry no rubric at all — and the
     #: pre-filter lets NULL through. A quality signal, never a safety one.
     dish_type: Mapped[DishType | None] = mapped_column(dish_type_enum, index=True)
+    #: Set when a PERSON decided this dish type, and the reason the pipeline
+    #: cannot undo them.
+    #:
+    #: `catalog dish-types` is idempotent and rewrites `dish_type` for every
+    #: recipe from the rubric mapping — so without this, the next run would
+    #: erase every manual decision, silently, and the back office would be a
+    #: machine for producing work that disappears. `derive` skips any recipe
+    #: whose type a human set.
+    #:
+    #: Which is also why the back office exists: `Tartes, Clafoutis` groups an
+    #: onion tart with a strawberry one, so no rubric mapping can be right for
+    #: both, and only a person looking at one recipe can tell them apart.
+    dish_type_set_by: Mapped[str | None] = mapped_column(String(255))
+    dish_type_set_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     #: A count, not the steps. Counting is a fact; the text is the author's (I9).
     step_count: Mapped[int | None] = mapped_column(SmallInteger)
 
