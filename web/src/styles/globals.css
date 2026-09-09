@@ -16,7 +16,12 @@
   --color-border: oklch(89% 0.008 85);
   --color-border-strong: oklch(78% 0.01 85);
 
+  /* Four levels, and the middle one is the most used: a six-line paragraph set
+   * in `ink` reads as heavy as its own heading, and `ink-muted` only just
+   * clears 4.5:1 at 14px. `ink-body` is the rung the scale was missing —
+   * heading 24% → body 38% → secondary 52% → mention 66%. */
   --color-ink: oklch(24% 0.012 60);
+  --color-ink-body: oklch(38% 0.012 60);
   --color-ink-muted: oklch(52% 0.012 70);
   --color-ink-faint: oklch(66% 0.01 75);
 
@@ -24,6 +29,14 @@
   --color-accent-hover: oklch(46% 0.11 155);
   --color-accent-soft: oklch(94% 0.04 155);
   --color-accent-ink: oklch(100% 0 0);
+  /* Green text on white, for the inverse button sitting on an accent band:
+   * `accent` misses 4.5:1 at 15px, and `accent-hover` already means hover and
+   * must not mean two things. */
+  --color-accent-strong: oklch(40% 0.11 155);
+
+  /* Guests. Deliberately not `danger`, which stays reserved below: an
+   * invitation is an event, not a warning. */
+  --color-guest: oklch(52% 0.12 40);
 
   /* Reserved for the allergen notice and destructive actions. Deliberately
    * scarce: if warnings are everywhere, none of them is read. */
