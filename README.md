@@ -102,6 +102,7 @@ Trois choses qu'un exploitant a besoin de faire, et aucune n'a d'endpoint :
 
 ```bash
 docker compose run --rm api python -m app.admin list              # qui est là, et qui dépense
+docker compose run --rm api python -m app.admin find 335C-58F8    # le foyer derrière un code de support
 docker compose run --rm api python -m app.admin revoke  google:…  # couper un accès
 docker compose run --rm api python -m app.admin restore google:…  # le rétablir
 docker compose run --rm api python -m app.admin limit <foyer> 500 # plafond propre au foyer
@@ -116,6 +117,13 @@ verbes les plus dangereux du système n'ont ainsi aucun endpoint à mal garder.
 `list` identifie les gens par leur `auth_subject` parce que rien d'autre ne les
 identifie : `household_access` ne stocke pas d'e-mail, volontairement. On ne peut
 donc pas blacklister une adresse — il faudrait commencer à en conserver une.
+
+Un foyer qui signale un bug donne son **code de support**, affiché dans son écran
+Réglages et dérivé de son propre identifiant : rien de nouveau n'est stocké, et
+`find` accepte ce que la personne a dicté, tiret ou pas, casse quelconque. Le
+code n'est pas un secret et n'autorise rien — l'autorisation passe par le cookie
+de session. C'est la seule façon d'identifier un compte gratuit, qui ne paie donc
+rien et n'apparaît chez aucun prestataire.
 
 Trois sanctions, de la plus douce à la plus dure : `limit <foyer> 0` arrête la
 dépense en laissant les semaines déjà générées lisibles ; un plafond bas freine

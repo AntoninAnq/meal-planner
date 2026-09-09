@@ -34,6 +34,11 @@ export type AllergenCode = (typeof ALLERGEN_CODES)[number];
 export type Household = {
   id: string;
   name: string;
+  /** What this household reads out when it reports a bug — the head of its own
+   * id, made readable. Computed server-side so the screen and the operator's
+   * `admin find` cannot disagree about the format. Not a credential: nothing
+   * is authorised by knowing it. */
+  support_code: string;
 };
 
 export type HouseholdSettings = {

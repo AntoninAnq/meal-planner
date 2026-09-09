@@ -269,6 +269,8 @@
     },
     "otherHeading": "Other",
     "snacks": "Also suggest an afternoon snack",
-    "snacksHint": "No effect in V0: the snack is a distinct object, planned for later."
+    "snacksHint": "No effect in V0: the snack is a distinct object, planned for later.",
+    "supportHeading": "Your household code",
+    "supportHint": "Quote it if you report a problem: it is how we find your week. It is not a secret and it grants access to nothing."
   }
 }

@@ -51,6 +51,18 @@ export default async function SettingsPage({
         slots={slots ?? []}
       />
 
+      {/* The one thing that makes a bug report actionable. Nothing else here
+          identifies a household to the operator: no email is stored, and the
+          household name is neither unique nor stable. Shown rather than asked
+          for — the alternative was to start keeping an address. */}
+      <section className="border-t border-border pt-6">
+        <h2 className="text-sm font-medium">{t("supportHeading")}</h2>
+        <p className="mt-1 text-sm text-ink-muted text-pretty">{t("supportHint")}</p>
+        <p className="mt-2.5 font-mono text-lg font-semibold tracking-[0.08em] select-all">
+          {household.support_code}
+        </p>
+      </section>
+
       {/* Last, and set apart. Signing out is where every product puts it, and
           putting it in the week's navigation instead would sit it between
           "previous week" and "next week" — one misplaced tap from a household

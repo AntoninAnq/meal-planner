@@ -15,6 +15,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.db.models import GenerationLog, Household, HouseholdAccess, Member
+from app.domain.support_code import looks_like_code, normalise, support_code
 
 
 class UnknownSubject(LookupError):
@@ -36,6 +37,7 @@ class Row:
     """
 
     household_id: uuid.UUID
+    code: str
     name: str
     members: int
     subjects: tuple[str, ...]
@@ -74,6 +76,7 @@ def survey(db: Session, *, window_hours: int) -> list[Row]:
     rows = [
         Row(
             household_id=household.id,
+            code=support_code(household.id),
             name=household.name,
             members=members.get(household.id, 0),
             subjects=tuple(
@@ -89,6 +92,20 @@ def survey(db: Session, *, window_hours: int) -> list[Row]:
     ]
     rows.sort(key=lambda row: (-row.calls_in_window, row.name))
     return rows
+
+
+def find(db: Session, code: str) -> list[Row]:
+    """The households a support code points at.
+
+    A list and not one row: the code is eight hex characters, so two households
+    can in principle share one. Showing both is the honest answer — guessing
+    would have the operator act on the wrong account, which is worse than
+    asking one more question.
+    """
+    if not looks_like_code(code):
+        raise ValueError(f"{code!r} is not a support code — expected eight hex characters")
+    wanted = normalise(code)
+    return [row for row in survey(db, window_hours=24) if normalise(row.code) == wanted]
 
 
 def revoke(db: Session, auth_subject: str) -> None:

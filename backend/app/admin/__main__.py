@@ -14,6 +14,7 @@ from collections.abc import Sequence
 from app.admin.actions import (
     UnknownHousehold,
     UnknownSubject,
+    find,
     restore,
     revoke,
     set_limit,
@@ -31,6 +32,12 @@ def build_parser() -> argparse.ArgumentParser:
     sub = parser.add_subparsers(dest="command", required=True)
 
     sub.add_parser("list", help="every household, ordered by recent model calls")
+
+    locate = sub.add_parser(
+        "find",
+        help="the household behind a support code, as printed in its Réglages screen",
+    )
+    locate.add_argument("code", help="eight hex characters, e.g. 335C-58F8; dashes optional")
 
     for name, help_text in (
         ("revoke", "cut an identity off; it stays recognised and cannot re-register"),
@@ -62,14 +69,20 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     with get_session_factory()() as db:
         try:
-            if args.command == "list":
-                rows = survey(db, window_hours=settings.generation_window_hours)
+            if args.command in {"list", "find"}:
+                if args.command == "find":
+                    rows = find(db, args.code)
+                    if not rows:
+                        print(f"No household with support code {args.code}.", file=sys.stderr)
+                        return 1
+                else:
+                    rows = survey(db, window_hours=settings.generation_window_hours)
                 if not rows:
                     print("No household on this instance.")
                     return 0
                 print(
-                    f"{'household':38} {'name':22} {'mbr':>3} {'calls':>5} "
-                    f"{'limit':>6}  identities"
+                    f"{'code':10} {'household':38} {'name':22} {'mbr':>3} "
+                    f"{'calls':>5} {'limit':>6}  identities"
                 )
                 for row in rows:
                     ceiling = (
@@ -79,8 +92,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                     if row.revoked:
                         identities += f"  [revoked: {', '.join(row.revoked)}]"
                     print(
-                        f"{row.household_id!s:38} {row.name[:22]:22} {row.members:>3} "
-                        f"{row.calls_in_window:>5} {ceiling:>6}  {identities}"
+                        f"{row.code:10} {row.household_id!s:38} {row.name[:22]:22} "
+                        f"{row.members:>3} {row.calls_in_window:>5} {ceiling:>6}  {identities}"
                     )
                 print(
                     f"\nCalls counted over the last {settings.generation_window_hours} h. "

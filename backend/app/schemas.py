@@ -10,9 +10,10 @@ import uuid
 from datetime import date, datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, computed_field
 
 from app.domain.enums import AllergenCode, ConstraintSeverity, DishSource, LifeStage, MealType
+from app.domain.support_code import support_code
 
 
 class HouseholdOut(BaseModel):
@@ -20,6 +21,17 @@ class HouseholdOut(BaseModel):
 
     id: uuid.UUID
     name: str
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def support_code(self) -> str:
+        """What the household reads out when it reports a bug.
+
+        Computed here rather than in the browser so there is one definition of
+        the format: the operator's `admin find` and the screen the user is
+        reading from must not be able to disagree about what a code looks like.
+        """
+        return support_code(self.id)
 
 
 class HouseholdUpdate(BaseModel):
