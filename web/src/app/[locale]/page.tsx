@@ -55,6 +55,26 @@ export default async function HomePage({
   return <Week household={household} locale={locale} searchParams={searchParams} />;
 }
 
+/** The same sentence, trimmed for the narrow layout.
+ *
+ * Both are in the markup and CSS chooses; `hidden` is `display:none`, which
+ * takes the other out of the accessibility tree as well, so a screen reader
+ * hears one sentence and not two.
+ *
+ * Two strings rather than one truncated at a width, because what the short
+ * version drops is a whole clause. `body` loses "Il ne reste qu'à dire si ça
+ * vous va" — the sentence that lands the promise, and worth its line on a wide
+ * screen where the eye has already taken the rest in. Cutting by character
+ * count would have removed half of it. */
+function Trimmed({ short, full, className }: { short: string; full: string; className?: string }) {
+  return (
+    <>
+      <p className={cx(className, "lg:hidden")}>{short}</p>
+      <p className={cx(className, "hidden lg:block")}>{full}</p>
+    </>
+  );
+}
+
 /** Every band lines its content up on the same 1152px column, with 64px
  * gutters on the desktop layout and 20px on the narrow one. The bands
  * themselves run full-bleed, because two of them are tinted. */
@@ -102,9 +122,11 @@ async function SignIn() {
               {t("heading")}
             </h1>
 
-            <p className="mt-4 text-[15.5px] leading-[1.55] text-ink-body text-pretty lg:mt-[22px] lg:max-w-[46ch] lg:text-[17px]">
-              {t("body")}
-            </p>
+            <Trimmed
+              short={t("bodyShort")}
+              full={t("body")}
+              className="mt-4 text-[15.5px] leading-[1.55] text-ink-body text-pretty lg:mt-[22px] lg:max-w-[46ch] lg:text-[17px]"
+            />
 
             <div className="mt-[26px] flex w-full flex-col lg:mt-8 lg:w-auto lg:flex-row lg:items-center lg:gap-4">
               {/* A real browser navigation, not a Next.js route: `/api/*` is
@@ -162,9 +184,11 @@ async function SignIn() {
               <p className="mt-[7px] text-base font-semibold lg:mt-[9px] lg:text-[17px]">
                 {t(`step${step}Title`)}
               </p>
-              <p className="mt-1.5 text-sm leading-[1.55] text-ink-body text-pretty lg:mt-[7px]">
-                {t(`step${step}Body`)}
-              </p>
+              <Trimmed
+                short={t(`step${step}BodyShort`)}
+                full={t(`step${step}Body`)}
+                className="mt-1.5 text-sm leading-[1.55] text-ink-body text-pretty lg:mt-[7px]"
+              />
             </div>
           ))}
         </div>

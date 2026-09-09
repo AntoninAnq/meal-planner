@@ -28,7 +28,11 @@
     "step3Body": "Refusez un plat en disant pourquoi : la raison devient une contrainte, et la question ne revient plus.",
     "guestsLead": "Et quand on reçoit.",
     "guestsBody": "Six personnes samedi soir, dont deux enfants de quatre ans : dites-le, et le repas est calculé pour eux aussi — quantités comprises.",
-    "ctaHeading": "Prêt à voir votre semaine ?"
+    "ctaHeading": "Prêt à voir votre semaine ?",
+    "bodyShort": "Qui mange ici, les allergies, ce qu'on n'aime pas : vous le dites une fois. Ensuite la semaine arrive déjà remplie — sept jours, midi et soir.",
+    "step1BodyShort": "Les prénoms, les âges, les allergies, les aliments boudés. Ensuite on n'y revient plus.",
+    "step2BodyShort": "Sept jours, midi et soir, proposés d'un coup. Plus de décision à 18 h.",
+    "step3BodyShort": "Refusez un plat en disant pourquoi : la question ne revient plus."
   },
   "common": {
     "add": "Ajouter",

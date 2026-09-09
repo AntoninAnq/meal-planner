@@ -28,7 +28,11 @@
     "step3Body": "Turn a dish down and say why: the reason becomes a constraint, and the question stops coming back.",
     "guestsLead": "And when you have people over.",
     "guestsBody": "Six on Saturday evening, two of them four-year-olds: say so, and the meal is worked out for them as well — quantities included.",
-    "ctaHeading": "Ready to see your week?"
+    "ctaHeading": "Ready to see your week?",
+    "bodyShort": "Who eats here, the allergies, what nobody likes: you say it once. After that the week turns up already filled in — seven days, lunch and dinner.",
+    "step1BodyShort": "The names, the ages, the allergies, the foods nobody touches. After that you never go back to it.",
+    "step2BodyShort": "Seven days, lunch and dinner, proposed in one go. No more deciding at six in the evening.",
+    "step3BodyShort": "Turn a dish down and say why: the question stops coming back."
   },
   "common": {
     "add": "Add",
