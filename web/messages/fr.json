@@ -301,6 +301,8 @@
     "source": "voir la recette",
     "shortcut": "Choisissez au clavier : touches 1 à 8.",
     "failed": "L'enregistrement a échoué. Réessayez.",
+    "back": "Retour à l’application",
+    "withdrawHint": "Si aucun type ne convient : lien mort, page qui n’est pas une recette.",
     "dishType": {
       "main": "Plat",
       "starter": "Entrée",

@@ -4,7 +4,7 @@ import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
-import { apiPut } from "@/lib/api/client";
+import { apiPost, apiPut } from "@/lib/api/client";
 import { cx } from "@/lib/cx";
 import type { DishType, RecipeToType } from "@/lib/api/types";
 
@@ -46,13 +46,13 @@ export function TypeQueue({ initial }: { initial: RecipeToType[] }) {
 
   const current = queue[0];
 
-  const decide = useCallback(
-    async (dishType: DishType) => {
+  const act = useCallback(
+    async (run: () => Promise<unknown>) => {
       if (!current || busy) return;
       setBusy(true);
       setFailed(false);
       try {
-        await apiPut(`/admin/recipes/${current.id}/dish-type`, { dish_type: dishType });
+        await run();
         setQueue((rest) => rest.slice(1));
       } catch {
         // The card stays. Advancing on a failed write would lose the decision
@@ -66,6 +66,15 @@ export function TypeQueue({ initial }: { initial: RecipeToType[] }) {
     [current, busy],
   );
 
+  const decide = useCallback(
+    (dishType: DishType) => {
+      if (!current) return;
+      const id = current.id;
+      void act(() => apiPut(`/admin/recipes/${id}/dish-type`, { dish_type: dishType }));
+    },
+    [act, current],
+  );
+
   // Digits, because the hands never leave them. Ignored while typing anywhere
   // else, so the shortcut cannot fire from a field that does not exist yet.
   useEffect(() => {
@@ -75,7 +84,7 @@ export function TypeQueue({ initial }: { initial: RecipeToType[] }) {
       const index = Number(event.key) - 1;
       if (Number.isInteger(index) && index >= 0 && index < TYPES.length) {
         event.preventDefault();
-        void decide(TYPES[index]);
+        decide(TYPES[index]);
       }
     }
     window.addEventListener("keydown", onKey);
@@ -143,6 +152,27 @@ export function TypeQueue({ initial }: { initial: RecipeToType[] }) {
             {t(`dishType.${type}`)}
           </Button>
         ))}
+      </div>
+
+      {/* The ninth answer, and the one no digit reaches: some recipes have no
+          right type because they should not be offered at all — a dead link, a
+          title with no ingredients, an entry that is not a recipe. Without it
+          the only way out of the card is to give a wrong answer, and the queue
+          teaches the hands to do that. Kept off the keyboard and behind a rule,
+          because it is the one decision here a household sees the day after. */}
+      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-2 border-t border-border pt-4">
+        <Button
+          variant="danger"
+          disabled={busy}
+          onClick={() => {
+            if (!current) return;
+            const id = current.id;
+            void act(() => apiPost(`/admin/recipes/${id}/withdraw`, {}));
+          }}
+        >
+          {t("withdraw")}
+        </Button>
+        <p className="text-[13px] text-ink-muted">{t("withdrawHint")}</p>
       </div>
 
       <p className="text-[13px] text-ink-muted">{t("shortcut")}</p>

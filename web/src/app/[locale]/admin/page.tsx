@@ -45,8 +45,14 @@ export default async function AdminPage({
           <h1 className="text-2xl font-semibold">{t("heading")}</h1>
           <p className="mt-1.5 text-sm leading-[1.5] text-ink-muted text-pretty">{t("intro")}</p>
         </div>
-        <Link href="/" className="flex-none text-sm text-ink-muted hover:text-ink">
-          ←
+        {/* Named, not a bare arrow. The back office is a different place from
+            the application, reached by typing a URL, and an operator classifying
+            recipes for twenty minutes needs a way out that reads as one. */}
+        <Link
+          href="/"
+          className="flex-none rounded-control border border-border px-3 py-1.5 text-sm text-ink-muted transition-colors hover:bg-surface-sunken hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+        >
+          ← {t("back")}
         </Link>
       </header>
 

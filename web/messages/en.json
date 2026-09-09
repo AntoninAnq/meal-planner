@@ -301,6 +301,8 @@
     "source": "view recipe",
     "shortcut": "Choose with the keyboard: keys 1 to 8.",
     "failed": "Saving failed. Try again.",
+    "back": "Back to the application",
+    "withdrawHint": "When no type fits: a dead link, a page that is not a recipe.",
     "dishType": {
       "main": "Main",
       "starter": "Starter",
