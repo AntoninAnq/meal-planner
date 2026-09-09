@@ -143,7 +143,9 @@ GET  /            → la promesse et le bouton Google
 GET  /api/auth/logout → 405   (seul POST déconnecte — sinon une balise <img> suffit)
 ```
 
-> **Une configuration incohérente ne démarre pas**, et c'est voulu : `Settings` refuse un `APP_BASE_URL` en `https://` sans `ENVIRONMENT=prod` — le cas où le cookie de session partirait sans `Secure` alors que tout fonctionne par ailleurs —, un `SESSION_SECRET` de moins de 32 caractères, et des identifiants Google absents en prod. Si l'API ne démarre pas, son message dit laquelle des quatre.
+> **Une configuration incohérente ne démarre pas**, et c'est voulu. En prod, `Settings` refuse : un `APP_BASE_URL` en `https://` sans `ENVIRONMENT=prod` — le cas où le cookie partirait sans `Secure` alors que tout fonctionne par ailleurs —, un `SESSION_SECRET` de moins de 32 caractères, des identifiants Google absents, un `LLM_PROVIDER` **non défini** (il vaudrait `fake`, qui répond `{}` : des semaines vides pleines de violations, qui se lisent comme un modèle en panne), et `anthropic` sans `ANTHROPIC_API_KEY`. Si l'API ne démarre pas, son message dit lequel des cinq.
+>
+> **Déployer avant d'avoir la clé** reste possible : `LLM_PROVIDER=fake` explicitement. Écrit noir sur blanc c'est un choix, et le refus ne porte que sur le défaut implicite. La séquence déploiement → création de la clé → redéploiement ne demande **aucune modification de code** : le client LLM est construit à la première génération, pas au démarrage, et le redémarrage du conteneur suffit à prendre la nouvelle valeur.
 
 Puis, la seule requête à connaître par cœur — **ce que ça coûte vraiment** :
 

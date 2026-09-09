@@ -244,6 +244,25 @@ class Settings(BaseSettings):
                 # visitor clicks the one button on the page.
                 raise ValueError(f"missing in prod: {', '.join(missing)}")
 
+            # The IMPLICIT default, not the value. `fake` answers `{}` — valid
+            # JSON, an empty proposal — so a production instance that never got
+            # LLM_PROVIDER serves empty weeks full of violations, which reads as
+            # a broken model or a broken catalogue rather than a missing
+            # variable. Written down on purpose it stays allowed: deploying
+            # once without a key, to check sign-in before paying for anything,
+            # is a reasonable thing to want.
+            if self.llm_provider == "fake" and "llm_provider" not in self.model_fields_set:
+                raise ValueError(
+                    "LLM_PROVIDER is unset, so it defaults to 'fake' and every week "
+                    "would come out empty. Set LLM_PROVIDER=anthropic, or set it to "
+                    "'fake' explicitly if that is what you meant."
+                )
+
+            # The factory raises on this too — but only when the first visitor
+            # asks for a week, as a 500. Boot is the better moment.
+            if self.llm_provider == "anthropic" and not self.anthropic_api_key:
+                raise ValueError("LLM_PROVIDER=anthropic but ANTHROPIC_API_KEY is empty")
+
         return self
 
 
