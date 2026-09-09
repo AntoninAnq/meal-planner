@@ -3,7 +3,7 @@
 > **Statut** : document de phase. Il décrit l'interface de la **V0** (phase 0-bis) et
 > le contrat d'API qu'elle impose. Contrairement à `ARCHITECTURE.md`, il n'est pas
 > censé survivre au produit : la V1 le remplacera.
-> **Dernière révision** : 2026-08-07
+> **Dernière révision** : 2026-09-06
 
 `ARCHITECTURE.md` §10.3 pose que **l'UX définit le contrat d'API**. Ce fichier est
 l'application de ce principe : chaque décision d'interface y est suivie de ce
@@ -181,6 +181,50 @@ Ce que cet amendement ne remet pas en cause :
   créneau — même règle que les plats et les violations.
 
 L'interface affiche une pastille **« +6 invités »** sur la carte du créneau.
+
+### Amendement : l'invitation devient une entité, à côté du plan
+
+Le décompte anonyme ci-dessus reste un **cache d'affichage** — la génération le
+réécrit, il ne dit pas *qui* vient ni ce qu'ils ne mangent pas, et il ne survit
+pas à une régénération qui ne mentionnerait plus d'invités. Ce qu'un foyer fait
+réellement, c'est *décider* d'avoir du monde samedi soir, et vouloir retrouver
+cette décision quelques jours plus tard.
+
+On sort donc la saisie des invités **du panneau d'un créneau** (écran 5) et on
+en fait un **objet propre**, `invitation`, rangé **à côté du plan** :
+
+```
+invitation = { week_start, day_of_week, meal_type,
+               guests:   [{life_stage, count}],
+               dislikes: [texte libre] }
+```
+
+- **Un bouton dédié sur l'écran de la semaine** — « Créer une invitation » —
+  ouvre un `<dialog>` piloté par l'URL (`?week=…&invite=new`, ou `&invite=<id>`
+  en édition). On y choisit le jour et le repas, on liste les groupes d'invités,
+  on renseigne leurs goûts.
+- **C'est persisté côté serveur.** « Aucun stockage » ne visait que l'absence
+  d'entité *invité* : aucun `member`, rien de nominatif — un entier et une
+  énumération, comme avant. L'invitation, elle, doit se retrouver après un
+  rechargement ou depuis un autre appareil, donc c'est une ligne.
+- **Enregistrer, c'est demander le repas.** L'invitation est écrite d'abord —
+  c'est la partie qu'on retrouve — puis le **même `POST /meal-plans`** que la
+  semaine génère une proposition pour ce créneau, avec `guests` (portions) et
+  `dislikes` (signal souple, jamais un filtre allergène : les allergènes sortent
+  de ce formulaire, §4). Pas de second bouton « générer ».
+- **L'invitation survit à la génération, et réciproquement.** Régénérer le
+  repas, ou le vider, laisse l'invitation en place ; supprimer l'invitation
+  laisse le plat — il peut être très bien. Vider un créneau (tous ses plats)
+  est une action à part, `DELETE /meal-plans/{id}/slots/{slot}`, pour le cas où
+  un repas habituel doit céder la place.
+- **L'entité est volontairement autonome.** Un plan de table s'y accrochera plus
+  tard ; ce n'est pas un paramètre de génération, c'est un objet du foyer.
+
+> **Pourquoi pas rester un paramètre de la génération d'un créneau.** Un
+> paramètre ne se retrouve pas : il vit le temps d'un appel, il ne se rouvre
+> pas, et il ne peut rien porter de plus. Une réception a une existence propre —
+> on la prépare, on y revient, elle grossit — et c'est ce que l'écran doit
+> refléter.
 
 ---
 
@@ -571,6 +615,14 @@ GET  /meal-plans/{id}/dishes/{dish_id}/alternatives   → candidats écartés
 PUT  /meal-plans/{id}/dishes/{dish_id}                → remplacer
 POST /meal-plans/{id}/dishes/{dish_id}/regenerate     { reason }
 POST /meal-plans/{id}/dishes/{dish_id}/rating         { value }
+DELETE /meal-plans/{id}/slots/{day}-{meal_type}       → vider le créneau, → MealPlan
+
+# Invitations — à côté du plan, jamais dedans (§4)
+GET    /invitations?week_start=…   → [ Invitation ]
+POST   /invitations               { week_start, day_of_week, meal_type,
+                                    guests:[{life_stage,count}], dislikes? }
+                                  → Invitation   (crée, ou remplace celle du créneau)
+DELETE /invitations/{id}          → 204
 
 # Contraintes — plus imbriqué sous /members/{id}
 GET  /household/constraints
@@ -584,13 +636,22 @@ PATCH /household/settings      { snacks_enabled?, max_dishes_soft_limit?,
                                  onboarding_complete? }
 ```
 
-Quatre choix qui méritent leur justification :
+Cinq choix qui méritent leur justification :
 
 **Les alternatives passent par un endpoint dédié** plutôt que d'être embarquées
 dans la réponse de génération. L'intention du §6 était d'éviter une
 *régénération*, pas un aller-retour : une requête sans LLM répond en quelques
 dizaines de millisecondes. Les embarquer alourdirait la lecture du plan — celle
 dont la vue mobile a besoin — et les alternatives disparaîtraient au rechargement.
+
+**`/invitations` est un endpoint à part, et `/meal-plans` ne gagne pas de verbe
+« invités ».** L'invitation n'est pas une variante de la génération (§4) : c'est
+un objet du foyer, persisté, qu'on retrouve et qu'on rouvre, et auquel un plan
+de table s'accrochera. Le client l'écrit là, puis appelle le `POST /meal-plans`
+habituel avec `guests` et `dislikes` — la génération reste une seule opération
+paramétrée. `DELETE …/slots/{…}` vit à côté : vider un créneau (retirer tous ses
+plats pour laisser la place à une réception) ne régénère rien et ne touche ni
+l'invitation, ni les six autres jours.
 
 **Les contraintes sortent de `/members/{id}/constraints`.** Conséquence directe du
 §10 : une aversion peut n'avoir aucun membre, donc l'URL ne peut plus être
@@ -654,7 +715,8 @@ restent dans les logs, où ils servent au harness d'évaluation.
 | 2 | Onboarding | Membres, allergies, aversions — une page, trois blocs | `/onboarding` |
 | 3 | Semaine | Grille ou liste, basculable | `/?week=2026-08-10` |
 | 4 | Génération | Texte libre → interprétation confirmable → attente | **dans l'écran 3** |
-| 5 | Panneau créneau | Titre éditable, réparation dirigée, variantes, invités | `/?week=…&slot=3-dinner` |
+| 5 | Panneau créneau | Titre éditable, réparation dirigée, variantes, vider le créneau | `/?week=…&slot=3-dinner` |
+| 5b | Invitation | Jour + repas, groupes d'invités, goûts → enregistre puis génère | `/?week=…&invite=new` ou `&invite=<id>` |
 | 6 | Réglages | Foyer, membres, contraintes, créneaux | `/settings` |
 
 **L'écran 4 n'est pas un écran.** La génération vit **dans** l'écran de la semaine :
@@ -668,9 +730,18 @@ supplémentaire n'est nécessaire.
 L'attente s'affiche à la place de la grille, donc **là où le résultat va
 apparaître**, et non dans une fenêtre qui va disparaître.
 
-La génération **d'un seul créneau et le mode invités** ne passent pas par là : ils
-partent du panneau de l'écran 5, déjà ouvert sur le créneau concerné. Même
-endpoint, même code client, portée différente — exactement ce que décrit le §4.
+La génération **d'un seul créneau** ne passe pas par là : elle part du panneau de
+l'écran 5, déjà ouvert sur le créneau concerné. Même endpoint, même code client,
+portée différente — exactement ce que décrit le §4.
+
+**Les invités ont quitté l'écran 5.** Ce n'était pas une génération d'un genre
+particulier, c'était une réception — quelque chose qu'on décide, qu'on retrouve,
+qui grossira jusqu'au plan de table. Elle a donc son entrée à elle, un bouton
+« Créer une invitation » sur l'écran 3 qui ouvre l'écran 5b : on y choisit le
+jour et le repas, on liste les invités et leurs goûts, et **enregistrer écrit
+l'invitation puis appelle le même `POST /meal-plans`** pour le créneau visé.
+L'écran 5 garde, à la place, un **« Vider ce créneau »** — le repas habituel
+qu'on retire quand la réception prend sa place.
 
 **L'URL porte la semaine et le créneau ouvert.** Rechargement, retour arrière et
 lien partagé retombent sur le même état, et un `<dialog>` piloté par l'URL n'a pas

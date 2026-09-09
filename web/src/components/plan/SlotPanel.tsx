@@ -6,14 +6,12 @@ import { useEffect, useState } from "react";
 import { WaitingState } from "@/components/plan/WaitingState";
 import { Button } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
-import { Field, SelectField } from "@/components/ui/Field";
+import { Field } from "@/components/ui/Field";
 import { ListRow } from "@/components/ui/ListRow";
 import { useRouter } from "@/i18n/navigation";
-import { apiGet, apiPost, apiPut } from "@/lib/api/client";
+import { apiDelete, apiGet, apiPost, apiPut } from "@/lib/api/client";
 import { displayMessage } from "@/lib/api/error";
-import type { Alternative, Dish, GuestGroup, LifeStage, MealType } from "@/lib/api/types";
-
-const LIFE_STAGES: LifeStage[] = ["teen_adult", "young_child", "baby"];
+import type { Alternative, Dish, MealType } from "@/lib/api/types";
 
 /**
  * Screen 5, in a native `<dialog>` driven by the URL.
@@ -54,7 +52,6 @@ export function SlotPanel({
   const t = useTranslations("panel");
   const tCommon = useTranslations("common");
   const tMeal = useTranslations("mealType");
-  const tStage = useTranslations("lifeStage");
   //: The link back to the source is worded once, in `plan`, because the week
   //: view and this panel must not name the same thing two different ways.
   const tPlan = useTranslations("plan");
@@ -62,9 +59,6 @@ export function SlotPanel({
 
   const [labels, setLabels] = useState<Record<string, string>>({});
   const [reason, setReason] = useState("");
-  const [guests, setGuests] = useState<GuestGroup[]>([]);
-  const [guestStage, setGuestStage] = useState<LifeStage>("teen_adult");
-  const [guestCount, setGuestCount] = useState(2);
   const [startedAt, setStartedAt] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -98,7 +92,6 @@ export function SlotPanel({
     setStartedAt(null);
     setBusy(false);
     setReason("");
-    setGuests([]);
     router.refresh();
   }
 
@@ -147,19 +140,29 @@ export function SlotPanel({
       refresh();
     });
 
-  // Same endpoint as the week, a different scope. There is no guests endpoint:
-  // two endpoints sharing 90% of their logic always diverge.
+  // Same endpoint as the week, a different scope — filling an empty slot. The
+  // guests case moved out to its own flow (the invitation, screen 3): it needs
+  // a day and a meal chosen up front, and it is a thing the household keeps,
+  // not a knob on one meal's regeneration.
   const generateSlot = () =>
     act(async () => {
       setStartedAt(Date.now());
       await apiPost("/meal-plans", {
         scope: { type: "slot", day: date, meal_type: mealType },
-        guests,
         // A bare reason, with no interpretation step behind it — the API
         // accepts it as an `other` constraint.
         constraints: reason ? [{ kind: "other", label: reason, detail: null }] : [],
         language: locale,
       });
+      refresh();
+    });
+
+  // Empties the slot — every dish on it. A household that plans a meal as
+  // usual, then has people over, needs the habitual dish to give way; an empty
+  // slot is a valid state, a plan is a bank of suggestions (UX-V0 §1).
+  const clearSlot = () =>
+    act(async () => {
+      await apiDelete(`/meal-plans/${planId}/slots/${dayOfWeek}-${mealType}`);
       refresh();
     });
 
@@ -322,88 +325,19 @@ export function SlotPanel({
               )}
             </section>
 
-            <section className="flex flex-col gap-3 border-t border-border pt-5">
-              <div>
-                <h3 className="font-medium">{t("guestsHeading")}</h3>
-                {/* Transitory: adding your in-laws to the household because
-                    they are coming to dinner would skew anti-repetition and
-                    portions all year long. */}
-                <p className="text-sm text-ink-muted">{t("guestsHint")}</p>
-              </div>
-
-              {guests.length > 0 && (
-                <ul className="flex flex-col gap-1.5">
-                  {guests.map((group, index) => (
-                    <ListRow
-                      key={`${group.life_stage}-${index}`}
-                      action={
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          disabled={busy}
-                          onClick={() =>
-                            setGuests((current) => current.filter((_, i) => i !== index))
-                          }
-                        >
-                          {tCommon("remove")}
-                        </Button>
-                      }
-                    >
-                      {t("guestRow", { count: group.count, stage: tStage(group.life_stage) })}
-                    </ListRow>
-                  ))}
-                </ul>
-              )}
-
-              <div className="flex flex-wrap items-end gap-2">
-                <SelectField
-                  label={t("guestStage")}
-                  value={guestStage}
-                  onChange={(event) => setGuestStage(event.target.value as LifeStage)}
-                  wrapperClassName="min-w-36 flex-1"
-                >
-                  {LIFE_STAGES.map((stage) => (
-                    <option key={stage} value={stage}>
-                      {tStage(stage)}
-                    </option>
-                  ))}
-                </SelectField>
-                <Field
-                  label={t("guestCount")}
-                  type="number"
-                  min={1}
-                  max={20}
-                  value={guestCount}
-                  onChange={(event) => setGuestCount(Number(event.target.value))}
-                  wrapperClassName="w-24"
-                />
-                <Button
-                  disabled={busy}
-                  onClick={() =>
-                    setGuests((current) => [
-                      ...current,
-                      {
-                        life_stage: guestStage,
-                        count: Math.max(1, Math.min(20, guestCount)),
-                        excluded_allergens: [],
-                        dislikes: [],
-                      },
-                    ])
-                  }
-                >
-                  {tCommon("add")}
+            {dishes.length > 0 && planId && (
+              <section className="flex flex-col gap-3 border-t border-border pt-5">
+                <div>
+                  <h3 className="font-medium">{t("clearHeading")}</h3>
+                  {/* For when a habitual meal has to give way — people are
+                      coming over, and the invitation is composed on screen 3. */}
+                  <p className="text-sm text-ink-muted">{t("clearHint")}</p>
+                </div>
+                <Button variant="danger" disabled={busy} onClick={clearSlot}>
+                  {t("clearSlot")}
                 </Button>
-              </div>
-
-              {guests.length > 0 && (
-                <>
-                  <p className="text-xs text-ink-faint">{t("guestsNoGuarantee")}</p>
-                  <Button variant="primary" disabled={busy} onClick={generateSlot}>
-                    {t("generateWithGuests")}
-                  </Button>
-                </>
-              )}
-            </section>
+              </section>
+            )}
 
             {error && <p className="text-sm text-danger">{error}</p>}
           </>

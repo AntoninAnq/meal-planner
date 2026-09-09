@@ -27,7 +27,7 @@ from app.db.models import (
     RecipeSuitableStage,
 )
 from app.db.session import get_db
-from app.domain.enums import DishSource, GenerationKind, LifeStage
+from app.domain.enums import DishSource, GenerationKind, LifeStage, MealType
 from app.llm.base import LLMClient, LLMError, SchemaValidationError
 from app.llm.factory import get_llm_client
 from app.schemas import (
@@ -642,3 +642,67 @@ def rate_dish(
             )
         )
     db.commit()
+
+
+def _parse_slot(slot: str) -> tuple[int, MealType]:
+    """`"5-dinner"` → `(5, MealType.DINNER)`, the same key the grid uses.
+
+    Its own function so a malformed key is one `ValueError` the caller turns
+    into a 422, rather than an `IndexError` or a bare `KeyError` 500.
+    """
+    day, _, meal = slot.partition("-")
+    if not day.isdigit() or not (0 <= int(day) <= 6):
+        raise ValueError("slot day must be 0..6")
+    try:
+        return int(day), MealType(meal)
+    except ValueError:
+        raise ValueError("slot meal must be 'lunch' or 'dinner'") from None
+
+
+@router.delete("/{plan_id}/slots/{slot}", response_model=MealPlanOut)
+def clear_slot(
+    plan_id: uuid.UUID,
+    slot: str,
+    db: DbDep,
+    household_id: CurrentHousehold,
+) -> MealPlanOut:
+    """Empty one slot — every dish on it — without touching the rest of the week.
+
+    A household plans Saturday dinner as usual, then invites people over: the
+    habitual meal has to give way. Regenerating the week to drop one meal would
+    discard the six days that were fine (`UX-V0.md` §6), so the slot is cleared
+    in place and simply reads as empty afterwards — a plan is a bank of
+    suggestions, not a commitment (§1), and an empty slot is a valid state.
+
+    The invitation for this slot, if there is one, is left alone: it lives
+    beside the plan and outlives any one generation of the meal.
+    """
+    plan = db.get(MealPlan, plan_id)
+    if plan is None or plan.household_id != household_id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "plan not found")
+
+    try:
+        day_of_week, meal_type = _parse_slot(slot)
+    except ValueError as exc:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(exc)) from exc
+
+    for dish in db.scalars(
+        select(PlannedDish).where(
+            PlannedDish.meal_plan_id == plan.id,
+            PlannedDish.day_of_week == day_of_week,
+            PlannedDish.meal_type == meal_type,
+        )
+    ):
+        db.delete(dish)
+
+    # The display cache and this slot's own violations describe dishes that no
+    # longer exist. A plan-level violation carries no slot key and stays put.
+    key = f"{day_of_week}-{meal_type}"
+    plan.slot_guests = {k: v for k, v in (plan.slot_guests or {}).items() if k != key}
+    plan.violations = [
+        entry
+        for entry in (plan.violations or [])
+        if (entry.get("day_of_week"), entry.get("meal_type")) != (day_of_week, meal_type)
+    ]
+    db.commit()
+    return _serialise(db, db.get(MealPlan, plan_id))  # type: ignore[arg-type]

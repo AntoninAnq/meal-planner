@@ -337,3 +337,39 @@ class DishRegenerate(BaseModel):
 class DishRating(BaseModel):
     #: Rating a dish is also an implicit confirmation that it was eaten.
     value: int = Field(ge=-1, le=1)
+
+
+class GuestCount(BaseModel):
+    """One life stage and a head count. No member, nothing nominative."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    life_stage: LifeStage
+    count: int = Field(ge=1, le=20)
+
+
+class InvitationCreate(BaseModel):
+    """Creating — or replacing — the invitation on one slot.
+
+    There is no PATCH: the interface has a single edit form, and re-posting the
+    same slot overwrites it. `guests` cannot be empty — an invitation with
+    nobody coming is not a state worth storing.
+    """
+
+    week_start: date
+    day_of_week: int = Field(ge=0, le=6)
+    meal_type: MealType
+    guests: list[GuestCount] = Field(min_length=1)
+    #: Free text, one entry per dislike. A soft signal, never an exclusion.
+    dislikes: list[str] = Field(default_factory=list)
+
+
+class InvitationOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    week_start: date
+    day_of_week: int
+    meal_type: MealType
+    guests: list[GuestCount]
+    dislikes: list[str] = Field(default_factory=list)

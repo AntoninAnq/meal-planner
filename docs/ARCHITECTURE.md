@@ -71,7 +71,7 @@ Le code est en anglais. Ce glossaire fixe la traduction pour éviter toute déri
 | `dietary_constraint` | contrainte alimentaire | Allergie sévère, intolérance ou aversion, portée par un membre. |
 | `food_category` | catégorie alimentaire | Légumineuses, poisson, viande rouge, féculents, légumes verts… Sert à la rotation. |
 | `snack` | goûter | Objet distinct, **pas** un créneau de repas. Module optionnel. |
-| `guest_plan` | mode invités | Workflow séparé, réutilise les nœuds du workflow semaine. |
+| `invitation` | invitation | Une réception sur un créneau : jour, repas, groupes d'invités transitoires, goûts. **À côté du plan**, jamais dedans ; persistée, retrouvée, éditée. Support d'un futur plan de table. La génération du repas reste le `POST /meal-plans` paramétré. |
 
 > **Note d'internationalisation.** Le front démarre en français mais est i18n-ready dès la phase 0. Certains concepts sont franco-français (`snack` au sens du goûter à 16 h n'a pas d'équivalent anglo-saxon) : ils sont traités comme des **modules optionnels**, activables par foyer, jamais câblés dans le noyau. Une version anglaise demanderait aussi un **catalogue de recettes distinct**, pas seulement des libellés traduits.
 
@@ -737,11 +737,13 @@ Le contrat détaillé et sa justification sont dans **`UX-V0.md` §13** — c'es
 | `GET …/dishes/{id}/explanation` — appel LLM séparé | **V1** — en V0 il n'y aurait rien de réel à expliquer |
 | `GET`/`POST` `/household/constraints` — **pas** imbriqué sous un membre : une aversion peut n'en avoir aucun | V0 |
 | `GET`/`PATCH` `/household/settings` — goûter, limite souple de plats, et `onboarded_at` | V0 |
+| `DELETE /meal-plans/{id}/slots/{day}-{meal}` — vider un créneau (tous ses plats), sans rien régénérer | V0 |
+| `GET`/`POST`/`DELETE` `/invitations` — l'entité invitation, à côté du plan ; `POST` crée ou remplace celle du créneau | V0 |
 | `POST /meal-plans/snack` | Phase 3 |
 | `POST /meal-plans/leftover-rescue` | Phase 4 |
 | CRUD `households`, `members`, `recipes` | Phases 0-1 |
 
-> **Il n'y a pas d'endpoint « invités ».** Le mode invités est la même génération avec une portée d'un créneau et des convives transitoires. Deux endpoints partageant 90 % de leur logique divergent toujours : une correction appliquée à l'un, oubliée sur l'autre.
+> **Il n'y a pas d'endpoint de *génération* « invités ».** La génération reste une seule opération paramétrée : portée d'un créneau, convives transitoires. Deux endpoints de génération partageant 90 % de leur logique divergent toujours. L'`invitation`, elle, a son CRUD propre (`/invitations`) — c'est une entité du foyer qu'on retrouve et qu'on rouvre, pas une variante de la génération (`UX-V0.md` §4) : après l'avoir écrite, le client appelle le `POST /meal-plans` habituel.
 
 **Synchrone d'abord.** Bascule en asynchrone (job + polling/websocket) seulement si la latence mesurée le justifie. La règle « le LLM émet des identifiants » (§6.5) rend le synchrone tenable.
 

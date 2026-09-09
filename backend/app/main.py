@@ -11,7 +11,7 @@ from fastapi.exceptions import RequestValidationError
 
 from app.config import get_settings
 from app.errors import log_validation_error
-from app.routers import auth, constraints, households, meal_plans, members
+from app.routers import auth, constraints, households, invitations, meal_plans, members
 
 settings = get_settings()
 
@@ -41,4 +41,5 @@ app.include_router(auth.router)
 app.include_router(households.router)
 app.include_router(members.router)
 app.include_router(constraints.router)
+app.include_router(invitations.router)
 app.include_router(meal_plans.router)

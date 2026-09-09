@@ -409,6 +409,63 @@ class PlannedDishMemberRemoval(Base):
     assignment: Mapped[PlannedDishMember] = relationship(back_populates="removals")
 
 
+class Invitation(Base):
+    """A meal with guests, kept BESIDE the plan and never inside it.
+
+    Guests stay transitory — they never become members, because people who eat
+    here twice a year would otherwise skew anti-repetition, portions and stage
+    proposals all year long. `meal_plan.slot_guests` already carries an
+    anonymous head count for the interface; this is a different thing. An
+    invitation is something the household *created* and comes back to — Saturday
+    dinner with the in-laws, who is coming and what they will not eat — and it
+    outlives any one generation of that slot. Regenerating the meal, or clearing
+    it, leaves the invitation standing.
+
+    It is its own entity on purpose: a seating plan will hang off it later. The
+    generation reads `guests` for portions and `dislikes` as a soft signal, the
+    same way a household aversion nudges without excluding — nothing about a
+    guest is stored beyond the count and those free-text tastes.
+    """
+
+    __tablename__ = "invitation"
+    __table_args__ = (
+        CheckConstraint("day_of_week BETWEEN 0 AND 6", name="ck_invitation_day"),
+        # One invitation per slot: "the Saturday dinner", not a list of them.
+        # Re-creating it for the same slot replaces it, which is what the
+        # interface's single edit form expects to find.
+        UniqueConstraint(
+            "household_id",
+            "week_start",
+            "day_of_week",
+            "meal_type",
+            name="uq_invitation_slot",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = _pk()
+    household_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("household.id", ondelete="CASCADE"), index=True
+    )
+    week_start: Mapped[date] = mapped_column(Date)
+    day_of_week: Mapped[int] = mapped_column(SmallInteger)
+    meal_type: Mapped[MealType] = mapped_column(meal_type_enum)
+    #: `[{"life_stage": "teen_adult", "count": 6}]` — the same shape as
+    #: `meal_plan.slot_guests`, read for portions at generation time. Never a
+    #: member, never anything nominative: a number and an enum.
+    guests: Mapped[list[dict[str, object]]] = mapped_column(
+        JSONB, default=list, server_default=text("'[]'::jsonb")
+    )
+    #: The guests' tastes, free text, one entry per dislike. A soft signal like a
+    #: household aversion: it nudges the suggestion, it never excludes a dish.
+    dislikes: Mapped[list[str]] = mapped_column(
+        JSONB, default=list, server_default=text("'[]'::jsonb")
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+
 class MealHistory(Base):
     """What was actually eaten, per member.
 

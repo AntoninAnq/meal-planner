@@ -1,13 +1,22 @@
-import { getTranslations, setRequestLocale } from "next-intl/server";
+import { getFormatter, getTranslations, setRequestLocale } from "next-intl/server";
 import { cookies } from "next/headers";
 
+import { InvitationPanel } from "@/components/plan/InvitationPanel";
 import { WeekBoard } from "@/components/plan/WeekBoard";
 import { SlotPanel } from "@/components/plan/SlotPanel";
 import { DayList, WeekGrid, type WeekViewProps } from "@/components/plan/WeekViews";
+import { ListRow } from "@/components/ui/ListRow";
 import { Link, redirect } from "@/i18n/navigation";
 import { apiGet } from "@/lib/api/server";
 import { cx } from "@/lib/cx";
-import type { Household, HouseholdSettings, MealPlan, MealSlot, Member } from "@/lib/api/types";
+import type {
+  Household,
+  HouseholdSettings,
+  Invitation,
+  MealPlan,
+  MealSlot,
+  Member,
+} from "@/lib/api/types";
 import { parseSlotKey, slotKey, slotsByKey, violationsByKey } from "@/lib/plan";
 import { addDays, mondayOf, resolveWeek, weekDates } from "@/lib/week";
 import { resolveView, VIEW_COOKIE } from "@/lib/week-view";
@@ -298,18 +307,23 @@ async function Week({
   searchParams: Search;
 }) {
   const t = await getTranslations("plan");
+  const tInv = await getTranslations("invitation");
+  const tMeal = await getTranslations("mealType");
+  const format = await getFormatter();
   const search = await searchParams;
 
   const today = new Date().toISOString().slice(0, 10);
   const weekStart = resolveWeek(search.week, today);
+  const dates = weekDates(weekStart);
 
   // The view loads the plan itself rather than displaying the response of the
   // generation POST. That is what makes a lost response survivable: the plan
   // was written before the endpoint replied, so a reload recovers it.
-  const [plan, members, enabledSlots] = await Promise.all([
+  const [plan, members, enabledSlots, invitations] = await Promise.all([
     apiGet<MealPlan | null>(`/meal-plans?week_start=${weekStart}`),
     apiGet<Member[]>("/members"),
     apiGet<MealSlot[]>("/household/slots"),
+    apiGet<Invitation[]>(`/invitations?week_start=${weekStart}`),
   ]);
 
   const memberNames = Object.fromEntries(
@@ -333,6 +347,18 @@ async function Week({
   const openSlot = parseSlotKey(
     Array.isArray(search.slot) ? (search.slot[0] ?? "") : (search.slot ?? ""),
   );
+
+  // Same story for the invitation panel: `invite=new` to create, `invite=<id>`
+  // to edit one. An id that matches nothing leaves it shut.
+  const inviteParam = Array.isArray(search.invite) ? search.invite[0] : search.invite;
+  const editInvitation =
+    inviteParam && inviteParam !== "new"
+      ? ((invitations ?? []).find((invitation) => invitation.id === inviteParam) ?? null)
+      : null;
+  const inviteOpen = inviteParam === "new" || editInvitation !== null;
+
+  const totalGuests = (invitation: Invitation) =>
+    invitation.guests.reduce((count, group) => count + group.count, 0);
 
   return (
     <main className="mx-auto flex max-w-5xl flex-col gap-6 px-5 py-8">
@@ -358,6 +384,12 @@ async function Week({
             className="rounded-control px-2 py-1 text-ink-muted hover:bg-surface-sunken hover:text-ink"
           >
             {t("settings")}
+          </Link>
+          <Link
+            href={{ pathname: "/", query: { week: weekStart, invite: "new" } }}
+            className="rounded-control px-2 py-1 text-ink-muted hover:bg-surface-sunken hover:text-ink"
+          >
+            {tInv("create")}
           </Link>
           <Link
             href={{ pathname: "/", query: { week: mondayOf(today) } }}
@@ -390,6 +422,38 @@ async function Week({
         list={<DayList {...viewProps} />}
       />
 
+      {/* Beside the plan, not part of it: an invitation outlives any one
+          generation of its slot, and a seating plan will hang off it later.
+          Only shown once there is one to find — the header link is the way in. */}
+      {(invitations ?? []).length > 0 && (
+        <section className="flex flex-col gap-2">
+          <h2 className="text-sm text-ink-muted">{tInv("sectionHeading")}</h2>
+          <ul className="flex flex-col gap-1.5">
+            {(invitations ?? []).map((invitation) => (
+              <ListRow
+                key={invitation.id}
+                action={
+                  <Link
+                    href={{ pathname: "/", query: { week: weekStart, invite: invitation.id } }}
+                    className="rounded-control px-2 py-1 text-sm text-ink-muted hover:bg-surface-sunken hover:text-ink"
+                  >
+                    {tInv("edit")}
+                  </Link>
+                }
+              >
+                <span className="capitalize">
+                  {format.dateTime(new Date(`${dates[invitation.day_of_week]}T12:00:00Z`), {
+                    weekday: "long",
+                  })}
+                </span>{" "}
+                {tMeal(invitation.meal_type).toLowerCase()} ·{" "}
+                {tInv("guestCount", { count: totalGuests(invitation) })}
+              </ListRow>
+            ))}
+          </ul>
+        </section>
+      )}
+
       {openSlot && (
         <SlotPanel
           open
@@ -402,6 +466,16 @@ async function Week({
             viewProps.slots.get(slotKey(openSlot.dayOfWeek, openSlot.mealType))?.dishes ?? []
           }
           memberNames={memberNames}
+          locale={locale}
+          expectedMs={EXPECTED_SECONDS * 1000}
+        />
+      )}
+
+      {inviteOpen && (
+        <InvitationPanel
+          open
+          weekStart={weekStart}
+          invitation={editInvitation}
           locale={locale}
           expectedMs={EXPECTED_SECONDS * 1000}
         />

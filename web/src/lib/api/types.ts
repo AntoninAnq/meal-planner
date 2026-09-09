@@ -196,6 +196,22 @@ export type GuestGroup = {
   dislikes: string[];
 };
 
+/** A meal with guests, kept beside the plan and never inside it (§4).
+ *
+ * Guests stay transitory — no member, nothing nominative, a count and a life
+ * stage — but unlike `SlotGuests`, which the generation rewrites as a display
+ * cache, an invitation is something the household created and comes back to. It
+ * survives a regeneration or a cleared slot. `dislikes` is a soft signal, like
+ * a household aversion: it nudges the suggestion, it never excludes a dish. */
+export type Invitation = {
+  id: string;
+  week_start: string;
+  day_of_week: number;
+  meal_type: MealType;
+  guests: SlotGuests[];
+  dislikes: string[];
+};
+
 export type GeneratePlanRequest = {
   scope: WeekScope | SlotScope;
   member_ids?: string[] | null;
