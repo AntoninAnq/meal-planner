@@ -7,7 +7,7 @@ import type { ReactNode } from "react";
 import { Composer } from "@/components/plan/Composer";
 import { GenerationError, WaitingState } from "@/components/plan/WaitingState";
 import { Button } from "@/components/ui/Button";
-import { useRouter } from "@/i18n/navigation";
+import { Link, useRouter } from "@/i18n/navigation";
 import { apiGet, apiPost } from "@/lib/api/client";
 import { displayMessage } from "@/lib/api/error";
 import type { InterpretedConstraint, MealPlan, Violation } from "@/lib/api/types";
@@ -49,6 +49,7 @@ export function WeekBoard({
 }) {
   const t = useTranslations("plan");
   const tCommon = useTranslations("common");
+  const tInv = useTranslations("invitation");
   const router = useRouter();
 
   const [view, setView] = useState<ViewMode>(initialView);
@@ -159,7 +160,26 @@ export function WeekBoard({
         </div>
       </div>
 
-      <Composer hasPlan={hasPlan} busy={busy} onGenerate={generate} />
+      <Composer
+        hasPlan={hasPlan}
+        busy={busy}
+        onGenerate={generate}
+        inviteAction={
+          // Geometry of `ui/Button.tsx`, variant secondary, reproduced because
+          // this is a link and that primitive renders a `<button>`.
+          <Link
+            href={{ pathname: "/", query: { week: weekStart, invite: "new" } }}
+            className={cx(
+              "inline-flex h-10 items-center justify-center rounded-control border border-border",
+              "bg-surface-raised px-4 text-sm font-medium text-ink transition-colors",
+              "hover:bg-surface-sunken focus-visible:outline-2 focus-visible:outline-offset-2",
+              "focus-visible:outline-accent",
+            )}
+          >
+            {tInv("create")}
+          </Link>
+        }
+      />
 
       {notPlanned.length > 0 && !busy && (
         <div role="note" className="rounded-card border border-border bg-surface-sunken px-4 py-3">

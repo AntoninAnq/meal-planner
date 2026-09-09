@@ -2,6 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { useState } from "react";
+import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/Spinner";
@@ -25,10 +26,17 @@ export function Composer({
   hasPlan,
   busy,
   onGenerate,
+  inviteAction,
 }: {
   hasPlan: boolean;
   busy: boolean;
   onGenerate: (constraints: InterpretedConstraint[]) => void;
+  /** The way into the invitation panel, passed in rather than built here: this
+   * component does no routing. It sits at the end of the generation row because
+   * having people over is the other thing one does to a week — it used to be a
+   * link in the top bar, among four others about which week you were looking
+   * at, which is not the same kind of act at all. */
+  inviteAction?: ReactNode;
 }) {
   const t = useTranslations("composer");
   const tCommon = useTranslations("common");
@@ -75,13 +83,16 @@ export function Composer({
 
   if (!open) {
     return (
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="w-full rounded-card border border-dashed border-border px-4 py-3 text-left text-sm text-ink-muted transition-colors hover:border-border-strong hover:text-ink"
-      >
-        {t("collapsed")}
-      </button>
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="min-w-0 flex-1 rounded-card border border-dashed border-border px-4 py-3 text-left text-sm text-ink-muted transition-colors hover:border-border-strong hover:text-ink"
+        >
+          {t("collapsed")}
+        </button>
+        {inviteAction}
+      </div>
     );
   }
 
@@ -152,6 +163,7 @@ export function Composer({
             {tCommon("cancel")}
           </Button>
         )}
+        {inviteAction && <div className="ml-auto">{inviteAction}</div>}
       </div>
     </div>
   );

@@ -312,7 +312,6 @@ async function Week({
   searchParams: Search;
 }) {
   const t = await getTranslations("plan");
-  const tInv = await getTranslations("invitation");
   const search = await searchParams;
 
   const today = new Date().toISOString().slice(0, 10);
@@ -384,12 +383,6 @@ async function Week({
             className="rounded-control px-2 py-1 text-ink-muted hover:bg-surface-sunken hover:text-ink"
           >
             {t("settings")}
-          </Link>
-          <Link
-            href={{ pathname: "/", query: { week: weekStart, invite: "new" } }}
-            className="rounded-control px-2 py-1 text-ink-muted hover:bg-surface-sunken hover:text-ink"
-          >
-            {tInv("create")}
           </Link>
           <Link
             href={{ pathname: "/", query: { week: mondayOf(today) } }}
