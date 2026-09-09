@@ -11,7 +11,7 @@ from datetime import UTC, date, datetime
 from typing import Annotated, NamedTuple
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.auth.deps import CurrentHousehold
@@ -24,10 +24,12 @@ from app.db.models import (
     PlannedDishMember,
     PlannedDishMemberRemoval,
     Recipe,
+    RecipeIngredient,
     RecipeSuitableStage,
 )
 from app.db.session import get_db
 from app.domain.enums import DishSource, GenerationKind, LifeStage, MealType
+from app.domain.shared_ingredients import pantry, shared_ingredient_links
 from app.llm.base import LLMClient, LLMError, SchemaValidationError
 from app.llm.factory import get_llm_client
 from app.schemas import (
@@ -192,6 +194,8 @@ def _serialise(db: Session, plan: MealPlan) -> MealPlanOut:
             minutes = (prep or 0) + (cook or 0) if (prep is not None or cook is not None) else None
             meta[recipe_id] = RecipeMeta(title, minutes, complexity, source_url)
 
+    shares_with = _shared_ingredient_links(db, dishes)
+
     slots: dict[tuple[int, str], PlanSlotOut] = {}
     for dish in dishes:
         key = (dish.day_of_week, dish.meal_type)
@@ -217,7 +221,7 @@ def _serialise(db: Session, plan: MealPlan) -> MealPlanOut:
                 minutes=about.minutes if about else None,
                 complexity=about.complexity if about else None,
                 source_url=about.source_url if about else None,
-                derived_from_dish_id=dish.derived_from_dish_id,
+                shares_ingredients_with=shares_with.get(dish.id),
                 eaters=[
                     DishEaterOut(
                         member_id=assignment.member_id,
@@ -390,6 +394,59 @@ def read_plan(
     """
     plan = load_plan(db, household_id, week_start)
     return _serialise(db, plan) if plan else None
+
+
+def _shared_ingredient_links(
+    db: Session, dishes: list[PlannedDish]
+) -> dict[uuid.UUID, uuid.UUID]:
+    """Which meals of this week are built on the same things.
+
+    Read here rather than stored: it is a pure function of the plan's recipes
+    and the catalogue, so a correction to either reaches every plan already
+    written, and no migration is needed to light it up on the weeks that exist.
+
+    Two queries, both cheap: the pantry census is a grouped scan of ~29 000
+    ingredient lines, and the second reads only the recipes on this plan.
+    """
+    by_recipe: dict[uuid.UUID, uuid.UUID] = {
+        dish.id: dish.recipe_id for dish in dishes if dish.recipe_id
+    }
+    if len(by_recipe) < 2:
+        return {}
+
+    catalogue_size = db.scalar(select(func.count()).select_from(Recipe)) or 0
+    census = {
+        ingredient_id: count
+        for ingredient_id, count in db.execute(
+            select(
+                RecipeIngredient.ingredient_id,
+                func.count(func.distinct(RecipeIngredient.recipe_id)),
+            )
+            .where(RecipeIngredient.ingredient_id.is_not(None))
+            .group_by(RecipeIngredient.ingredient_id)
+        ).all()
+    }
+    cupboard = pantry(census, catalogue_size)
+
+    lines: dict[uuid.UUID, set[uuid.UUID]] = {}
+    for recipe_id, ingredient_id in db.execute(
+        select(RecipeIngredient.recipe_id, RecipeIngredient.ingredient_id).where(
+            RecipeIngredient.recipe_id.in_(set(by_recipe.values())),
+            RecipeIngredient.ingredient_id.is_not(None),
+        )
+    ).all():
+        if ingredient_id not in cupboard:
+            lines.setdefault(recipe_id, set()).add(ingredient_id)
+
+    # Chronological, because the marker names the meal already cooked. Ties
+    # inside a day fall back on the meal name, which orders lunch before
+    # dinner — the order they are eaten in.
+    order = sorted(dishes, key=lambda dish: (dish.day_of_week, dish.meal_type != MealType.LUNCH))
+    ingredients = {
+        dish.id: frozenset(lines.get(dish.recipe_id, set())) if dish.recipe_id else frozenset()
+        for dish in order
+    }
+    return shared_ingredient_links([dish.id for dish in order], ingredients)
 
 
 class RecipeMeta(NamedTuple):

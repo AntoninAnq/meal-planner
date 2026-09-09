@@ -92,17 +92,19 @@ export async function DishCard({
         <p className="mt-0.5 text-xs text-ink-muted italic">{t("handWritten")}</p>
       )}
 
-      {/* The wedge, made visible: two meals built on one base is the whole
-          argument of the product, and it showed up nowhere.
-          `derived_from_dish_id` is what carries it, and the API leaves it null
-          in V0 — overlap is not computable without ingredients — so this marker
-          is wired and silent until the generation starts declaring it. Better
-          silent than guessed from two titles sharing a word. */}
-      {dish.derived_from_dish_id && (
+      {/* The wedge, made visible: two meals built on the same things is the
+          whole argument of the product, and it showed up nowhere.
+
+          It says "the same ingredients" and not "the same base", because that
+          is what was measured. The two colombos of a real week share aubergine,
+          courgette, lime and bay — and no colombo at all, that line never
+          resolved. A shared base is a fact about a saucepan, and saucepans live
+          in the preparation steps the catalogue does not keep. */}
+      {dish.shares_ingredients_with && (
         <p className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-accent-soft px-2 py-[3px]">
           <span aria-hidden className="h-[5px] w-[5px] flex-none rounded-full bg-accent" />
           <span className="text-[11px] leading-none font-semibold text-accent">
-            {t("sharedBase")}
+            {t("sharedIngredients")}
           </span>
         </p>
       )}

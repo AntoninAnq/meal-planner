@@ -230,8 +230,14 @@ class DishOut(BaseModel):
     label: str | None
     recipe_id: uuid.UUID | None
     eaters: list[DishEaterOut]
-    #: Always null in V0: overlap is not computable without ingredients.
-    derived_from_dish_id: uuid.UUID | None = None
+    #: The earlier meal of this week built on the same non-pantry ingredients,
+    #: computed at read time (`domain.shared_ingredients`). A claim about a
+    #: shopping list, never about a saucepan: a shared culinary base lives in
+    #: the preparation steps, which I9 keeps out of the catalogue on purpose.
+    #: Replaces `derived_from_dish_id`, which was documented as never filled —
+    #: the column stays, for the day the generation declares an intent rather
+    #: than the reader measuring a fact.
+    shares_ingredients_with: uuid.UUID | None = None
     #: Where the dish came from. The interface needs it for one reason: a dish
     #: someone typed themselves is the only one no filter can vouch for, and
     #: `UX-V0.md` §15 keeps a mark on it after the global notice disappears.

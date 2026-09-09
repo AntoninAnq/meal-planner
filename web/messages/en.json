@@ -18,8 +18,8 @@
     "proofValidate": "To confirm",
     "proofDay2": "Thursday 10",
     "proofDish2": "Vegetable colombo, rice",
-    "proofSharedBase": "same base as Wednesday",
-    "proofCaption": "Two dinners, a single colombo base — and Marceau's portion comes from it too. You never thought about it: that is the point.",
+    "proofSharedBase": "same ingredients as Wednesday",
+    "proofCaption": "Two dinners, the same vegetables and the same aromatics — bought once, and Marceau's portion comes from them too. You never thought about it: that is the point.",
     "step1Title": "You say it once",
     "step1Body": "The names, the ages, the allergies, the foods nobody touches. After that you never go back to it — unless you change your mind.",
     "step2Title": "The week turns up filled in",
@@ -142,8 +142,8 @@
     "variantRemovals": "Without: {items}",
     "notPlannedHeading": "Some meals are not planned",
     "notPlannedBody": "The catalogue holds no recipe suited to a baby under 18 months. Those meals stay yours to make.",
-    "sharedBase": "same base",
-    "variantConfirmShort": "To confirm"
+    "variantConfirmShort": "To confirm",
+    "sharedIngredients": "same ingredients"
   },
   "composer": {
     "collapsed": "Anything to note for this week?",

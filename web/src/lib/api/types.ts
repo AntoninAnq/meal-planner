@@ -117,8 +117,12 @@ export type Dish = {
   id: string;
   label: string | null;
   recipe_id: string | null;
-  /** Always null in V0: overlap is not computable without ingredients. */
-  derived_from_dish_id: string | null;
+  /** The earlier meal of this week built on the same non-pantry ingredients,
+   * computed server-side at read time. A claim about a shopping list, never
+   * about a saucepan: a shared culinary base lives in the preparation steps,
+   * which the catalogue deliberately does not store (I9). Say "the same
+   * ingredients", never "the same base". */
+  shares_ingredients_with: string | null;
   eaters: DishEater[];
   /** Where it came from. The interface needs it for one thing: a dish someone
    * typed themselves is the only one no filter can vouch for, so it keeps a

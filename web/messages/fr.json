@@ -18,8 +18,8 @@
     "proofValidate": "À valider",
     "proofDay2": "Jeudi 10",
     "proofDish2": "Colombo de légumes, riz",
-    "proofSharedBase": "même base que mercredi",
-    "proofCaption": "Deux soirs, une seule base de colombo — et la part de Marceau en vient aussi. Vous n'y avez pas pensé : c'est le principe.",
+    "proofSharedBase": "mêmes ingrédients que mercredi",
+    "proofCaption": "Deux soirs, les mêmes légumes et les mêmes aromates — une seule fois à acheter, et la part de Marceau en vient aussi. Vous n'y avez pas pensé : c'est le principe.",
     "step1Title": "Vous le dites une fois",
     "step1Body": "Les prénoms, les âges, les allergies, les aliments boudés. Ensuite on n'y revient plus — sauf pour changer d'avis.",
     "step2Title": "La semaine arrive remplie",
@@ -142,8 +142,8 @@
     "variantRemovals": "Sans : {items}",
     "notPlannedHeading": "Certains repas ne sont pas planifiés",
     "notPlannedBody": "Le catalogue ne contient aucune recette adaptée à un bébé de moins de 18 mois. Ses repas restent à votre main.",
-    "sharedBase": "même base",
-    "variantConfirmShort": "À valider"
+    "variantConfirmShort": "À valider",
+    "sharedIngredients": "mêmes ingrédients"
   },
   "composer": {
     "collapsed": "Une précision pour cette semaine ?",

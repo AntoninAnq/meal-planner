@@ -28,7 +28,7 @@ function dish(overrides: Partial<Dish> = {}): Dish {
     id: "d1",
     label: "Poulet aux olives",
     recipe_id: null,
-    derived_from_dish_id: null,
+    shares_ingredients_with: null,
     eaters: [eater("m1")],
     source: "catalog",
     minutes: null,
