@@ -62,7 +62,12 @@ export default async function SettingsPage({
       {operator && (
         <section className="border-t border-border pt-6">
           <h2 className="text-sm font-medium">{t("operatorHeading")}</h2>
-          <p className="mt-1 text-sm text-ink-muted text-pretty">{t("operatorHint")}</p>
+          {/* A contributor is told what a contributor can do. Naming the
+              households to somebody who will meet a not-found page there would
+              be advertising a door that is closed to them. */}
+          <p className="mt-1 text-sm text-ink-muted text-pretty">
+            {t(operator.level === "owner" ? "operatorHint" : "operatorHintContributor")}
+          </p>
           <Link
             href="/admin"
             className="mt-2.5 inline-flex h-10 items-center justify-center rounded-control border border-border bg-surface-raised px-4 text-sm font-medium text-ink transition-colors hover:bg-surface-sunken focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"

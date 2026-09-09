@@ -86,7 +86,14 @@ export default async function AdminPage({
       )}
 
       <section className="flex flex-col gap-3">
-        <h2 className="font-semibold">{t("queueHeading")}</h2>
+        <div>
+          <h2 className="font-semibold">{t("queueHeading")}</h2>
+          {/* Moved down from the page heading, which now names the whole back
+              office rather than the one queue that happened to be built first. */}
+          <p className="mt-1 text-sm leading-[1.5] text-ink-muted text-pretty">
+            {t("queueIntro")}
+          </p>
+        </div>
         <TypeQueue initial={queue} />
       </section>
     </main>

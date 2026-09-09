@@ -1,4 +1,8 @@
-.env
+# Every variant, because the one that leaks is never the one on the list:
+# `.env` is ignored, `.env.production` would not have been. The template is the
+# single exception, and it holds names without values.
+.env*
+!.env.example
 # The real whitelist. The template is backend/sources.example.yaml.
 /sources.yaml
 # Database dumps. They carry members, birth dates and allergies —

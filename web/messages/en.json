@@ -287,12 +287,13 @@
     "supportHeading": "Your household code",
     "supportHint": "Quote it if you report a problem: it is how we find your week. It is not a secret and it grants access to nothing.",
     "operatorHeading": "Administration",
-    "operatorHint": "You can classify the recipes nobody has sorted. Without a meal moment, a sweet tart can be offered on a Thursday evening.",
-    "operatorLink": "Classify recipes"
+    "operatorHint": "The catalogue, what households report, and who may operate the instance.",
+    "operatorLink": "Open the back office",
+    "operatorHintContributor": "Classify the recipes nobody has sorted, and act on what households report."
   },
   "admin": {
-    "heading": "Classify recipes",
-    "intro": "These recipes carry no meal moment. Without one, a sweet tart can be offered on a Thursday evening. The ingredients almost always settle it.",
+    "heading": "Administration",
+    "intro": "Catalogue quality, as households meet it: what was never classified, and what they report.",
     "remaining": "{count, plural, one {# recipe to classify} other {# recipes to classify}}",
     "done": "Nothing to classify. Everything servable carries a type.",
     "rubric": "Source rubric",
@@ -325,7 +326,8 @@
       "dead_link": "Dead link",
       "bad_recipe": "Unusable recipe"
     },
-    "operators": "Operators"
+    "operators": "Operators",
+    "queueIntro": "These recipes carry no meal moment. Without one, a sweet tart can be offered on a Thursday evening. The ingredients almost always settle it."
   },
   "operators": {
     "heading": "Who may operate",

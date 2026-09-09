@@ -287,12 +287,13 @@
     "supportHeading": "Code de votre foyer",
     "supportHint": "Donnez-le si vous nous signalez un problème : c'est ce qui nous permet de retrouver votre semaine. Il n'est pas secret et ne donne accès à rien.",
     "operatorHeading": "Administration",
-    "operatorHint": "Vous pouvez classer les recettes que personne n'a rangées. Sans moment de repas, une tarte sucrée peut être proposée un jeudi soir.",
-    "operatorLink": "Classer les recettes"
+    "operatorHint": "Le catalogue, ce que les foyers signalent, et qui peut administrer l'instance.",
+    "operatorLink": "Ouvrir l'administration",
+    "operatorHintContributor": "Classer les recettes que personne n'a rangées, et traiter ce que les foyers signalent."
   },
   "admin": {
-    "heading": "Classer les recettes",
-    "intro": "Ces recettes n'ont pas de moment de repas. Sans lui, une tarte sucrée peut être proposée un jeudi soir. Les ingrédients tranchent presque toujours.",
+    "heading": "Administration",
+    "intro": "La qualité du catalogue, telle que les foyers la rencontrent : ce qui n'a jamais été classé, et ce qu'ils signalent.",
     "remaining": "{count, plural, one {# recette à classer} other {# recettes à classer}}",
     "done": "Rien à classer pour l'instant. Tout ce qui peut être servi porte un type.",
     "rubric": "Rubrique de la source",
@@ -325,7 +326,8 @@
       "dead_link": "Lien mort",
       "bad_recipe": "Recette inutilisable"
     },
-    "operators": "Administrateurs"
+    "operators": "Administrateurs",
+    "queueIntro": "Ces recettes n'ont pas de moment de repas. Sans lui, une tarte sucrée peut être proposée un jeudi soir. Les ingrédients tranchent presque toujours."
   },
   "operators": {
     "heading": "Qui peut administrer",
