@@ -12,7 +12,14 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, computed_field
 
-from app.domain.enums import AllergenCode, ConstraintSeverity, DishSource, LifeStage, MealType
+from app.domain.enums import (
+    AllergenCode,
+    ConstraintSeverity,
+    DishSource,
+    LifeStage,
+    MealType,
+    ReportCategory,
+)
 from app.domain.support_code import support_code
 
 
@@ -350,6 +357,19 @@ class DishRegenerate(BaseModel):
     """Directed repair: the reason has value, it enriches the constraints."""
 
     reason: str = Field(min_length=1, max_length=500)
+
+
+class SuggestionReportIn(BaseModel):
+    """What a household says is wrong with a suggestion, for everyone.
+
+    Distinct from `DishRegenerate`, which records a refusal as a constraint on
+    THIS household. A category rather than free text, because a category can be
+    grouped and acted on in one decision; the note is for the one report in
+    twenty that says something a category cannot.
+    """
+
+    category: ReportCategory
+    note: str | None = Field(default=None, max_length=280)
 
 
 class DishRating(BaseModel):

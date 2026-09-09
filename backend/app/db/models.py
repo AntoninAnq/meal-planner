@@ -48,6 +48,7 @@ from app.domain.enums import (
     OperatorLevel,
     ProposalStatus,
     RecipeSourceType,
+    ReportCategory,
 )
 
 
@@ -80,6 +81,7 @@ severity_enum = _pg_enum(ConstraintSeverity, "constraint_severity")
 dish_source_enum = _pg_enum(DishSource, "dish_source")
 allergen_enum = _pg_enum(AllergenCode, "allergen_code")
 operator_level_enum = _pg_enum(OperatorLevel, "operator_level")
+report_category_enum = _pg_enum(ReportCategory, "report_category")
 recipe_source_enum = _pg_enum(RecipeSourceType, "recipe_source_type")
 proposal_status_enum = _pg_enum(ProposalStatus, "proposal_status")
 dish_type_enum = _pg_enum(DishType, "dish_type")
@@ -184,6 +186,47 @@ class Operator(Base):
     granted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     #: The `auth_subject` that granted this one. NULL only for the bootstrap.
     granted_by: Mapped[str | None] = mapped_column(String(255))
+
+
+class SuggestionReport(Base):
+    """A household saying a suggestion is wrong for everyone, not just for them.
+
+    The other channel — `Proposer autre chose` — records a refusal as a
+    constraint on one household. This one says the catalogue is at fault, and
+    its resolution is a change every household sees.
+
+    **Keyed on the recipe, not on the dish.** The person clicks a dish in their
+    week, but the defect belongs to the catalogue entry behind it, and the queue
+    has to group ten reports of the same tart into one decision. A hand-written
+    dish has no recipe and cannot be reported: there is nothing catalogue-wide
+    to fix, and its author already knows.
+
+    One row per household and recipe: re-reporting corrects the category rather
+    than adding a voice. A queue ranked by how many DIFFERENT households
+    complained is a signal; one ranked by clicks is a measure of persistence.
+    """
+
+    __tablename__ = "suggestion_report"
+    __table_args__ = (
+        UniqueConstraint("household_id", "recipe_id", name="uq_report_household_recipe"),
+    )
+
+    id: Mapped[uuid.UUID] = _pk()
+    household_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("household.id", ondelete="CASCADE"), index=True
+    )
+    recipe_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("recipe.id", ondelete="CASCADE"), index=True
+    )
+    category: Mapped[ReportCategory] = mapped_column(report_category_enum)
+    #: Optional and short. The category is what the queue sorts on; this is for
+    #: the one report in twenty that says something a category cannot.
+    note: Mapped[str | None] = mapped_column(String(280))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    #: Set when an operator has acted. The row survives, so the same recipe
+    #: reported again is visibly a second complaint and not a first.
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    resolved_by: Mapped[str | None] = mapped_column(String(255))
 
 
 class HouseholdSettings(Base):

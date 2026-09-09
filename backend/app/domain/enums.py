@@ -112,6 +112,29 @@ class AllergenCode(StrEnum):
     MOLLUSCS = "molluscs"
 
 
+class ReportCategory(StrEnum):
+    """What a household says is wrong with a suggestion — for everyone, not for them.
+
+    A closed set, and each member is chosen because the back office can act on
+    it: `NOT_A_MEAL` is retagged, the other two are withdrawn. A category with
+    no resolution produces a queue nobody can empty, which is how a feedback
+    channel becomes a place complaints go to die.
+
+    There is deliberately no "we did not fancy it". That already exists as
+    `Proposer autre chose`, which turns a refusal into a constraint on THIS
+    household — the opposite of a catalogue defect. Folding the two together
+    would file a matter of taste as a fact about the recipe.
+    """
+
+    #: A dessert, a drink, a side served as a meal. The commonest, and the
+    #: reason the back office exists: `Tartes, Clafoutis` cannot be mapped.
+    NOT_A_MEAL = "not_a_meal"
+    #: The source page is gone. `cuisine-libre` was 1 984 of these at once.
+    DEAD_LINK = "dead_link"
+    #: Unusable as written — missing steps, nonsense quantities.
+    BAD_RECIPE = "bad_recipe"
+
+
 class OperatorLevel(StrEnum):
     """Who may run the instance, and who may hand that out.
 

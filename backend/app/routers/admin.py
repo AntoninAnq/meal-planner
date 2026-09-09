@@ -28,9 +28,16 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.auth.deps import CurrentOperator, CurrentOwner
-from app.db.models import HouseholdAccess, Ingredient, Operator, Recipe, RecipeIngredient
+from app.db.models import (
+    HouseholdAccess,
+    Ingredient,
+    Operator,
+    Recipe,
+    RecipeIngredient,
+    SuggestionReport,
+)
 from app.db.session import get_db
-from app.domain.enums import DishType, OperatorLevel
+from app.domain.enums import DishType, OperatorLevel, ReportCategory
 from app.domain.support_code import looks_like_code, normalise, support_code
 
 DbDep = Annotated[Session, Depends(get_db)]
@@ -258,6 +265,10 @@ def set_dish_type(
     recipe.dish_type = payload.dish_type
     recipe.dish_type_set_by = operator.auth_subject
     recipe.dish_type_set_at = datetime.now(UTC)
+    # Retagging IS the resolution `not_a_meal` was asking for, so the reports
+    # close with it. Leaving them open would have the operator do the work and
+    # then be asked to say they did it.
+    _resolve_reports(db, recipe.id, operator.auth_subject)
     db.commit()
 
     return ToTypeOut(
@@ -268,3 +279,112 @@ def set_dish_type(
         minutes=None,
         ingredients=[],
     )
+
+
+# -- What households say is wrong -------------------------------------------
+
+
+class ReportedOut(BaseModel):
+    """One recipe households have complained about, and what they said.
+
+    Grouped by recipe rather than listed per report: ten complaints about the
+    same tart are one decision, and a queue that shows them ten times makes the
+    operator read nine rows to learn nothing.
+    """
+
+    recipe_id: uuid.UUID
+    title: str
+    dish_type: DishType | None
+    source_url: str | None
+    #: How many DIFFERENT households said it. One row per household and recipe
+    #: is enforced upstream, so this counts voices and not clicks.
+    households: int
+    categories: list[ReportCategory]
+    notes: list[str]
+
+
+@router.get("/reports", response_model=list[ReportedOut])
+def reports(db: DbDep, operator: CurrentOperator) -> list[ReportedOut]:
+    """Open reports, the loudest first.
+
+    Only the unresolved ones: a resolved row survives so that the same recipe
+    reported again reads as a second complaint rather than a first, but it has
+    no business in the queue.
+    """
+    rows = db.execute(
+        select(SuggestionReport, Recipe)
+        .join(Recipe, Recipe.id == SuggestionReport.recipe_id)
+        .where(SuggestionReport.resolved_at.is_(None))
+        .order_by(SuggestionReport.created_at)
+    ).all()
+
+    grouped: dict[uuid.UUID, ReportedOut] = {}
+    for report, recipe in rows:
+        entry = grouped.get(recipe.id)
+        if entry is None:
+            entry = ReportedOut(
+                recipe_id=recipe.id,
+                title=recipe.title,
+                dish_type=recipe.dish_type,
+                source_url=recipe.source_url,
+                households=0,
+                categories=[],
+                notes=[],
+            )
+            grouped[recipe.id] = entry
+        entry.households += 1
+        if report.category not in entry.categories:
+            entry.categories.append(report.category)
+        if report.note:
+            entry.notes.append(report.note)
+
+    return sorted(grouped.values(), key=lambda r: (-r.households, r.title))
+
+
+@router.post("/recipes/{recipe_id}/withdraw", status_code=status.HTTP_204_NO_CONTENT)
+def withdraw(recipe_id: uuid.UUID, db: DbDep, operator: CurrentOperator) -> None:
+    """Stop offering this recipe, and keep it.
+
+    The same mechanism migration 0013 used on a whole dead source:
+    `planned_dish.recipe_id` is `ondelete="RESTRICT"`, so a week already cooked
+    would block a delete or lose the dish it records. Withdrawn rows stay, and
+    `offerable()` keeps them out of every future plan.
+
+    `catalog.ingest` clears `deprecated_at` on a successful re-scrape — which is
+    right for a source that came back, and wrong for a recipe a person withdrew
+    on its merits. Worth knowing before a crawl is run over a source that has
+    had recipes withdrawn by hand.
+    """
+    recipe = db.get(Recipe, recipe_id)
+    if recipe is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "no such recipe")
+
+    recipe.deprecated_at = datetime.now(UTC)
+    _resolve_reports(db, recipe_id, operator.auth_subject)
+    db.commit()
+
+
+@router.post("/reports/{recipe_id}/dismiss", status_code=status.HTTP_204_NO_CONTENT)
+def dismiss(recipe_id: uuid.UUID, db: DbDep, operator: CurrentOperator) -> None:
+    """Close the reports without changing the recipe — they were mistaken.
+
+    Needed or the queue cannot be emptied, and a queue that only grows stops
+    being read. The rows survive marked resolved, so the same recipe coming
+    back is visibly a second complaint.
+    """
+    if db.get(Recipe, recipe_id) is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "no such recipe")
+    _resolve_reports(db, recipe_id, operator.auth_subject)
+    db.commit()
+
+
+def _resolve_reports(db: Session, recipe_id: uuid.UUID, by: str) -> None:
+    """Close every open report on a recipe, once it has been acted on."""
+    for report in db.scalars(
+        select(SuggestionReport).where(
+            SuggestionReport.recipe_id == recipe_id,
+            SuggestionReport.resolved_at.is_(None),
+        )
+    ):
+        report.resolved_at = datetime.now(UTC)
+        report.resolved_by = by

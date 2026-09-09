@@ -26,6 +26,7 @@ from app.db.models import (
     Recipe,
     RecipeIngredient,
     RecipeSuitableStage,
+    SuggestionReport,
 )
 from app.db.session import get_db
 from app.domain.enums import DishSource, GenerationKind, LifeStage, MealType
@@ -47,6 +48,7 @@ from app.schemas import (
     PlanSlotOut,
     SlotGuestsOut,
     SlotScope,
+    SuggestionReportIn,
     VariantConfirmation,
     ViolationOut,
 )
@@ -471,6 +473,67 @@ def _load_dish(db: Session, plan_id: uuid.UUID, dish_id: uuid.UUID, household_id
     if plan is None or plan.household_id != household_id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "plan not found")
     return dish
+
+
+@router.post(
+    "/{plan_id}/dishes/{dish_id}/report", status_code=status.HTTP_204_NO_CONTENT
+)
+def report_suggestion(
+    plan_id: uuid.UUID,
+    dish_id: uuid.UUID,
+    payload: SuggestionReportIn,
+    db: Annotated[Session, Depends(get_db)],
+    household_id: CurrentHousehold,
+) -> None:
+    """"This suggestion is wrong for everyone" — the other channel.
+
+    `regenerate` records a refusal as a constraint on this household, which is
+    what a matter of taste deserves. This says the catalogue entry itself is at
+    fault, and its resolution changes what every household sees.
+
+    Filed against the RECIPE, not the dish: the defect belongs to the catalogue
+    entry, and the back office has to group ten reports of the same tart into
+    one decision. A hand-written dish carries no recipe and cannot be reported —
+    nothing catalogue-wide to fix, and its author already knows.
+
+    One row per household and recipe: re-reporting corrects the category rather
+    than adding a voice. No model call, so no quota.
+    """
+    dish = db.get(PlannedDish, dish_id)
+    if dish is None or dish.meal_plan_id != plan_id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "no such dish on this plan")
+    plan = db.get(MealPlan, plan_id)
+    if plan is None or plan.household_id != household_id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "no such plan")
+    if dish.recipe_id is None:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_CONTENT,
+            "a hand-written dish has no catalogue entry to report",
+        )
+
+    existing = db.scalar(
+        select(SuggestionReport).where(
+            SuggestionReport.household_id == household_id,
+            SuggestionReport.recipe_id == dish.recipe_id,
+        )
+    )
+    if existing is not None:
+        existing.category = payload.category
+        existing.note = payload.note
+        # Reopened: a household saying it again after someone acted is new
+        # information, not a duplicate of the report that was closed.
+        existing.resolved_at = None
+        existing.resolved_by = None
+    else:
+        db.add(
+            SuggestionReport(
+                household_id=household_id,
+                recipe_id=dish.recipe_id,
+                category=payload.category,
+                note=payload.note,
+            )
+        )
+    db.commit()
 
 
 #: How many alternatives a refusal offers. `UX-V0.md` §6 says "en montrer
