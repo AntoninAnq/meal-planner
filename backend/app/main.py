@@ -11,9 +11,14 @@ from fastapi.exceptions import RequestValidationError
 
 from app.config import get_settings
 from app.errors import log_validation_error
+from app.observability import RequestContextMiddleware, configure_logging
 from app.routers import auth, constraints, households, invitations, meal_plans, members
 
 settings = get_settings()
+
+# Before the app is built, so a failure during startup is already formatted and
+# already carries the (absent) household rather than raising inside logging.
+configure_logging(settings.log_level)
 
 app = FastAPI(
     title="Meal Planner API",
@@ -22,6 +27,10 @@ app = FastAPI(
     # which keeps the session cookie first-party.
     root_path="/api",
 )
+
+# Outermost: the holder must exist before anything downstream can fill it, and
+# before any handler can log.
+app.add_middleware(RequestContextMiddleware)
 
 health = APIRouter(tags=["health"])
 

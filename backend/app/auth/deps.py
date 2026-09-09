@@ -25,6 +25,7 @@ from app.auth.session import read_session
 from app.config import Settings, get_settings
 from app.db.models import HouseholdAccess
 from app.db.session import get_db
+from app.observability import bind_household
 
 
 def current_auth_subject(
@@ -65,6 +66,11 @@ def current_household_id(
     )
     if household_id is None:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "no household linked to this identity")
+
+    # Every authenticated route already comes through here, so this is the one
+    # place that can put the household on the request's log lines without a
+    # rule anyone has to remember.
+    bind_household(household_id)
     return household_id
 
 

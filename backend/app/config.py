@@ -18,6 +18,11 @@ class Settings(BaseSettings):
 
     environment: Literal["dev", "prod"] = "dev"
 
+    #: Configuration (I8), because the level one wants while chasing a bug is
+    #: not the one to run on by default. Every line carries the support code of
+    #: the household whose request produced it — see `app.observability`.
+    log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
+
     # Public entry point. Also the base for the OAuth redirect URI.
     app_base_url: str = "http://localhost:8080"
 

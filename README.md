@@ -118,6 +118,23 @@ verbes les plus dangereux du système n'ont ainsi aucun endpoint à mal garder.
 identifie : `household_access` ne stocke pas d'e-mail, volontairement. On ne peut
 donc pas blacklister une adresse — il faudrait commencer à en conserver une.
 
+### Traiter un retour de bug
+
+Le foyer donne son **code**, lu dans son écran Réglages. Deux gestes suffisent :
+
+```bash
+docker compose run --rm api python -m app.admin find 335C-58F8   # → son household_id
+docker compose logs api | grep 335C-58F8                          # → ses lignes de log
+```
+
+Toutes les lignes émises pendant une de ses requêtes portent son code, y compris
+les traces d'erreur : un filtre de logging l'ajoute à chaque enregistrement, donc
+un `logger.warning` ajouté demain le portera sans que son auteur y pense. Une
+requête anonyme affiche `[-]`. Le `household_id` rendu par `find` joint ensuite
+tout le reste — `meal_plan`, `planned_dish`, `member`, `dietary_constraint`,
+`invitation` — et `generation_log` est le journal des appels au modèle : date,
+type, succès, tentatives, tokens, modèle.
+
 Un foyer qui signale un bug donne son **code de support**, affiché dans son écran
 Réglages et dérivé de son propre identifiant : rien de nouveau n'est stocké, et
 `find` accepte ce que la personne a dicté, tiret ou pas, casse quelconque. Le
