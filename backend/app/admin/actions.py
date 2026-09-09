@@ -14,7 +14,8 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.db.models import GenerationLog, Household, HouseholdAccess, Member
+from app.db.models import GenerationLog, Household, HouseholdAccess, Member, Operator
+from app.domain.enums import OperatorLevel
 from app.domain.support_code import looks_like_code, normalise, support_code
 
 
@@ -106,6 +107,41 @@ def find(db: Session, code: str) -> list[Row]:
         raise ValueError(f"{code!r} is not a support code — expected eight hex characters")
     wanted = normalise(code)
     return [row for row in survey(db, window_hours=24) if normalise(row.code) == wanted]
+
+
+def operators(db: Session) -> list[Operator]:
+    return list(db.scalars(select(Operator).order_by(Operator.granted_at)))
+
+
+def grant_operator(db: Session, auth_subject: str, level: OperatorLevel) -> None:
+    """The bootstrap, and the way back in.
+
+    The back office grants its own operators — that is the point of it — but
+    the FIRST owner cannot be granted through an interface only owners can
+    reach. This command is that chicken-and-egg, and the only other way in if
+    the last owner is ever lost.
+
+    Deliberately keyed on the auth subject rather than a support code: this is
+    run by someone with the production database in front of them, who can read
+    `list` to find it, and the code exists to spare a browser user a UUID — not
+    to add a step here.
+    """
+    existing = db.get(Operator, auth_subject)
+    if existing is not None:
+        existing.level = level
+    else:
+        # `granted_by` stays NULL: nobody granted this one, and recording a
+        # plausible name for the bootstrap would be inventing an audit entry.
+        db.add(Operator(auth_subject=auth_subject, level=level))
+    db.commit()
+
+
+def revoke_operator(db: Session, auth_subject: str) -> None:
+    operator = db.get(Operator, auth_subject)
+    if operator is None:
+        raise UnknownSubject(auth_subject)
+    db.delete(operator)
+    db.commit()
 
 
 def revoke(db: Session, auth_subject: str) -> None:

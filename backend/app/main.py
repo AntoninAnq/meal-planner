@@ -12,7 +12,15 @@ from fastapi.exceptions import RequestValidationError
 from app.config import get_settings
 from app.errors import log_validation_error
 from app.observability import RequestContextMiddleware, configure_logging
-from app.routers import auth, constraints, households, invitations, meal_plans, members
+from app.routers import (
+    admin,
+    auth,
+    constraints,
+    households,
+    invitations,
+    meal_plans,
+    members,
+)
 
 settings = get_settings()
 
@@ -52,3 +60,4 @@ app.include_router(members.router)
 app.include_router(constraints.router)
 app.include_router(invitations.router)
 app.include_router(meal_plans.router)
+app.include_router(admin.router)

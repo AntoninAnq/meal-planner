@@ -101,6 +101,8 @@ gardent le nom `api`, eux.
 Trois choses qu'un exploitant a besoin de faire, et aucune n'a d'endpoint :
 
 ```bash
+docker compose run --rm api python -m app.admin operators         # qui opère l'instance
+docker compose run --rm api python -m app.admin operators --grant google:… --level owner
 docker compose run --rm api python -m app.admin list              # qui est là, et qui dépense
 docker compose run --rm api python -m app.admin find 335C-58F8    # le foyer derrière un code de support
 docker compose run --rm api python -m app.admin revoke  google:…  # couper un accès
@@ -109,7 +111,21 @@ docker compose run --rm api python -m app.admin limit <foyer> 500 # plafond prop
 docker compose run --rm api python -m app.admin limit <foyer> default
 ```
 
-Une ligne de commande et pas un back-office, tant qu'il n'y a qu'un exploitant :
+Le **premier propriétaire ne peut être créé qu'ici** : l'interface qui accorde
+les droits est elle-même derrière la porte. C'est aussi le seul retour possible
+si le dernier propriétaire est perdu — ce que l'API refuse justement de laisser
+arriver.
+
+Deux niveaux. Un **contributeur** retague le catalogue ; seul un **propriétaire**
+accorde, parce qu'accorder est une élévation de privilège : un aideur qui peut
+ajouter des aideurs peut retirer celui qui l'a invité. On recrute donc de l'aide
+sans donner les clés.
+
+Personne n'est identifié par une adresse : la personne se connecte, lit son
+**code** dans Réglages, vous l'envoie, et le droit est accordé à une identité que
+Google a déjà vérifiée.
+
+La gestion des foyers reste en ligne de commande, tant qu'il n'y a qu'un exploitant :
 un rôle admin, une autorisation sur chaque route, une piste d'audit et une UI,
 c'est beaucoup de surface exposée à Internet pour servir une personne. Les
 verbes les plus dangereux du système n'ont ainsi aucun endpoint à mal garder.

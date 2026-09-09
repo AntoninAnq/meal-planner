@@ -45,6 +45,7 @@ from app.domain.enums import (
     GenerationKind,
     LifeStage,
     MealType,
+    OperatorLevel,
     ProposalStatus,
     RecipeSourceType,
 )
@@ -78,6 +79,7 @@ meal_type_enum = _pg_enum(MealType, "meal_type")
 severity_enum = _pg_enum(ConstraintSeverity, "constraint_severity")
 dish_source_enum = _pg_enum(DishSource, "dish_source")
 allergen_enum = _pg_enum(AllergenCode, "allergen_code")
+operator_level_enum = _pg_enum(OperatorLevel, "operator_level")
 recipe_source_enum = _pg_enum(RecipeSourceType, "recipe_source_type")
 proposal_status_enum = _pg_enum(ProposalStatus, "proposal_status")
 dish_type_enum = _pg_enum(DishType, "dish_type")
@@ -147,6 +149,41 @@ class HouseholdAccess(Base):
     #: would let the same identity walk back in on the next login. Revoked but
     #: present means recognised, refused, and unable to re-register.
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class Operator(Base):
+    """Who may run this instance — a different question from who owns a household.
+
+    Its own table rather than a column on `household_access`, because operating
+    the instance is not a property of a link to one household: retagging a
+    recipe changes the catalogue for everyone. Someone may operate without ever
+    having generated a week, and losing the operator right must not touch their
+    household.
+
+    **Two levels, and the asymmetry is the reason.** A `contributor` retags —
+    reversible, hurts nobody, and it is the work one recruits help for. Only an
+    `owner` grants, because granting is privilege escalation: a helper who can
+    add helpers can remove the person who invited them. One level would force a
+    choice between not delegating and handing over the keys.
+
+    `granted_by` is nullable for exactly one row: the first owner, created by
+    `python -m app.admin grant` before any interface exists. Every other grant
+    records who made it — a privilege table that cannot say who let someone in
+    is one you have to guess about later, and the column costs nothing now.
+
+    No email here either (§11.7). Access is granted to an identity Google has
+    already verified, found by the support code the person reads in their own
+    settings screen — so nothing needs to be pre-authorised, and no address is
+    stored to make it possible.
+    """
+
+    __tablename__ = "operator"
+
+    auth_subject: Mapped[str] = mapped_column(String(255), primary_key=True)
+    level: Mapped[OperatorLevel] = mapped_column(operator_level_enum)
+    granted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    #: The `auth_subject` that granted this one. NULL only for the bootstrap.
+    granted_by: Mapped[str | None] = mapped_column(String(255))
 
 
 class HouseholdSettings(Base):

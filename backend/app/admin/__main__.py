@@ -15,13 +15,17 @@ from app.admin.actions import (
     UnknownHousehold,
     UnknownSubject,
     find,
+    grant_operator,
+    operators,
     restore,
     revoke,
+    revoke_operator,
     set_limit,
     survey,
 )
 from app.config import get_settings
 from app.db.session import get_session_factory
+from app.domain.enums import OperatorLevel
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -55,6 +59,17 @@ def build_parser() -> argparse.ArgumentParser:
         help="set a household's own ceiling on model calls, or clear it",
     )
     limit.add_argument("household_id")
+    ops = sub.add_parser("operators", help="who may use the back office")
+    ops.add_argument(
+        "--grant",
+        metavar="SUBJECT",
+        help="give this identity the back office. The FIRST owner can only be "
+        "created here: the interface that grants operators is itself behind the "
+        "gate.",
+    )
+    ops.add_argument("--level", choices=["owner", "contributor"], default="owner")
+    ops.add_argument("--revoke", metavar="SUBJECT", help="take the back office away")
+
     limit.add_argument(
         "value",
         help="a number of calls per window, or `default` to go back to the rate "
@@ -99,6 +114,27 @@ def main(argv: Sequence[str] | None = None) -> int:
                     f"\nCalls counted over the last {settings.generation_window_hours} h. "
                     f"Rate card: {settings.generation_daily_limit}."
                 )
+                return 0
+
+            if args.command == "operators":
+                if args.grant:
+                    grant_operator(db, args.grant, OperatorLevel(args.level))
+                    print(f"{args.grant} is now {args.level}.")
+                    return 0
+                if args.revoke:
+                    revoke_operator(db, args.revoke)
+                    print(f"{args.revoke} no longer operates this instance.")
+                    return 0
+                rows = operators(db)
+                if not rows:
+                    print(
+                        "Nobody operates this instance. Grant the first owner:\n"
+                        "  python -m app.admin operators --grant google:… --level owner"
+                    )
+                    return 0
+                for row in rows:
+                    by = row.granted_by or "— (amorçage)"
+                    print(f"{row.level.value:<12} {row.auth_subject:<40} par {by}")
                 return 0
 
             if args.command == "revoke":

@@ -23,8 +23,9 @@ from sqlalchemy.orm import Session
 
 from app.auth.session import read_session
 from app.config import Settings, get_settings
-from app.db.models import HouseholdAccess
+from app.db.models import HouseholdAccess, Operator
 from app.db.session import get_db
+from app.domain.enums import OperatorLevel
 from app.observability import bind_household
 
 
@@ -74,5 +75,45 @@ def current_household_id(
     return household_id
 
 
+def current_operator(
+    subject: Annotated[str, Depends(current_auth_subject)],
+    db: Annotated[Session, Depends(get_db)],
+) -> Operator:
+    """The one gate on everything under `/admin`.
+
+    Returns the operator row so an admin endpoint depends on THIS instead of
+    `CurrentHousehold`, never in addition to it — the same reason
+    `enforce_quota` returns a household id. Two dependencies are two chances to
+    wire one and forget the other, and the one that gets forgotten is always the
+    check. `tests/test_admin_authorisation.py` walks the routes and fails if any
+    of them carries something else.
+
+    Deliberately NOT tied to a household: operating the instance is not a
+    property of owning one. A 404 rather than a 403, because an identity that is
+    not an operator has no business learning that `/admin` exists.
+    """
+    operator = db.get(Operator, subject)
+    if operator is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "not found")
+    return operator
+
+
+def current_owner(
+    operator: Annotated[Operator, Depends(current_operator)],
+) -> Operator:
+    """Granting is the one verb a contributor may not reach.
+
+    A contributor who could grant could also make themselves an owner, or
+    remove the person who invited them — which is the whole reason the two
+    levels exist. Layered on `current_operator` rather than beside it, so a
+    route asking for an owner cannot accidentally skip the operator check.
+    """
+    if operator.level is not OperatorLevel.OWNER:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "owner required")
+    return operator
+
+
 CurrentHousehold = Annotated[uuid.UUID, Depends(current_household_id)]
 CurrentSubject = Annotated[str, Depends(current_auth_subject)]
+CurrentOperator = Annotated[Operator, Depends(current_operator)]
+CurrentOwner = Annotated[Operator, Depends(current_owner)]

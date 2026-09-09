@@ -112,6 +112,24 @@ class AllergenCode(StrEnum):
     MOLLUSCS = "molluscs"
 
 
+class OperatorLevel(StrEnum):
+    """Who may run the instance, and who may hand that out.
+
+    Two values, not a permission matrix, because there is exactly one asymmetry
+    worth encoding. Retagging a recipe is reversible and hurts nobody — it is
+    the work one delegates. Granting access is privilege escalation: a helper
+    who can add helpers can also remove the person who invited them.
+
+    With a single level the choice is between not delegating and handing over
+    the keys. With two, contributors are recruited freely and only an owner can
+    make another owner. Adding the distinction later would mean a migration and
+    deciding retroactively who was which.
+    """
+
+    OWNER = "owner"
+    CONTRIBUTOR = "contributor"
+
+
 class DishType(StrEnum):
     """When a recipe can be eaten, derived from the rubric its source publishes.
 
