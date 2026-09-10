@@ -187,8 +187,47 @@ Un foyer qui signale un bug donne le **code affiché dans son écran Réglages**
 
 Elles dépendent de l'offre Supabase, et **c'est à vérifier avant d'avoir de vraies familles dedans** : `dietary_constraint` est une donnée de santé, `member.birth_date` une date de naissance de mineur. Une restauration doit avoir été essayée une fois, pas seulement configurée.
 
+## 6 quater. Redéployer
+
+**Chaque `git push` sur `main` déploie.** Les trois services sont connectés au dépôt — public, donc sans application GitHub à installer — et Railway ne reconstruit que celui dont le répertoire a changé.
+
+| Service | Root Directory | Réglage propre |
+|---|---|---|
+| `api` | `backend` | |
+| `web` | `web` | |
+| `proxy` | *(racine)* | `RAILWAY_DOCKERFILE_PATH=Dockerfile.proxy` |
+
+Le Root Directory est le seul réglage qui n'existe que dans l'interface : la CLI ne l'expose pas. Sans lui, le contexte de build serait la racine du dépôt et les `COPY . .` des Dockerfiles ramasseraient le mauvais répertoire.
+
+> **Railway n'attend pas la CI.** Un commit qui casse les tests part quand même, et le badge GitHub l'apprend après coup. C'est un compromis assumé à un seul exploitant : les commits sont petits et le retour arrière est immédiat (Deployments → le déploiement précédent → Redeploy). Le jour où quelqu'un d'autre pousse, déployer depuis une branche `production` fusionnée après CI verte devient le bon geste.
+
+**Migrations.** `RAILWAY_RUN_COMMAND` lance `alembic upgrade head` avant `uvicorn`, donc une migration part avec son code et ne peut pas être oubliée. Anti-patron au-delà d'un exemplaire — deux conteneurs qui démarrent ensemble lancent deux migrations — et le bon compromis à un seul.
+
+**Déployer sans passer par GitHub**, pour éprouver quelque chose qui n'a pas vocation à être commité :
+
+```sh
+npx -y @railway/cli@latest up ./backend --path-as-root --service api --detach
+```
+
+Deux pièges, tous deux rencontrés. `railway up` envoie **le disque**, pas `origin/main` : il ne regarde ni ce qui est commité ni ce qui est poussé, et la production peut alors contenir du code qui n'existe nulle part ailleurs. Et sans `--path-as-root`, la CLI envoie la racine du dépôt même après un `cd` — le premier déploiement a échoué exactement là, sur un Railpack qui cherchait une application à la racine.
+
 ## 7. Ce que la mise en ligne débloque
 
-**Comparer les modèles.** Le banc (`eval/`) a été bâti pour ça et n'a jamais tourné sur autre chose que `qwen3:8b` — une variable d'environnement l'en séparait, et le coût. Deux échecs connus attendent cette mesure : la variante bébé identique sur tous les créneaux, et la répétition demandée jamais honorée. Trois réécritures de prompt n'ont rien changé, ce qui désigne le modèle comme sujet.
+**Comparer les modèles — fait, le 2026-09-09.** Le banc (`eval/`) a tourné sur `claude-haiku-4-5`, 7 cas × 5 exécutions, **0,29 €** au total (0,8 centime l'appel, ce que la grille annonçait). Latence 11 à 13 s contre 182 s sur le 8B local.
+
+| | `qwen3:8b` | `claude-haiku-4-5` |
+|---|---|---|
+| `member_intolerance` — allergène servi | 6 / 45 | **0** |
+| plats hors candidats | — | 0 sur les 7 cas |
+| `baby_only` — assignations sans variante | — | **45 / 45**, 5 exécutions sur 5 |
+| `severe_milk_allergy` — candidats | 5 | 5 |
+
+**Le rouge qui comptait est vert.** Servir du gluten à un intolérant était le seul manquement du banc qui touchait à la sécurité ; il disparaît en changeant de modèle, sans une ligne de code.
+
+**Le bébé est pire que ce qu'on croyait.** Pas « une variante identique partout » : aucune variante, jamais, sur les 45 assignations. Et `arbitrate` ajoute pourtant `repair_hint` au contexte du rejeu — on nomme la faute au modèle, on relance plus chaud, il la répète. Ce n'est donc pas une consigne mal lue mais une consigne déclinée, ce qui rend une réécriture de prompt peu prometteuse. C'est aussi ce qui a motivé l'arrêt anticipé du rejeu (`should_retry`) : trois tentatives pour rendre la première.
+
+**Les 5 candidats de `severe_milk_allergy` n'ont pas bougé d'un iota**, ce qui confirme la cause : le catalogue est trop maigre pour une allergie sévère au lait, le modèle n'y est pour rien.
+
+**Ce que le banc ne mesure toujours pas** : les `leftover`. Un ingrédient à écouler est remis au modèle sans portée — `phrase()` jette le `kind` — et il l'a servi à tous les repas de la semaine, en production. Aucun cas ne couvre ça.
 
 Et §15 rouvre alors la **réparation déterministe d'une assignation**, explicitement repoussée « après la comparaison de modèles ».
