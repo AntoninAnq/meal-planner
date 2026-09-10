@@ -1,0 +1,51 @@
+# « Il reste des olives à finir », et ce que le système en fait.
+#
+# CE CAS EXISTE PARCE QUE LA PREMIÈRE SEMAINE RÉELLE EST REVENUE AVEC LE MÊME
+# ALIMENT AUX HUIT REPAS. Le modèle n'avait pas mal lu : `rank` remontait en
+# tête TOUTES les recettes portant l'ingrédient nommé, et il parcourt la liste
+# des candidats depuis le haut — c'est mesuré, et écrit dans `rank` lui-même.
+#
+# Ce que ce cas mesure est donc une CARDINALITÉ, la seule propriété que rien ne
+# regardait. Elle a un jumeau dans `busy_week` : « un plat qu'on mangera deux
+# soirs », demandé et jamais honoré. Un excès non demandé d'un côté, une
+# répétition demandée et absente de l'autre — la même question posée deux fois.
+#
+# `olive` est porté par 8 des 80 recettes du catalogue gelé, pour 9 créneaux :
+# assez pour saturer la semaine si rien ne l'en empêche.
+case: leftover_to_use_up
+runs: 3
+
+intent: >-
+  Il me reste des olives à finir cette semaine.
+
+# Ce que l'API reçoit vraiment : la liste interprétée, après relecture du foyer
+# à l'écran. Écrite ici plutôt que redéduite à chaque exécution — un golden qui
+# porte sur l'APPLICATION d'une contrainte ne doit pas rougir parce que
+# l'interprétation a tourné sa phrase autrement ce jour-là.
+constraints:
+  - kind: leftover
+    label: olives à finir
+    detail: olive
+
+expected_properties:
+  allergen_violations: 0
+  dishes_outside_candidates: 0
+
+  # Un ou deux repas, trois au pire — pas la semaine. Le plafond vient de
+  # `WANTED_PER_INGREDIENT` : au plus trois recettes portant l'aliment sont
+  # remontées en tête, les autres gardent leur rang et restent choisissables.
+  # Un dépassement dit que le modèle est allé les chercher plus bas, ce qui
+  # serait une information sur le prompt et non sur le classement.
+  slots_with_named_ingredient: "<= 3"
+
+  # L'autre bord, et il compte autant. Un foyer qui demande à finir ses olives
+  # et n'en voit aucune a été ignoré — et un golden qui ne surveillerait que le
+  # plafond passerait au vert en supprimant la fonctionnalité.
+  named_ingredient_minimum: ">= 1"
+
+human_reference:
+  note: >-
+    Une semaine ordinaire dans laquelle les olives passent une ou deux fois.
+    Le foyer a la même forme que `founder` — deux adultes et un enfant de six
+    ans, rien de filtré — pour que la seule chose qui varie soit ce qu'il a
+    dit avoir dans son frigo.

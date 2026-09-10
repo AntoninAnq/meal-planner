@@ -319,6 +319,23 @@ HOUSEHOLDS: list[dict[str, Any]] = [
         "constraints": [],
     },
     {
+        "key": "leftover_to_use_up",
+        "why": "Same shape as `founder` again, so the only thing this case "
+               "varies is that the household named a food it has left. Written "
+               "after the first real production week came back with the same "
+               "ingredient on all eight meals: `rank` lifted EVERY recipe "
+               "carrying it, and the model reads the candidate list from the "
+               "top. Cardinality is what nothing measured — neither this excess "
+               "nor its mirror in `busy_week`, a repetition asked for and never "
+               "honoured.",
+        "members": [
+            {"alias": "m1", "life_stage": "teen_adult"},
+            {"alias": "m2", "life_stage": "teen_adult"},
+            {"alias": "m3", "life_stage": "young_child"},
+        ],
+        "constraints": [],
+    },
+    {
         "key": "busy_week",
         "why": "Same shape as `founder` — two adults and a six-year-old, "
                "nothing filtered — so the only thing this case varies is what "

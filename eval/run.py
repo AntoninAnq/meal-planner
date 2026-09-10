@@ -269,6 +269,15 @@ class RunResult:
     #: one batch and getting four dishes twice each scores 4 on the first and
     #: 2 on this one — the two together are what tells them apart.
     most_repeated: int = 0
+    #: Slots holding at least one dish that contains a food the household named
+    #: as a leftover or a preference. Slots, not dishes: two aubergine dishes on
+    #: one dinner is one meal of aubergine, and counting two would send the
+    #: reader looking for an evening that does not exist.
+    slots_with_named_ingredient: int = 0
+    #: How many catalogue recipes carry that food at all. Reported so a zero
+    #: above can be read: an ingredient the referential does not know matches
+    #: nothing, and the case would pass while measuring nothing.
+    recipes_carrying_named_ingredient: int = 0
     violations: list[str] = field(default_factory=list)
     allergen_violations: int = 0
     outside_candidates: int = 0
@@ -284,10 +293,12 @@ def one_run(
 ) -> RunResult:
     from app.db.models import (
         DietaryConstraint,
+        Ingredient,
         Member,
         PlannedDish,
         PlannedDishMember,
         RecipeAllergen,
+        RecipeIngredient,
     )
     from app.domain.enums import ConstraintSeverity, LifeStage
     from app.llm.factory import get_llm_client
@@ -442,8 +453,50 @@ def one_run(
             if carried.get(dish.recipe_id, set()) & excluded.get(assignment.member_id, set()):
                 breaches += 1
 
+        # Cardinality: how far a named food actually spread.
+        #
+        # Counted in SLOTS and not in dishes, because "aubergine at every meal"
+        # is what the household sees. Two aubergine dishes on one dinner is one
+        # meal of aubergine, and calling it two would send the reader looking
+        # for a second evening that does not exist — the same reasoning
+        # `slotsInViolation` follows on the front.
+        #
+        # `reachable` is the guard against a silent zero: an ingredient the
+        # referential does not know matches no recipe, and the case would then
+        # pass by measuring nothing at all.
+        named = {
+            entry["detail"]
+            for entry in (constraints or [])
+            if entry.get("kind") in ps.WANTED_KINDS and entry.get("detail")
+        }
+        slots_with_named = 0
+        reachable = 0
+        if named:
+            wanted_ids = {
+                row
+                for row in db.scalars(
+                    select(Ingredient.id).where(Ingredient.normalized_name.in_(named))
+                )
+            }
+            carrying = {
+                row.recipe_id
+                for row in db.scalars(
+                    select(RecipeIngredient).where(RecipeIngredient.ingredient_id.in_(wanted_ids))
+                )
+            }
+            reachable = len(carrying)
+            slots_with_named = len(
+                {
+                    (dish.day_of_week, dish.meal_type)
+                    for dish in dishes
+                    if dish.recipe_id in carrying
+                }
+            )
+
         codes = [violation.code for violation in outcome.violations]
         return RunResult(
+            slots_with_named_ingredient=slots_with_named,
+            recipes_carrying_named_ingredient=reachable,
             seconds=seconds,
             attempts=outcome.attempts,
             input_tokens=outcome.input_tokens,
@@ -549,6 +602,26 @@ def report(case: str, runs: list[RunResult], golden: dict[str, Any]) -> None:
                statistics.mean(run.distinct_dishes for run in ok))
     if "candidates_minimum" in expected:
         _check("candidats", f">= {expected['candidates_minimum']}", ok[0].pool_size)
+    if "slots_with_named_ingredient" in expected:
+        carrying = ok[0].recipes_carrying_named_ingredient
+        # Printed BEFORE the assertion, and unconditionally: a zero here makes
+        # the number below meaningless rather than good, and that has to be
+        # visible without reading this file.
+        print(f"  recettes qui le portent {carrying}")
+        _check(
+            "créneaux avec l'aliment nommé",
+            expected["slots_with_named_ingredient"],
+            statistics.mean(run.slots_with_named_ingredient for run in ok),
+        )
+    if "named_ingredient_minimum" in expected:
+        # The other edge. A household that asked to use up its olives and got
+        # none was ignored — and a golden watching only the ceiling would go
+        # green by deleting the feature.
+        _check(
+            "au moins un créneau",
+            expected["named_ingredient_minimum"],
+            statistics.mean(run.slots_with_named_ingredient for run in ok),
+        )
     print(
         f"  complexité mar-ven   {statistics.mean(r.weeknight_complexity for r in ok):.2f}"
         f"   ·   lun+we {statistics.mean(r.weekend_complexity for r in ok):.2f}"
