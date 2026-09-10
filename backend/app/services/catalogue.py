@@ -170,13 +170,27 @@ def overlap_groups(by_handle: Mapping[str, frozenset[uuid.UUID]]) -> list[str]:
     return [", ".join(family) for family in groups[:OVERLAP_GROUPS_SHOWN]]
 
 
+#: How many recipes a single named ingredient may push to the front.
+#:
+#: "Il reste des aubergines" is one or two meals, not a rule for the week — and
+#: the front of the list is where the model actually reads: `rank` records the
+#: measurement, it walks the candidates in order, `r_008, r_007, r_005…` down
+#: the page. Lifting EVERY recipe carrying the ingredient therefore filled a
+#: whole week with it, observed in production on the first real generation.
+#:
+#: Three rather than one: with a single candidate, a model that skips it means
+#: the ingredient never appears at all, and the request is silently dropped.
+#: Three leaves a choice while keeping the head of the list mixed.
+WANTED_PER_INGREDIENT = 3
+
+
 def rank(
     eligible: Sequence[uuid.UUID],
     *,
     last_planned: Mapping[uuid.UUID, date],
     seed: str,
     preferred: Collection[uuid.UUID] = (),
-    wanted: Collection[uuid.UUID] = (),
+    wanted: Sequence[Collection[uuid.UUID]] = (),
     unwanted: Collection[uuid.UUID] = (),
     quick: Collection[uuid.UUID] = (),
     quick_share: float = 1.0,
@@ -209,6 +223,13 @@ def rank(
     Freshness comes before staleness rather than being folded into one score:
     on a catalogue nobody has eaten from, every recipe is equally stale, and a
     single ordering would collapse to whatever the database returned first.
+
+    `wanted` is ONE GROUP PER NAMED INGREDIENT, not one flat set, and the shape
+    is the whole point: a household that says "there are aubergines, ham and
+    yoghurts left" wants each of the three on a meal or two. Flattened, the
+    quota would be spent on whichever ingredient happens to have the most
+    recipes, and the other two would never be lifted at all — an excess traded
+    for a different one.
     """
     # Sorted before shuffling, and this is load-bearing rather than tidy. A
     # seeded shuffle is only reproducible if its INPUT order is: the first time
@@ -216,7 +237,8 @@ def rank(
     # deriving `complexity` had rewritten the table and Postgres handed the
     # rows back in a new physical order. The whole "the reserve is recomputed,
     # never stored" design rests on this line.
-    safe, asked, refused = set(preferred), set(wanted), set(unwanted)
+    safe, refused = set(preferred), set(unwanted)
+    asked = _front_of_each(wanted, last_planned, seed)
 
     def tier(recipe_id: uuid.UUID) -> int:
         """Five bands, most wanted first. Ordering only — nothing is removed.
@@ -296,6 +318,29 @@ def _favour(head: list[uuid.UUID], tail: list[uuid.UUID], share: float) -> list[
             merged.append(next(tails))
             remaining_tail -= 1
     return merged
+
+
+def _front_of_each(
+    groups: Sequence[Collection[uuid.UUID]],
+    last_planned: Mapping[uuid.UUID, date],
+    seed: str,
+) -> set[uuid.UUID]:
+    """At most `WANTED_PER_INGREDIENT` recipes lifted per named ingredient.
+
+    Ordered by the same staleness the bands use, so what gets lifted is what
+    the household has gone longest without — the reason a leftover is being
+    used up rather than a favourite being served again.
+
+    The rest keep their ordinary rank. Nothing is removed here: a fourth
+    aubergine recipe is still perfectly choosable, it simply no longer arrives
+    at the top of the page where the model reads first.
+    """
+    lifted: set[uuid.UUID] = set()
+    for group in groups:
+        lifted.update(
+            _by_staleness(sorted(group, key=str), last_planned, seed)[:WANTED_PER_INGREDIENT]
+        )
+    return lifted
 
 
 def _by_staleness(
@@ -633,7 +678,14 @@ class SqlCatalogue:
             last_planned=self._last_planned(household_id),
             seed=f"{household_id}:{week_start.isoformat()}",
             preferred=self._free_of(eligible, self._prefer_free_of),
-            wanted=self._containing(eligible, self._wanted_ingredients),
+            # One group per ingredient, so each named food earns its own place
+            # at the front instead of competing for a shared quota. Same shape
+            # as `_dropped_for_dislikes` above, which already asks the question
+            # one ingredient at a time.
+            wanted=[
+                self._containing(eligible, frozenset({name}))
+                for name in sorted(self._wanted_ingredients)
+            ],
             unwanted=self._containing(eligible, unwanted),
             quick=self._quick(eligible) if self._quick_share > 0 else (),
             quick_share=self._quick_share,

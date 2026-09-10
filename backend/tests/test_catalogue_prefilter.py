@@ -14,6 +14,7 @@ from datetime import date
 from app.services.catalogue import (
     CANDIDATE_CEILING,
     CANDIDATE_FLOOR,
+    WANTED_PER_INGREDIENT,
     Candidate,
     candidate_count,
     overlap_groups,
@@ -359,7 +360,7 @@ def test_a_named_ingredient_ranks_its_recipes_first() -> None:
     eligible = _ids(20)
     with_ham = {eligible[15], eligible[16]}
 
-    ordered = rank(eligible, last_planned={}, seed="s", wanted=with_ham)
+    ordered = rank(eligible, last_planned={}, seed="s", wanted=[with_ham])
 
     assert set(ordered[:2]) == with_ham
 
@@ -380,6 +381,77 @@ def test_an_avoided_ingredient_goes_last_and_is_not_removed() -> None:
     assert sorted(ordered, key=str) == sorted(eligible, key=str)
 
 
+def test_one_ingredient_cannot_take_the_whole_front_of_the_list() -> None:
+    """"Il reste des aubergines" is a meal or two, not a rule for the week.
+
+    Measured in production on the first real generation: every recipe carrying
+    the ingredient was lifted, the model walked the list from the top as it
+    always does, and the household got aubergine at all eight meals. Nothing
+    was wrong with the model's reading — the list it was handed said that.
+    """
+    eligible = _ids(20)
+    aubergine = set(eligible[:8])
+
+    ordered = rank(eligible, last_planned={}, seed="s", wanted=[aubergine])
+
+    assert len(set(ordered[:WANTED_PER_INGREDIENT]) & aubergine) == WANTED_PER_INGREDIENT
+    assert set(ordered[WANTED_PER_INGREDIENT:]) & aubergine, "the rest must still be reachable"
+    # Ordering, never filtering: the five that were not lifted keep an ordinary
+    # rank, and a household that wants a fourth aubergine dish can still be
+    # offered one.
+    assert sorted(ordered, key=str) == sorted(eligible, key=str)
+
+
+def test_each_named_ingredient_gets_its_own_place_at_the_front() -> None:
+    """« Il reste des aubergines, du jambon et des yaourts » — all three.
+
+    The reason `wanted` is a group per ingredient rather than one flat set. On
+    a shared quota the three slots would go to whichever food happens to have
+    the most recipes, and the other two would never be lifted at all — an
+    excess traded for a different one.
+    """
+    eligible = _ids(30)
+    groups = [set(eligible[:10]), set(eligible[10:20]), set(eligible[20:])]
+
+    ordered = rank(eligible, last_planned={}, seed="s", wanted=groups)
+    front = set(ordered[: 3 * WANTED_PER_INGREDIENT])
+
+    for group in groups:
+        assert len(front & group) == WANTED_PER_INGREDIENT
+
+
+def test_an_ingredient_with_few_recipes_lifts_what_it_has() -> None:
+    """A quota is a ceiling, not a target: one recipe with ham lifts one."""
+    eligible = _ids(20)
+
+    ordered = rank(eligible, last_planned={}, seed="s", wanted=[{eligible[15]}])
+
+    assert ordered[0] == eligible[15]
+
+
+def test_the_lifted_recipes_are_the_ones_gone_longest_without() -> None:
+    """Which three, when more than three qualify.
+
+    Staleness, like the bands themselves — a leftover is being used up, so the
+    dish nobody has had for months beats the one served last week. Anything
+    else would make "use up the aubergines" a way of re-serving a favourite.
+    """
+    eligible = _ids(10)
+    aubergine = set(eligible[:6])
+    served = {
+        eligible[0]: date(2026, 9, 1),
+        eligible[1]: date(2026, 8, 1),
+        eligible[2]: date(2026, 7, 1),
+        eligible[3]: date(2026, 6, 1),
+        eligible[4]: date(2026, 5, 1),
+        eligible[5]: date(2026, 4, 1),
+    }
+
+    ordered = rank(eligible, last_planned=served, seed="s", wanted=[aubergine])
+
+    assert set(ordered[:3]) == {eligible[5], eligible[4], eligible[3]}
+
+
 def test_wanted_and_safe_beats_wanted_alone() -> None:
     """Both preferences apply, and safety orders first within the wanted band."""
     eligible = _ids(10)
@@ -389,7 +461,7 @@ def test_wanted_and_safe_beats_wanted_alone() -> None:
         last_planned={},
         seed="s",
         preferred={eligible[5]},
-        wanted={eligible[5], eligible[6]},
+        wanted=[{eligible[5], eligible[6]}],
     )
 
     assert ordered[0] == eligible[5]

@@ -186,7 +186,7 @@ def test_time_never_outranks_what_the_household_actually_asked_for() -> None:
     ham = {everything[0]}  # wanted, but long
     quick = set(everything[10:])  # quick, but nobody asked for them
 
-    ordered = rank(everything, last_planned={}, seed="s", wanted=ham, quick=quick)
+    ordered = rank(everything, last_planned={}, seed="s", wanted=[ham], quick=quick)
 
     assert ordered[0] == everything[0]
 
