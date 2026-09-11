@@ -409,4 +409,9 @@ export type ShoppingList = {
   /** A chosen meal holds a dish with no recipe (I7), so its ingredients are not
    * here. Saying nothing would leave a list somebody believes is complete. */
   missing_recipe: boolean;
+  /** At least one dish was scaled to the people eating it. */
+  scaled: boolean;
+  /** Recipes whose quantities are the source's — their yield is not a number
+   * of people, or there is none — each with what the source wrote. */
+  unscaled: { title: string; servings_raw: string | null }[];
 };

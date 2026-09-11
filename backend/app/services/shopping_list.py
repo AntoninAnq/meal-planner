@@ -4,10 +4,15 @@ Three limits come from the schema rather than from a choice of screen, and all
 three are visible in the output because hiding any of them makes a list that is
 quietly wrong.
 
-**No scaling.** `Recipe.servings` is nullable and its own comment forbids
-deriving a factor from `servings_raw`: "20 tartelettes" and "4 personnes" are
-not the same unit. Quantities are the source's, for the number of portions the
-source states, and the interface says so.
+**Scaled when the source counts people.** `Recipe.servings` is the first
+number in `recipeYield`, and "20 tartelettes" and "4 personnes" are not the
+same unit. Only a yield that counts people — personnes, parts, portions,
+convives… — is scaled, to the life-stage coefficients of whoever eats the dish
+plus the slot's guests (`domain/portions.py`). A bare "4" is left alone too.
+The others keep the source's quantities and are named in `unscaled`, with what
+the source wrote: fifteen guests on a recipe for four must not be bought for
+four, and a list that is quietly off on one recipe is worse than one that says
+which.
 
 **Units are free text** (`RecipeIngredient.unit`, 40 characters). "200 g de
 tomates" and "3 tomates" do not add up. Two quantities are summed only when
@@ -36,7 +41,7 @@ from __future__ import annotations
 
 import re
 import uuid
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 from typing import Any
 
 from sqlalchemy import Row, func, select
@@ -47,15 +52,20 @@ from app.db.models import (
     Ingredient,
     IngredientFoodCategory,
     MealPlan,
+    Member,
+    PlannedDish,
     Recipe,
     RecipeIngredient,
 )
+from app.domain.enums import LifeStage
 from app.domain.food_categories import rank_of
+from app.domain.portions import scale_factor
 from app.domain.shared_ingredients import pantry
 from app.schemas import (
     ShoppingLineOut,
     ShoppingListOut,
     ShoppingSectionOut,
+    UnscaledRecipeOut,
 )
 
 _SPACES = re.compile(r"\s+")
@@ -99,6 +109,66 @@ def _render(parts: dict[str, Decimal]) -> str | None:
     )
 
 
+#: What a scaled quantity is rounded to. "1.3 oignon" is already generous to
+#: the arithmetic; "1.3333 oignon" is a bug report.
+_SCALED_STEP = Decimal("0.1")
+
+
+def _scaled(quantity: Decimal, factor: Decimal | None) -> Decimal:
+    if factor is None:
+        return quantity
+    return max((quantity * factor).quantize(_SCALED_STEP, rounding=ROUND_HALF_UP), _SCALED_STEP)
+
+
+def _factors(
+    db: Session,
+    household_id: uuid.UUID,
+    plan: MealPlan,
+    dishes: list[PlannedDish],
+    recipes: dict[uuid.UUID, Row[Any]],
+) -> dict[uuid.UUID, Decimal | None]:
+    """Per dish, how much of its recipe the table needs — None when unknown.
+
+    Guests are stored per slot, not per dish, so they are counted once, on the
+    dish most of the household eats: the one `SlotCard` calls the default. A
+    baby's separate plate must not be bought for the four adults who came to
+    dinner.
+    """
+    stages: dict[uuid.UUID, LifeStage] = {
+        member_id: stage
+        for member_id, stage in db.execute(
+            select(Member.id, Member.life_stage).where(Member.household_id == household_id)
+        ).all()
+    }
+
+    carries_guests: dict[tuple[int, str], PlannedDish] = {}
+    for dish in dishes:
+        key = (dish.day_of_week, dish.meal_type.value)
+        current = carries_guests.get(key)
+        if current is None or (len(dish.eaters), -dish.position) > (
+            len(current.eaters),
+            -current.position,
+        ):
+            carries_guests[key] = dish
+
+    factors: dict[uuid.UUID, Decimal | None] = {}
+    for dish in dishes:
+        if dish.recipe_id is None:
+            continue
+        eating = [
+            stages[assignment.member_id]
+            for assignment in dish.eaters
+            if assignment.member_id in stages
+        ]
+        key = (dish.day_of_week, dish.meal_type.value)
+        if carries_guests[key] is dish:
+            for group in (plan.slot_guests or {}).get(f"{key[0]}-{key[1]}", []):
+                eating += [LifeStage(group["life_stage"])] * int(group["count"])
+        recipe = recipes[dish.recipe_id]
+        factors[dish.id] = scale_factor(recipe.servings, recipe.servings_raw, eating)
+    return factors
+
+
 def build(
     db: Session,
     *,
@@ -129,6 +199,16 @@ def build(
             missing_recipe=missing_recipe,
         )
 
+    recipes = {
+        row.id: row
+        for row in db.execute(
+            select(Recipe.id, Recipe.title, Recipe.servings, Recipe.servings_raw).where(
+                Recipe.id.in_(recipe_ids)
+            )
+        ).all()
+    }
+    factors = _factors(db, household_id, plan, dishes, recipes)
+
     by_recipe: dict[uuid.UUID, list[Row[Any]]] = {}
     for row in db.execute(
         select(
@@ -152,9 +232,12 @@ def build(
     # rows. It is what makes the unrecognised lines come out in a stable order
     # — and a list whose sections shuffle between two identical requests is one
     # nobody can proof-read.
+    in_week_order = sorted(dishes, key=lambda dish: (dish.day_of_week, dish.meal_type.value))
+    # Each line with the factor of the dish it came from: the same recipe on two
+    # days can feed two different tables.
     lines = [
-        row
-        for dish in sorted(dishes, key=lambda dish: (dish.day_of_week, dish.meal_type.value))
+        (row, factors.get(dish.id))
+        for dish in in_week_order
         if dish.recipe_id is not None
         for row in by_recipe.get(dish.recipe_id, [])
     ]
@@ -176,7 +259,7 @@ def build(
     }
     cupboard = pantry(census, catalogue_size)
 
-    resolved = {row.ingredient_id for row in lines if row.ingredient_id is not None}
+    resolved = {row.ingredient_id for row, _ in lines if row.ingredient_id is not None}
     names: dict[uuid.UUID, str] = {
         ingredient_id: name
         for ingredient_id, name in db.execute(
@@ -207,7 +290,7 @@ def build(
     amounts: dict[uuid.UUID, dict[str, Decimal]] = {}
     seen: dict[uuid.UUID, None] = {}
 
-    for row in lines:
+    for row, factor in lines:
         if row.ingredient_id is None:
             # Verbatim, and de-duplicated on the exact text: the same line from
             # two recipes is one thing to buy, and we cannot tell that of two
@@ -220,7 +303,7 @@ def build(
             continue
         per_unit = amounts.setdefault(row.ingredient_id, {})
         key = _unit_key(row.unit)
-        per_unit[key] = per_unit.get(key, Decimal(0)) + row.quantity
+        per_unit[key] = per_unit.get(key, Decimal(0)) + _scaled(row.quantity, factor)
 
     # Names only, and no quantities: nobody checks whether they have 200 g of
     # salt, they check whether there is salt.
@@ -250,6 +333,16 @@ def build(
     for section in sections:
         section.lines.sort(key=lambda line: line.name.lower())
 
+    unscaled: dict[uuid.UUID, UnscaledRecipeOut] = {}
+    for dish in in_week_order:
+        if dish.recipe_id is None or factors.get(dish.id) is not None:
+            continue
+        recipe = recipes[dish.recipe_id]
+        unscaled.setdefault(
+            dish.recipe_id,
+            UnscaledRecipeOut(title=recipe.title, servings_raw=recipe.servings_raw),
+        )
+
     return ShoppingListOut(
         week_start=plan.week_start,
         meals=len(chosen),
@@ -258,4 +351,6 @@ def build(
         pantry=cupboard_names,
         unparsed=unparsed,
         missing_recipe=missing_recipe,
+        scaled=any(factor is not None for factor in factors.values()),
+        unscaled=list(unscaled.values()),
     )

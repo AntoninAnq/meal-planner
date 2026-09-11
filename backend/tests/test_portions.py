@@ -5,7 +5,7 @@ from decimal import Decimal
 import pytest
 
 from app.domain.enums import LifeStage
-from app.domain.portions import scale_quantity, total_portions
+from app.domain.portions import counts_people, scale_factor, scale_quantity, total_portions
 
 
 def test_total_portions_mixed_household() -> None:
@@ -50,3 +50,29 @@ def test_coefficients_are_configurable() -> None:
         LifeStage.TEEN_ADULT: Decimal("1.0"),
     }
     assert total_portions([LifeStage.YOUNG_CHILD], custom) == Decimal("0.7")
+
+
+@pytest.mark.parametrize(
+    "raw", ["4 personnes", "Pour 6", "6 parts", "4 pers.", "8 convives", "4 bols", "2 Portions"]
+)
+def test_a_yield_that_counts_people(raw: str) -> None:
+    assert counts_people(raw)
+
+
+@pytest.mark.parametrize("raw", ["20 tartelettes", "1 gâteau", "4", "30", "", None])
+def test_a_yield_that_does_not(raw: str | None) -> None:
+    """Pieces are not people, and a bare number is not assumed to be."""
+    assert not counts_people(raw)
+
+
+def test_the_factor_is_the_table_over_the_yield() -> None:
+    """A recipe for 4, eaten by two adults and a young child: 2.5 portions."""
+    stages = [LifeStage.TEEN_ADULT, LifeStage.TEEN_ADULT, LifeStage.YOUNG_CHILD]
+    assert scale_factor(4, "4 personnes", stages) == Decimal("0.625")
+
+
+def test_no_factor_when_it_cannot_be_said() -> None:
+    adults = [LifeStage.TEEN_ADULT, LifeStage.TEEN_ADULT]
+    assert scale_factor(20, "20 tartelettes", adults) is None
+    assert scale_factor(None, None, adults) is None
+    assert scale_factor(4, "4 personnes", []) is None

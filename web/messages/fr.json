@@ -220,7 +220,10 @@
     "unparsedHelp": "Recopiées telles qu'elles sont écrites dans la recette. Nous ne savons pas les regrouper, donc nous n'essayons pas.",
     "noQuantity": "quantité non lue",
     "missingRecipe": "Un plat de cette sélection n'a pas de recette : ses ingrédients ne sont pas dans la liste.",
-    "scaleNote": "Les quantités sont celles des recettes d'origine, pour le nombre de parts qu'elles indiquent. Elles ne sont pas ajustées à votre foyer.",
+    "scaledNote": "Quantités ajustées au nombre de personnes à table, invités compris.",
+    "unscaledHeading": "Quantités telles que la recette les donne",
+    "unscaledAs": "{title} : pour {servings}",
+    "unscaledUnknown": "{title} : la recette ne dit pas pour combien de personnes",
     "empty": "Aucun repas coché.",
     "copy": "Copier la liste",
     "copyHint": "en texte, prêt à envoyer",
@@ -229,7 +232,8 @@
     "textHeading": "Courses — {range} ({meals, plural, one {# repas} other {# repas}})",
     "textPantry": "À VÉRIFIER DANS LE PLACARD",
     "textUnparsed": "LIGNES NON RECONNUES",
-    "textScaleNote": "Quantités des recettes d'origine, non ajustées au foyer."
+    "textScaled": "Quantités ajustées au nombre de personnes à table.",
+    "textUnscaled": "QUANTITÉS TELLES QUE LA RECETTE LES DONNE"
   },
   "composer": {
     "collapsed": "Une précision pour cette semaine ?",

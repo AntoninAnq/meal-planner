@@ -524,6 +524,14 @@ class ShoppingSectionOut(BaseModel):
     lines: list[ShoppingLineOut] = Field(default_factory=list)
 
 
+class UnscaledRecipeOut(BaseModel):
+    """A recipe whose quantities are the source's, and what the source said."""
+
+    title: str
+    #: `recipeYield` as written — "20 tartelettes" — or null when there was none.
+    servings_raw: str | None = None
+
+
 class ShoppingListOut(BaseModel):
     """What to buy for the meals someone picked, and what we cannot tell them.
 
@@ -548,3 +556,8 @@ class ShoppingListOut(BaseModel):
     #: are not here. Saying nothing would be the worst case — a list somebody
     #: believes is complete.
     missing_recipe: bool = False
+    #: At least one dish was scaled to the people eating it.
+    scaled: bool = False
+    #: The recipes that were not, each with what its source wrote — the lines
+    #: worth checking before buying.
+    unscaled: list[UnscaledRecipeOut] = Field(default_factory=list)

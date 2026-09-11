@@ -32,11 +32,13 @@ from app.db.models import (
     Ingredient,
     IngredientFoodCategory,
     MealPlan,
+    Member,
     PlannedDish,
+    PlannedDishMember,
     Recipe,
     RecipeIngredient,
 )
-from app.domain.enums import DishSource, MealType, RecipeSourceType
+from app.domain.enums import DishSource, LifeStage, MealType, RecipeSourceType
 from app.domain.food_categories import STORE_ORDER, rank_of
 from app.services.shopping_list import build
 
@@ -55,6 +57,8 @@ TABLES = [
     RecipeIngredient.__table__,
     MealPlan.__table__,
     PlannedDish.__table__,
+    Member.__table__,
+    PlannedDishMember.__table__,
 ]
 
 
@@ -125,14 +129,24 @@ class Kitchen:
         lines: list[tuple[str | None, str | None, str | None, str]],
         *,
         with_recipe: bool = True,
+        servings: int | None = None,
+        servings_raw: str | None = None,
+        eaters: tuple[LifeStage, ...] = (),
+        guests: tuple[tuple[LifeStage, int], ...] = (),
     ) -> tuple[int, str]:
-        """`lines` are `(ingredient name or None, quantity, unit, raw text)`."""
+        """`lines` are `(ingredient name or None, quantity, unit, raw text)`.
+
+        No yield and nobody at the table by default, so the quantities are the
+        source's — which is what every test about adding up is about.
+        """
         recipe_id = None
         if with_recipe:
             recipe = Recipe(
                 title=f"Plat {self.day}",
                 source_type=RecipeSourceType.SCRAPED,
                 source_url=f"https://example.invalid/{uuid.uuid4()}",
+                servings=servings,
+                servings_raw=servings_raw,
             )
             self.db.add(recipe)
             self.db.flush()
@@ -148,18 +162,33 @@ class Kitchen:
                         ingredient_id=self.ingredient(name) if name else None,
                     )
                 )
-        self.db.add(
-            PlannedDish(
-                meal_plan_id=self.plan.id,
-                day_of_week=self.day,
-                meal_type=MealType.DINNER,
-                recipe_id=recipe_id,
-                # `ck_planned_dish_identity`: a dish is a recipe or a title,
-                # never neither. A model suggestion is the second.
-                free_text_label=None if recipe_id else "Restes de dimanche",
-                source=DishSource.CATALOG if recipe_id else DishSource.LLM_SUGGESTION,
-            )
+        dish = PlannedDish(
+            meal_plan_id=self.plan.id,
+            day_of_week=self.day,
+            meal_type=MealType.DINNER,
+            recipe_id=recipe_id,
+            # `ck_planned_dish_identity`: a dish is a recipe or a title,
+            # never neither. A model suggestion is the second.
+            free_text_label=None if recipe_id else "Restes de dimanche",
+            source=DishSource.CATALOG if recipe_id else DishSource.LLM_SUGGESTION,
         )
+        self.db.add(dish)
+        self.db.flush()
+        for stage in eaters:
+            member = Member(
+                household_id=self.household_id, display_name=stage.value, life_stage=stage
+            )
+            self.db.add(member)
+            self.db.flush()
+            self.db.add(PlannedDishMember(planned_dish_id=dish.id, member_id=member.id))
+        if guests:
+            # Stored the way the generation stores them: per slot, by stage.
+            self.plan.slot_guests = {
+                **(self.plan.slot_guests or {}),
+                f"{self.day}-dinner": [
+                    {"life_stage": stage.value, "count": count} for stage, count in guests
+                ],
+            }
         self.db.commit()
         slot = (self.day, "dinner")
         # `ck_planned_dish_day` keeps the week to seven days, so a test that
@@ -208,6 +237,100 @@ def _lines(result, code: str) -> list[tuple[str, str | None]]:
         if section.code == code:
             return [(line.name, line.amount) for line in section.lines]
     return []
+
+
+# -- Scaled to the table, when the source counts people -----------------------
+
+ADULT = LifeStage.TEEN_ADULT
+
+
+def test_quantities_follow_the_people_at_the_table(db: Session) -> None:
+    kitchen = Kitchen(db)
+    slot = kitchen.meal(
+        [("tomate", "400", "g", "400 g de tomates")],
+        servings=4,
+        servings_raw="4 personnes",
+        eaters=(ADULT, ADULT),
+    )
+
+    result = kitchen.list(slot)
+
+    assert _lines(result, "other") == [("tomate", "200 g")]
+    assert result.scaled is True
+    assert result.unscaled == []
+
+
+def test_fifteen_guests_are_not_bought_for_four(db: Session) -> None:
+    """The case that asked for this: an invitation of fifteen on a recipe for
+    four. The two people who live here and the guests are all at the table."""
+    kitchen = Kitchen(db)
+    slot = kitchen.meal(
+        [("tomate", "400", "g", "400 g de tomates")],
+        servings=4,
+        servings_raw="Pour 4",
+        eaters=(ADULT, ADULT),
+        guests=((ADULT, 13),),
+    )
+
+    assert _lines(kitchen.list(slot), "other") == [("tomate", "1500 g")]
+
+
+def test_a_child_and_a_baby_count_for_less(db: Session) -> None:
+    kitchen = Kitchen(db)
+    slot = kitchen.meal(
+        [("tomate", "400", "g", "400 g de tomates")],
+        servings=4,
+        servings_raw="4 personnes",
+        eaters=(ADULT, LifeStage.YOUNG_CHILD, LifeStage.BABY),
+    )
+
+    # 1 + 0.5 + 0.25 portions of a recipe for 4.
+    assert _lines(kitchen.list(slot), "other") == [("tomate", "175 g")]
+
+
+def test_twenty_tartlets_keep_the_source_quantities_and_say_so(db: Session) -> None:
+    kitchen = Kitchen(db)
+    slot = kitchen.meal(
+        [("tomate", "400", "g", "400 g de tomates")],
+        servings=20,
+        servings_raw="20 tartelettes",
+        eaters=(ADULT, ADULT),
+    )
+
+    result = kitchen.list(slot)
+
+    assert _lines(result, "other") == [("tomate", "400 g")]
+    assert result.scaled is False
+    assert [(recipe.title, recipe.servings_raw) for recipe in result.unscaled] == [
+        ("Plat 0", "20 tartelettes")
+    ]
+
+
+def test_a_bare_number_is_not_taken_for_people(db: Session) -> None:
+    kitchen = Kitchen(db)
+    slot = kitchen.meal(
+        [("tomate", "400", "g", "400 g de tomates")],
+        servings=4,
+        servings_raw="4",
+        eaters=(ADULT, ADULT),
+    )
+
+    result = kitchen.list(slot)
+
+    assert _lines(result, "other") == [("tomate", "400 g")]
+    assert [recipe.servings_raw for recipe in result.unscaled] == ["4"]
+
+
+def test_a_scaled_count_is_rounded_to_a_tenth(db: Session) -> None:
+    kitchen = Kitchen(db)
+    slot = kitchen.meal(
+        [("oignon", "1", None, "1 oignon")],
+        servings=6,
+        servings_raw="6 parts",
+        eaters=(ADULT, ADULT),
+    )
+
+    assert _lines(kitchen.list(slot), "other") == [("oignon", "0.3")]
 
 
 # -- Adding up, and refusing to ----------------------------------------------

@@ -220,7 +220,10 @@
     "unparsedHelp": "Copied exactly as the recipe writes them. We cannot group them, so we do not try.",
     "noQuantity": "amount not read",
     "missingRecipe": "One dish in this selection has no recipe: its ingredients are not on the list.",
-    "scaleNote": "Quantities are the ones from the original recipes, for the number of portions they state. They are not adjusted to your household.",
+    "scaledNote": "Quantities adjusted to the number of people at the table, guests included.",
+    "unscaledHeading": "Quantities as the recipe gives them",
+    "unscaledAs": "{title}: for {servings}",
+    "unscaledUnknown": "{title}: the recipe does not say how many it serves",
     "empty": "No meal checked.",
     "copy": "Copy the list",
     "copyHint": "as text, ready to send",
@@ -229,7 +232,8 @@
     "textHeading": "Shopping — {range} ({meals, plural, one {# meal} other {# meals}})",
     "textPantry": "CHECK THE CUPBOARD FOR",
     "textUnparsed": "UNRECOGNISED LINES",
-    "textScaleNote": "Quantities from the original recipes, not adjusted to the household."
+    "textScaled": "Quantities adjusted to the number of people at the table.",
+    "textUnscaled": "QUANTITIES AS THE RECIPE GIVES THEM"
   },
   "composer": {
     "collapsed": "Anything to note for this week?",
