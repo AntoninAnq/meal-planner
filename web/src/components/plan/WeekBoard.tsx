@@ -11,7 +11,7 @@ import { apiGet, apiPost } from "@/lib/api/client";
 import { displayMessage } from "@/lib/api/error";
 import type { InterpretedConstraint, MealPlan, Violation } from "@/lib/api/types";
 import { cx } from "@/lib/cx";
-import { slotsInViolation, splitViolations } from "@/lib/plan";
+import { splitViolations, type WeekIssues } from "@/lib/plan";
 import { viewCookie, type ViewMode, type WeekView } from "@/lib/week-view";
 
 const POLL_INTERVAL_MS = 5000;
@@ -39,6 +39,7 @@ export function WeekBoard({
   hasPlan,
   generatedAt,
   violations,
+  issues,
   grid,
   list,
   favorites,
@@ -51,6 +52,9 @@ export function WeekBoard({
   hasPlan: boolean;
   generatedAt: string | null;
   violations: Violation[];
+  /** The slot violations, grouped by what the household can do about them.
+   * Computed on the server, where the dishes and the names already are. */
+  issues: WeekIssues;
   grid: ReactNode;
   list: ReactNode;
   favorites: ReactNode;
@@ -74,7 +78,8 @@ export function WeekBoard({
   const abort = useRef<AbortController | null>(null);
 
   const busy = startedAt !== null;
-  const { slot: slotViolations, plan: planViolations } = splitViolations(violations);
+  const { plan: planViolations } = splitViolations(violations);
+  const slotIssues = issues.allergen.meals + issues.unadapted.meals + issues.incomplete.meals;
   // Not a failure and not shown in red: the catalogue simply holds nothing for
   // this life stage (§6.4), and the honest move is to say it once rather than
   // to mark every slot. Split out here so the alert below never counts it.
@@ -265,26 +270,66 @@ export function WeekBoard({
         </div>
       )}
 
-      {(slotViolations.length > 0 || otherPlanViolations.length > 0) && !busy && !favoritesOpen && (
-        <div role="alert" className="rounded-card border border-danger/30 bg-danger-soft px-4 py-3">
-          {/* Two different failures, two different sentences. A plan-level
-              violation points at no meal, so counting it as "a meal could not
-              be completed" would send the user hunting for a slot that is
-              perfectly fine. */}
-          {slotViolations.length > 0 && (
-            <>
-              <p className="text-sm font-semibold text-danger">
-                {t("violationsHeading", { count: slotsInViolation(slotViolations) })}
-              </p>
-              <p className="mt-1 text-sm text-ink">{t("violationsBody")}</p>
-            </>
+      {(slotIssues > 0 || otherPlanViolations.length > 0) && !busy && !favoritesOpen && (
+        <div
+          // An alert only when an allergen is involved; the rest is a list of
+          // things to do, and red is not spent on it.
+          role={issues.allergen.meals > 0 ? "alert" : "note"}
+          className={cx(
+            "rounded-card border px-4 py-3",
+            issues.allergen.meals > 0
+              ? "border-danger/30 bg-danger-soft"
+              : "border-border bg-warn-soft",
+          )}
+        >
+          {/* One line per reason, each with the one thing it allows. "N repas
+              n'ont pas pu être complétés" said neither why nor what to do,
+              and offered to regenerate a baby's portion the model does not
+              write. A plan-level violation points at no meal and keeps its own
+              sentence below. */}
+          {slotIssues > 0 && (
+            <ul className="flex flex-col gap-2.5">
+              {issues.allergen.meals > 0 && (
+                <li>
+                  <p className="text-sm font-semibold text-danger">
+                    {t("issueAllergen", { count: issues.allergen.meals })}
+                  </p>
+                  <p className="mt-0.5 text-sm text-ink">{t("issueAllergenAction")}</p>
+                </li>
+              )}
+              {issues.unadapted.meals > 0 && (
+                <li>
+                  <p className="text-sm font-semibold text-ink">
+                    {issues.unadapted.names.length > 0
+                      ? t("issueUnadapted", {
+                          count: issues.unadapted.meals,
+                          names: format.list(issues.unadapted.names, { type: "conjunction" }),
+                        })
+                      : t("issueUnadaptedAnon", { count: issues.unadapted.meals })}
+                  </p>
+                  <p className="mt-0.5 text-sm text-ink-body">
+                    {t("issueUnadaptedAction", {
+                      people: Math.max(issues.unadapted.names.length, 1),
+                    })}
+                  </p>
+                </li>
+              )}
+              {issues.incomplete.meals > 0 && (
+                <li>
+                  <p className="text-sm font-semibold text-ink">
+                    {t("issueIncomplete", { count: issues.incomplete.meals })}
+                  </p>
+                  <p className="mt-0.5 text-sm text-ink-body">{t("issueIncompleteAction")}</p>
+                </li>
+              )}
+            </ul>
           )}
           {otherPlanViolations.length > 0 && (
             <>
               <p
                 className={cx(
-                  "text-sm font-semibold text-danger",
-                  slotViolations.length > 0 && "mt-3",
+                  "text-sm font-semibold text-ink",
+                  slotIssues > 0 && "mt-3",
                 )}
               >
                 {t("planViolationHeading")}

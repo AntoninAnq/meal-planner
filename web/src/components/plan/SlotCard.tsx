@@ -5,7 +5,16 @@ import { SlotLink } from "@/components/plan/SlotLink";
 import { Link } from "@/i18n/navigation";
 import { cx } from "@/lib/cx";
 import type { Invitation, MealType, PlanSlot, Violation } from "@/lib/api/types";
-import type { SlotKey } from "@/lib/plan";
+import { slotIssue, type IssueKind, type SlotKey } from "@/lib/plan";
+
+/** Red is the allergen's alone. A missing portion is something to do rather
+ * than a failure, and a meal to redo is neutral: a week of red pills over
+ * dishes that are perfectly there reads as the product being broken. */
+const PILL: Record<IssueKind, string> = {
+  allergen: "bg-danger-soft text-danger",
+  unadapted: "bg-warn-soft text-ink",
+  incomplete: "bg-surface-sunken text-ink-body",
+};
 
 /**
  * Adaptive: the simple case must look simple.
@@ -68,7 +77,7 @@ export async function SlotCard({
   const guestCount = (slot?.guests ?? []).reduce((total, group) => total + group.count, 0);
   const inviteCount = (invitation?.guests ?? []).reduce((total, g) => total + g.count, 0);
   const multiple = dishes.length > 1;
-  const broken = violations.length > 0;
+  const issue = slotIssue(violations, dishes, memberNames);
   // An unplanned meal has no state, so it gets no box: no border, no ground, no
   // "nothing planned". Lunches were already rendering as bare cells and only
   // some dinners as a bordered card, which made one absence look like two. It
@@ -126,10 +135,24 @@ export async function SlotCard({
             marked in the grid, so one mark per slot is owed — one, and short.
             It used to be a two-line sentence AND a red rule around the cell,
             which said the same thing three times over. */}
-        {broken && (
+        {/* It says WHY now. "non complété" in red sat on every meal of a week
+            whose dishes were all there, when all that was missing was the
+            baby's portion. */}
+        {issue && (
           <p className="inline-flex">
-            <span className="rounded-full bg-danger-soft px-[9px] py-[3px] text-[11.5px] leading-[1.4] font-medium text-danger">
-              {t("slotIncomplete")}
+            <span
+              className={cx(
+                "rounded-full px-[9px] py-[3px] text-[11.5px] leading-[1.4] font-medium",
+                PILL[issue.kind],
+              )}
+            >
+              {issue.kind === "allergen"
+                ? t("slotAllergen")
+                : issue.kind === "unadapted"
+                  ? issue.names.length > 0
+                    ? t("slotUnadapted", { names: issue.names.join(", ") })
+                    : t("slotUnadaptedAnon")
+                  : t("slotIncomplete")}
             </span>
           </p>
         )}

@@ -5,11 +5,13 @@ import {
   invitationsByKey,
   parseSlotKey,
   slotHref,
+  slotIssue,
   slotKey,
   slotsByKey,
   slotsInViolation,
   splitViolations,
   violationsByKey,
+  weekIssues,
 } from "@/lib/plan";
 
 /** A minimal eater. The fields beyond the id exist for the baby variant
@@ -170,5 +172,81 @@ describe("slotsInViolation", () => {
     expect(
       slotsInViolation([{ code: "degenerate_plan", detail: "", day_of_week: null, meal_type: null }]),
     ).toBe(0);
+  });
+});
+
+describe("slotIssue", () => {
+  const at = (code: string): Violation => ({
+    code,
+    detail: "…",
+    day_of_week: 2,
+    meal_type: "dinner",
+  });
+  const baby = (variant: string | null = null): DishEater => ({
+    ...eater("b1", variant),
+    requires_confirmation: true,
+  });
+  const names = { m1: "Flora", b1: "Marceau" };
+
+  it("names who is missing a portion, read off the plate", () => {
+    const issue = slotIssue([at("stage_for_eater")], [dish({ eaters: [eater("m1"), baby()] })], names);
+    expect(issue).toEqual({ kind: "unadapted", names: ["Marceau"] });
+  });
+
+  it("does not name a baby whose portion is written", () => {
+    const issue = slotIssue(
+      [at("stage_for_eater")],
+      [dish({ eaters: [baby("mixé, sans sel")] })],
+      names,
+    );
+    expect(issue).toEqual({ kind: "unadapted", names: [] });
+  });
+
+  it("keeps red for the allergen, whatever else the meal carries", () => {
+    const issue = slotIssue(
+      [at("stage_for_eater"), at("allergen_for_eater")],
+      [dish({ eaters: [baby()] })],
+      names,
+    );
+    expect(issue?.kind).toBe("allergen");
+  });
+
+  it("calls anything else a meal to redo", () => {
+    expect(slotIssue([at("eater_not_served")], [dish()], names)?.kind).toBe("incomplete");
+  });
+
+  it("says nothing about a meal with no violation", () => {
+    expect(slotIssue([], [dish()], names)).toBeNull();
+  });
+});
+
+describe("weekIssues", () => {
+  it("counts each meal once, under its most serious issue", () => {
+    const plan: MealPlan = {
+      ...PLAN,
+      slots: [
+        { day_of_week: 0, meal_type: "dinner", dishes: [dish({ eaters: [eater("m1")] })], guests: [] },
+        {
+          day_of_week: 3,
+          meal_type: "lunch",
+          dishes: [
+            dish({ id: "d2", eaters: [{ ...eater("b1"), requires_confirmation: true }] }),
+          ],
+          guests: [],
+        },
+      ],
+    };
+    const violations = violationsByKey([
+      { code: "allergen_for_eater", detail: "…", day_of_week: 0, meal_type: "dinner" },
+      { code: "eater_not_served", detail: "…", day_of_week: 0, meal_type: "dinner" },
+      { code: "stage_for_eater", detail: "…", day_of_week: 3, meal_type: "lunch" },
+      { code: "degenerate_plan", detail: "…", day_of_week: null, meal_type: null },
+    ]);
+
+    const issues = weekIssues(violations, slotsByKey(plan), { m1: "Flora", b1: "Marceau" });
+
+    expect(issues.allergen.meals).toBe(1);
+    expect(issues.incomplete.meals).toBe(0);
+    expect(issues.unadapted).toEqual({ meals: 1, names: ["Marceau"] });
   });
 });

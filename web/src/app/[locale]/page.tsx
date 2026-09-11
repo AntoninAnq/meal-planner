@@ -21,7 +21,7 @@ import type {
   MealSlot,
   Member,
 } from "@/lib/api/types";
-import { invitationsByKey, slotsByKey, violationsByKey } from "@/lib/plan";
+import { invitationsByKey, slotsByKey, violationsByKey, weekIssues } from "@/lib/plan";
 import { addDays, mondayOf, resolveWeek } from "@/lib/week";
 import { resolveView, VIEW_COOKIE } from "@/lib/week-view";
 
@@ -482,6 +482,7 @@ async function Week({
         hasPlan={plan !== null}
         generatedAt={plan?.generated_at ?? null}
         violations={plan?.violations ?? []}
+        issues={weekIssues(viewProps.violations, viewProps.slots, memberNames)}
         expectedMs={EXPECTED_SECONDS * 1000}
         grid={<WeekGrid {...viewProps} />}
         list={<DayList {...viewProps} />}

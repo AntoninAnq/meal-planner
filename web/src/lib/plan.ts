@@ -1,4 +1,4 @@
-import type { Invitation, MealPlan, MealType, PlanSlot, Violation } from "@/lib/api/types";
+import type { Dish, Invitation, MealPlan, MealType, PlanSlot, Violation } from "@/lib/api/types";
 
 /** Reading a plan. Pure, so it survives every redesign of the components that
  * display it — which is the point, not the tests. */
@@ -75,6 +75,75 @@ export function slotsInViolation(violations: Violation[]): number {
     keys.add(slotKey(violation.day_of_week, violation.meal_type));
   }
   return keys.size;
+}
+
+/** What is wrong with a meal, in terms of what the household can do about it.
+ *
+ * Some twenty violation codes exist, and they call for three different
+ * reactions. An allergen is the only red. A portion missing for someone who
+ * needs an adaptation — today, a baby the model gave no variant — is not a
+ * failed meal: the dish is there, one plate is not, and regenerating does not
+ * fix it (Haiku wrote no variant on 45 runs out of 45). Everything else is a
+ * meal to redo.
+ *
+ * A slot carries its most serious issue only, so the pill on the card and the
+ * banner above the week count the same meals. */
+export type IssueKind = "allergen" | "unadapted" | "incomplete";
+
+export type SlotIssue = { kind: IssueKind; names: string[] };
+
+const ALLERGEN_CODES = new Set([
+  "allergen_for_eater",
+  "allergen_on_planned_dish",
+  "unverified_on_planned_dish",
+]);
+const UNADAPTED_CODES = new Set(["stage_for_eater"]);
+
+export function slotIssue(
+  violations: Violation[],
+  dishes: Dish[],
+  memberNames: Record<string, string>,
+): SlotIssue | null {
+  if (violations.length === 0) return null;
+  if (violations.some((v) => ALLERGEN_CODES.has(v.code))) return { kind: "allergen", names: [] };
+  if (violations.some((v) => UNADAPTED_CODES.has(v.code))) {
+    // Read off the plate, not off the violation, whose detail is written for
+    // the logs: an eater whose assignment only holds through a variant, and
+    // who has none, is precisely the one missing a portion.
+    const names = dishes.flatMap((dish) =>
+      dish.eaters
+        .filter((eater) => eater.requires_confirmation && !eater.serving_variant)
+        .map((eater) => memberNames[eater.member_id])
+        .filter((name): name is string => Boolean(name)),
+    );
+    return { kind: "unadapted", names: [...new Set(names)] };
+  }
+  return { kind: "incomplete", names: [] };
+}
+
+export type WeekIssues = Record<IssueKind, { meals: number; names: string[] }>;
+
+/** The banner's counts: meals per issue, and who is missing a portion. */
+export function weekIssues(
+  violations: Map<SlotKey | "", Violation[]>,
+  slots: Map<SlotKey, PlanSlot>,
+  memberNames: Record<string, string>,
+): WeekIssues {
+  const issues: WeekIssues = {
+    allergen: { meals: 0, names: [] },
+    unadapted: { meals: 0, names: [] },
+    incomplete: { meals: 0, names: [] },
+  };
+  for (const [key, list] of violations) {
+    // Plan-level violations point at no meal; the banner words them apart.
+    if (key === "") continue;
+    const issue = slotIssue(list, slots.get(key)?.dishes ?? [], memberNames);
+    if (issue === null) continue;
+    const entry = issues[issue.kind];
+    entry.meals += 1;
+    for (const name of issue.names) if (!entry.names.includes(name)) entry.names.push(name);
+  }
+  return issues;
 }
 
 /** Invitations, addressed the way slots are, because an invitation now takes
