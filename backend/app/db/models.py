@@ -463,6 +463,20 @@ class PlannedDish(Base):
     derived_from_dish_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("planned_dish.id", ondelete="SET NULL")
     )
+    #: Put here from the household's favourites rather than proposed. It is what
+    #: explains the absence of a serving variant on a slot that had one: the
+    #: favourite replaced the proposal, and nothing recomputed the small
+    #: portion. Without it the missing adaptation reads as a bug.
+    placed_from_favorite: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("false")
+    )
+    #: Someone was told this dish carries an allergen somebody here cannot eat,
+    #: and chose it anyway. Stored rather than shown once: a warning that one
+    #: click removes for ever is not a warning, and this meal is on a table four
+    #: days later.
+    allergen_override: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("false")
+    )
 
     plan: Mapped[MealPlan] = relationship(back_populates="dishes")
     # `passive_deletes` hands the cascade to the database, which already has

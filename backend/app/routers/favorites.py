@@ -23,61 +23,15 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.auth.deps import CurrentHousehold
-from app.db.models import (
-    DietaryConstraint,
-    HouseholdFavorite,
-    Member,
-    Recipe,
-    RecipeAllergen,
-)
+from app.db.models import HouseholdFavorite, Recipe
 from app.db.session import get_db
-from app.domain.enums import ConstraintSeverity
-from app.schemas import FavoriteConflictOut, FavoriteCreate, FavoriteOut
+from app.schemas import FavoriteCreate, FavoriteOut
 from app.services.catalogue import offerable
+from app.services.conflicts import conflicts_for
 
 router = APIRouter(prefix="/favorites", tags=["favorites"])
 
 DbDep = Annotated[Session, Depends(get_db)]
-
-
-def _conflicts(
-    db: Session, household_id: uuid.UUID, recipe_ids: set[uuid.UUID]
-) -> dict[uuid.UUID, list[FavoriteConflictOut]]:
-    """Which favourites carry an allergen somebody here cannot eat.
-
-    Aversions are left out: red is reserved for the allergen and for what cannot
-    be undone, and a dislike is neither.
-
-    A household-wide constraint has no member, and that is a real case rather
-    than missing data — the interface says "personne ici" instead of guessing a
-    name.
-    """
-    if not recipe_ids:
-        return {}
-
-    rows = db.execute(
-        select(RecipeAllergen.recipe_id, RecipeAllergen.allergen_code, Member.display_name)
-        .join(
-            DietaryConstraint,
-            DietaryConstraint.allergen_code == RecipeAllergen.allergen_code,
-        )
-        .outerjoin(Member, Member.id == DietaryConstraint.member_id)
-        .where(
-            RecipeAllergen.recipe_id.in_(recipe_ids),
-            DietaryConstraint.household_id == household_id,
-            DietaryConstraint.severity != ConstraintSeverity.AVERSION,
-        )
-    ).all()
-
-    found: dict[uuid.UUID, list[FavoriteConflictOut]] = {}
-    for recipe_id, allergen_code, member_name in rows:
-        conflict = FavoriteConflictOut(allergen_code=allergen_code, member_name=member_name)
-        against = found.setdefault(recipe_id, [])
-        # Two members allergic to the same thing are two sentences, but one
-        # household-wide row and one member row for the same allergen are not.
-        if conflict not in against:
-            against.append(conflict)
-    return found
 
 
 @router.get("", response_model=list[FavoriteOut])
@@ -118,7 +72,7 @@ def list_favorites(
         query = query.where(offerable())
 
     rows = db.execute(query).all()
-    conflicts = _conflicts(db, household_id, {row.recipe_id for row in rows})
+    conflicts = conflicts_for(db, household_id, {row.recipe_id for row in rows})
 
     return [
         FavoriteOut(

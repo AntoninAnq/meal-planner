@@ -271,6 +271,18 @@ class DishOut(BaseModel):
     #: not a convenience — it is the half of the bargain the interface owes.
     #: Null on a dish someone typed themselves: there is nothing to link to.
     source_url: str | None = None
+    #: This dish was put here from the household's favourites rather than
+    #: proposed. It explains why no serving variant follows it — without it the
+    #: missing adaptation reads as a bug rather than as a consequence.
+    placed_from_favorite: bool = False
+    #: Somebody was warned that this dish carries an allergen, and chose it
+    #: anyway. A warning one click makes disappear for ever is not a warning,
+    #: and this meal is on a table four days later.
+    allergen_override: bool = False
+    #: Filled only when `allergen_override` is set: what was overridden, and
+    #: whose it is. Computed at read time from the two tables that hold it, so
+    #: a constraint added afterwards is reflected without a migration.
+    allergen_conflicts: list[AllergenConflictOut] = Field(default_factory=list)
 
 
 class SlotGuestsOut(BaseModel):
@@ -347,10 +359,21 @@ class DishReplace(BaseModel):
     what they want to eat, and letting them write it beats any negotiation with
     a model. A hand-written dish is also the one thing no filter can vouch for,
     which is why it stays marked in the interface (§15).
+
+    The two flags travel with the write because only the client knows what the
+    person was looking at: which list the dish was picked from, and whether a
+    warning was on screen when they picked it. Both are cleared by any later
+    write that does not set them — a dish chosen from the suggestions is no
+    longer "depuis vos favoris", and the allergen it does not carry is no
+    longer overridden.
     """
 
     label: str | None = Field(default=None, min_length=1, max_length=200)
     recipe_id: uuid.UUID | None = None
+    #: Picked from the favourites list rather than from the suggestions.
+    from_favorite: bool = False
+    #: The person saw the allergen warning on this dish and chose it anyway.
+    allergen_override: bool = False
 
 
 class DishRegenerate(BaseModel):
@@ -413,8 +436,8 @@ class InvitationOut(BaseModel):
     dislikes: list[str] = Field(default_factory=list)
 
 
-class FavoriteConflictOut(BaseModel):
-    """An allergen this favourite carries that someone here cannot eat.
+class AllergenConflictOut(BaseModel):
+    """An allergen a dish carries that someone here cannot eat.
 
     Computed here rather than in the client because both halves live in the
     database — `recipe_allergen` says what the dish contains, `dietary_constraint`
@@ -449,7 +472,7 @@ class FavoriteOut(BaseModel):
     #: Empty on the favourites tab, which does not flag allergens by design: a
     #: favourite is not a planned meal. The warning belongs to the moment the
     #: dish is put on a plate.
-    conflicts: list[FavoriteConflictOut] = Field(default_factory=list)
+    conflicts: list[AllergenConflictOut] = Field(default_factory=list)
 
 
 class FavoriteCreate(BaseModel):
