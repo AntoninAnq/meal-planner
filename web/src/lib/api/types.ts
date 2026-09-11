@@ -157,6 +157,37 @@ export type Alternative = {
   source_url: string | null;
 };
 
+/** An allergen a favourite carries that somebody here cannot eat.
+ *
+ * Computed server-side: `recipe_allergen` says what the dish contains,
+ * `dietary_constraint` says who cannot have it, and naming only the allergen
+ * would send the reader off to check whose it is. Aversions never appear —
+ * red belongs to the allergen and to the irreversible. */
+export type FavoriteConflict = {
+  allergen_code: AllergenCode;
+  /** Null on a household-wide constraint, which belongs to nobody in
+   * particular. The interface has its own sentence for that rather than
+   * inventing a name. */
+  member_name: string | null;
+};
+
+/** A recipe the household means to cook again.
+ *
+ * Same shape as `Alternative` on purpose: the slot panel lists the two under
+ * two headings, and a row changing shape between the groups would read as a
+ * different kind of thing. */
+export type Favorite = {
+  recipe_id: string;
+  title: string;
+  minutes: number | null;
+  complexity: number | null;
+  source_url: string | null;
+  /** Empty on the favourites tab, which does not flag allergens by design: a
+   * favourite is not a planned meal, and the warning belongs to the moment the
+   * dish reaches a plate. */
+  conflicts: FavoriteConflict[];
+};
+
 /** An anonymous count, never an entity. Guests stay transitory — storing them
  * as members would skew anti-repetition and portions all year long — but a
  * meal cooked for nine that displays as a meal for three is misleading. */

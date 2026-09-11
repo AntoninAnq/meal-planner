@@ -1,6 +1,7 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { cookies } from "next/headers";
 
+import { FavoritesView } from "@/components/plan/FavoritesView";
 import { InvitationPanel } from "@/components/plan/InvitationPanel";
 import { WeekBoard } from "@/components/plan/WeekBoard";
 import { SlotPanel } from "@/components/plan/SlotPanel";
@@ -9,6 +10,7 @@ import { Link, redirect } from "@/i18n/navigation";
 import { apiGet } from "@/lib/api/server";
 import { cx } from "@/lib/cx";
 import type {
+  Favorite,
   Household,
   HouseholdSettings,
   Invitation,
@@ -373,11 +375,12 @@ async function Week({
   // The view loads the plan itself rather than displaying the response of the
   // generation POST. That is what makes a lost response survivable: the plan
   // was written before the endpoint replied, so a reload recovers it.
-  const [plan, members, enabledSlots, invitations] = await Promise.all([
+  const [plan, members, enabledSlots, invitations, favorites] = await Promise.all([
     apiGet<MealPlan | null>(`/meal-plans?week_start=${weekStart}`),
     apiGet<Member[]>("/members"),
     apiGet<MealSlot[]>("/household/slots"),
     apiGet<Invitation[]>(`/invitations?week_start=${weekStart}`),
+    apiGet<Favorite[]>("/favorites"),
   ]);
 
   const memberNames = Object.fromEntries(
@@ -396,6 +399,13 @@ async function Week({
   };
 
   const view = resolveView((await cookies()).get(VIEW_COOKIE)?.value);
+
+  // Favourites is URL state, NOT the view cookie. The cookie is what makes the
+  // first paint right without a flash, and it must keep meaning "grid or list":
+  // were `favorites` allowed into it, next week would open on the favourites
+  // list instead of on the plan. Leaving the tab drops back to the remembered
+  // view, which is exactly what the cookie is for.
+  const favoritesOpen = (Array.isArray(search.view) ? search.view[0] : search.view) === "favorites";
 
   // The open slot travels in the URL too: the back button closes the panel and
   // a reload reopens it on the same meal. A mistyped key simply leaves it shut.
@@ -468,6 +478,8 @@ async function Week({
         expectedMs={EXPECTED_SECONDS * 1000}
         grid={<WeekGrid {...viewProps} />}
         list={<DayList {...viewProps} />}
+        favoritesOpen={favoritesOpen}
+        favorites={<FavoritesView favorites={favorites ?? []} />}
       />
 
       {/* No reminder list under the plan any more. It existed only because

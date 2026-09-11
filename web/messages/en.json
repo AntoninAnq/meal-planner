@@ -149,6 +149,20 @@
     "variantConfirmShort": "To confirm",
     "sharedIngredients": "same ingredients"
   },
+  "favorites": {
+    "tab": "Favourites",
+    "heading": "Your favourites",
+    "count": "{count, plural, one {# recipe} other {# recipes}}",
+    "help": "The dishes you want to see again. To put one in the week, open the meal it belongs to: your favourites are offered there, beside the suggestions.",
+    "remove": "Remove",
+    "removeLabel": "Remove “{title}” from favourites",
+    "add": "Add to favourites",
+    "added": "In favourites",
+    "emptyTitle": "No favourites yet",
+    "emptyBody": "Open a meal of the week and add a dish to your favourites: it will be offered back here, and in every slot, beside the suggestions.",
+    "emptyRule": "Only dishes that come from a recipe can be favourited. Dishes the model proposed on its own have no page to come back to, so no heart.",
+    "failed": "Failed, try again"
+  },
   "composer": {
     "collapsed": "Anything to note for this week?",
     "label": "Tell us what matters this week",

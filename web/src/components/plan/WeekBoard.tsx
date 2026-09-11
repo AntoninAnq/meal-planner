@@ -6,7 +6,6 @@ import type { ReactNode } from "react";
 
 import { Composer } from "@/components/plan/Composer";
 import { GenerationError, WaitingState } from "@/components/plan/WaitingState";
-import { Button } from "@/components/ui/Button";
 import { Link, useRouter } from "@/i18n/navigation";
 import { apiGet, apiPost } from "@/lib/api/client";
 import { displayMessage } from "@/lib/api/error";
@@ -16,6 +15,13 @@ import { slotsInViolation, splitViolations } from "@/lib/plan";
 import { viewCookie, type ViewMode, type WeekView } from "@/lib/week-view";
 
 const POLL_INTERVAL_MS = 5000;
+
+/** Geometry only. Which one reads as current is decided in `globals.css`,
+ * beside the rule that decides which view is on screen — with no explicit
+ * choice the answer is a media query's, and the server cannot render it. */
+const TAB =
+  "rounded-none border-b-2 px-2 pb-1.5 text-sm transition-colors hover:text-ink " +
+  "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent";
 
 /**
  * Screen 3, and screen 4 inside it.
@@ -35,6 +41,8 @@ export function WeekBoard({
   violations,
   grid,
   list,
+  favorites,
+  favoritesOpen,
   expectedMs,
 }: {
   initialView: ViewMode;
@@ -45,10 +53,15 @@ export function WeekBoard({
   violations: Violation[];
   grid: ReactNode;
   list: ReactNode;
+  favorites: ReactNode;
+  /** URL state, deliberately not the view cookie — see the comment at the call
+   * site. Leaving the tab falls back to the remembered grid-or-list. */
+  favoritesOpen: boolean;
   expectedMs: number;
 }) {
   const format = useFormatter();
   const t = useTranslations("plan");
+  const tFav = useTranslations("favorites");
   const tCommon = useTranslations("common");
   const tInv = useTranslations("invitation");
   const router = useRouter();
@@ -73,6 +86,10 @@ export function WeekBoard({
     // time, so a reload after toggling does not flash through the media
     // query's answer before correcting itself.
     document.cookie = viewCookie(next);
+    // Coming back from the favourites tab is a navigation, because that tab is
+    // in the URL. The cookie is written first, so the page that arrives already
+    // knows which of the two to show.
+    if (favoritesOpen) router.push({ pathname: "/", query: { week: weekStart } });
   }
 
   const done = useCallback(() => {
@@ -159,17 +176,38 @@ export function WeekBoard({
           })}
         </h1>
 
-        <div className="flex gap-1" role="group" aria-label={t("viewLabel")}>
+        {/* Three tabs now, and they stopped being buttons-that-look-pressed:
+            an underline says "you are here" without borrowing the weight of
+            the primary action, which on this screen is generating a week. */}
+        <div
+          className="flex items-center gap-1"
+          role="group"
+          aria-label={t("viewLabel")}
+          data-tabs={favoritesOpen ? "favorites" : view}
+        >
           {(["grid", "list"] as const).map((mode) => (
-            <Button
+            <button
               key={mode}
-              size="sm"
-              variant={view === mode ? "primary" : "ghost"}
+              type="button"
+              data-tab={mode}
               onClick={() => chooseView(mode)}
+              // Left off while the view is `auto`: nothing here knows which of
+              // the two the media query landed on, and announcing the wrong one
+              // is worse than announcing neither. One click settles it.
+              aria-current={!favoritesOpen && view === mode ? "true" : undefined}
+              className={TAB}
             >
               {t(`view.${mode}`)}
-            </Button>
+            </button>
           ))}
+          <Link
+            href={{ pathname: "/", query: { week: weekStart, view: "favorites" } }}
+            data-tab="favorites"
+            aria-current={favoritesOpen ? "true" : undefined}
+            className={TAB}
+          >
+            {tFav("tab")}
+          </Link>
         </div>
       </div>
 
@@ -194,14 +232,17 @@ export function WeekBoard({
         }
       />
 
-      {notPlanned.length > 0 && !busy && (
+      {/* Both notices point at cells — "ils sont signalés dans la semaine" —
+          and on the favourites tab there is no week on screen to point at.
+          They come back with the grid. */}
+      {notPlanned.length > 0 && !busy && !favoritesOpen && (
         <div role="note" className="rounded-card border border-border bg-surface-sunken px-4 py-3">
           <p className="text-sm font-semibold">{t("notPlannedHeading")}</p>
           <p className="mt-1 text-sm text-ink-muted">{t("notPlannedBody")}</p>
         </div>
       )}
 
-      {(slotViolations.length > 0 || otherPlanViolations.length > 0) && !busy && (
+      {(slotViolations.length > 0 || otherPlanViolations.length > 0) && !busy && !favoritesOpen && (
         <div role="alert" className="rounded-card border border-danger/30 bg-danger-soft px-4 py-3">
           {/* Two different failures, two different sentences. A plan-level
               violation points at no meal, so counting it as "a meal could not
@@ -231,7 +272,12 @@ export function WeekBoard({
         </div>
       )}
 
-      {busy ? (
+      {favoritesOpen ? (
+        // In the grid's place: it is a third way of looking at what the
+        // household has, not a page of its own. The composer above stays —
+        // generating a week from here is not a mistake to prevent.
+        favorites
+      ) : busy ? (
         <WaitingState
           startedAt={startedAt}
           expectedMs={expectedMs}

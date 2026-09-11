@@ -149,6 +149,20 @@
     "variantConfirmShort": "À valider",
     "sharedIngredients": "mêmes ingrédients"
   },
+  "favorites": {
+    "tab": "Favoris",
+    "heading": "Vos favoris",
+    "count": "{count, plural, one {# recette} other {# recettes}}",
+    "help": "Les plats que vous voulez revoir. Pour en mettre un dans la semaine, ouvrez le repas concerné : vos favoris y sont proposés à côté des suggestions.",
+    "remove": "Retirer",
+    "removeLabel": "Retirer « {title} » des favoris",
+    "add": "Mettre en favori",
+    "added": "En favori",
+    "emptyTitle": "Aucun favori pour l'instant",
+    "emptyBody": "Ouvrez un repas de la semaine et mettez un plat en favori : il vous sera reproposé ici, et dans chaque créneau, à côté des suggestions.",
+    "emptyRule": "Seuls les plats qui viennent d'une recette peuvent être mis en favori. Les plats proposés par le modèle seul n'ont pas de page à retrouver, donc pas de cœur.",
+    "failed": "Échec, réessayez"
+  },
   "composer": {
     "collapsed": "Une précision pour cette semaine ?",
     "label": "Dites ce qui compte cette semaine",
