@@ -239,10 +239,13 @@ class HouseholdFavorite(Base):
     nobody wants twice a month, and a favourite can have gone badly the one
     time it was tried. They share no storage and no display.
 
-    **Only a catalogue recipe can be one.** A dish the model proposed on its own
-    never becomes a recipe (I7), so it has no page to come back to and nothing
-    to point at. There is no greyed-out heart for those: the rule is explained
-    once, on the empty state, and nowhere else.
+    **A recipe, or a title.** Most favourites point at a catalogue recipe. A
+    dish someone makes without one — "pâtes au jambon" — is kept as its title,
+    exactly as written. It never becomes a recipe (I7 is about the catalogue,
+    and this row is the household's), it has no ingredients, so nothing checks
+    its allergens and it adds nothing to the shopping list, and the generation
+    never proposes it: it is placed by hand, from the slot panel. Exactly one of
+    the two is set.
 
     **At the household, not at the account.** The plan is the household's,
     `household_access` already carries the sharing, and two parents planning
@@ -257,15 +260,24 @@ class HouseholdFavorite(Base):
     __tablename__ = "household_favorite"
     __table_args__ = (
         UniqueConstraint("household_id", "recipe_id", name="uq_favorite_household_recipe"),
+        # The same dish typed twice is one favourite. NULLs are distinct, so
+        # neither constraint gets in the way of the other kind of row.
+        UniqueConstraint("household_id", "label", name="uq_favorite_household_label"),
+        CheckConstraint(
+            "(recipe_id IS NULL) <> (label IS NULL)", name="ck_favorite_recipe_or_label"
+        ),
     )
 
     id: Mapped[uuid.UUID] = _pk()
     household_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("household.id", ondelete="CASCADE"), index=True
     )
-    recipe_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("recipe.id", ondelete="CASCADE"), index=True
+    recipe_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("recipe.id", ondelete="CASCADE"), index=True, nullable=True
     )
+    #: The title of a dish with no recipe, as it was written. Null when
+    #: `recipe_id` is set.
+    label: Mapped[str | None] = mapped_column(String(200), nullable=True)
     #: What the list is ordered by, most recent first. Nothing else reads it.
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 

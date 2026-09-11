@@ -94,7 +94,15 @@ export function SlotPanel({
   // a favourite whose source has since been withdrawn is not in it — the toggle
   // then offers to add one that is already there, and the endpoint is
   // idempotent, so the worst case is a button that says the wrong word once.
-  const favorited = new Set((favorites ?? []).map((favorite) => favorite.recipe_id));
+  const favorited = new Set(
+    (favorites ?? []).flatMap((favorite) => (favorite.recipe_id ? [favorite.recipe_id] : [])),
+  );
+  // A favourite with no recipe is known by its title, as it was written.
+  const favoritedTitles = new Set(
+    (favorites ?? [])
+      .filter((favorite) => favorite.recipe_id === null)
+      .map((favorite) => favorite.title),
+  );
   const withheld = new Set(excluded);
 
   // Named, both of them. `recipe_allergen` and `dietary_constraint` give the
@@ -188,12 +196,14 @@ export function SlotPanel({
   // set them, so nothing lingers from an earlier choice.
   const choose = (
     dish: Dish,
-    recipeId: string,
+    // A catalogue recipe, or — for a favourite that has none — its title,
+    // written onto the plan exactly like one typed by hand.
+    target: { recipe_id: string } | { label: string },
     { fromFavorite = false, overrideAllergen = false } = {},
   ) =>
     act(async () => {
       await apiPut(`/meal-plans/${planId}/dishes/${dish.id}`, {
-        recipe_id: recipeId,
+        ...target,
         from_favorite: fromFavorite,
         allergen_override: overrideAllergen,
       });
@@ -301,7 +311,7 @@ export function SlotPanel({
                   {/* Explains the two blocks under it. Without the pill, the
                       missing adaptation reads as a fault rather than as a
                       consequence of what the household chose. */}
-                  {(dish.placed_from_favorite || dish.recipe_id) && (
+                  {(dish.placed_from_favorite || dish.label) && (
                     <div className="flex flex-wrap items-center gap-2">
                       {dish.placed_from_favorite && (
                         <span className="rounded-full border border-border bg-surface-sunken px-2.5 py-1 text-xs font-medium text-ink-body">
@@ -315,16 +325,18 @@ export function SlotPanel({
                           {tExclusions("pill")}
                         </span>
                       )}
-                      {/* Only for a catalogue dish: a model suggestion never
-                          becomes a recipe (I7), so it has nothing to point at
-                          — and rather than a control that exists to be
-                          refused, there is none. The rule is explained once,
-                          on the favourites tab. */}
-                      {dish.recipe_id && dish.label && (
+                      {/* Any dish with a title. One without a recipe is kept
+                          as written — it never becomes one, I7 is about the
+                          catalogue — and the tab says what that costs. */}
+                      {dish.label && (
                         <FavoriteToggle
                           recipeId={dish.recipe_id}
                           title={dish.label}
-                          favorited={favorited.has(dish.recipe_id)}
+                          favorited={
+                            dish.recipe_id
+                              ? favorited.has(dish.recipe_id)
+                              : favoritedTitles.has(dish.label)
+                          }
                         />
                       )}
                       {/* Beside the favourite because it is its opposite, and
@@ -477,7 +489,9 @@ export function SlotPanel({
                                     <Button
                                       size="sm"
                                       disabled={busy}
-                                      onClick={() => choose(dish, alternative.recipe_id)}
+                                      onClick={() =>
+                                        choose(dish, { recipe_id: alternative.recipe_id })
+                                      }
                                     >
                                       {t("choose")}
                                     </Button>
@@ -531,10 +545,20 @@ export function SlotPanel({
                           </h4>
                           <ul className="flex flex-col gap-1.5">
                             {favorites.map((favorite) => {
-                              const open = warning === favorite.recipe_id;
+                              const key = favorite.recipe_id ?? `title:${favorite.title}`;
+                              const target = favorite.recipe_id
+                                ? { recipe_id: favorite.recipe_id }
+                                : { label: favorite.title };
+                              const open = warning === key;
                               const meta = (
                                 <>
                                   <span className="text-sm">{favorite.title}</span>
+                                  {favorite.recipe_id === null && (
+                                    <span className="text-xs text-ink-muted italic">
+                                      {" "}
+                                      — {tPlan("handWritten")}
+                                    </span>
+                                  )}
                                   {favorite.minutes !== null && (
                                     <span className="text-ink-body">
                                       {" "}
@@ -570,7 +594,7 @@ export function SlotPanel({
                               if (!open) {
                                 return (
                                   <ListRow
-                                    key={favorite.recipe_id}
+                                    key={key}
                                     action={
                                       <Button
                                         size="sm"
@@ -578,11 +602,10 @@ export function SlotPanel({
                                         onClick={() =>
                                           // Raised before the write, not after:
                                           // by then the dish is on the plan.
-                                          favorite.conflicts.length > 0
-                                            ? setWarning(favorite.recipe_id)
-                                            : choose(dish, favorite.recipe_id, {
-                                                fromFavorite: true,
-                                              })
+                                          favorite.conflicts.length > 0 ||
+                                          favorite.unchecked_allergens
+                                            ? setWarning(key)
+                                            : choose(dish, target, { fromFavorite: true })
                                         }
                                       >
                                         {t("choose")}
@@ -596,10 +619,19 @@ export function SlotPanel({
 
                               return (
                                 <li
-                                  key={favorite.recipe_id}
+                                  key={key}
                                   className="rounded-control border border-danger/30 bg-danger-soft px-3 py-2.5"
                                 >
                                   <p className="text-sm">{meta}</p>
+
+                                  {/* No recipe, so no ingredient list: the
+                                      filter has nothing to read, and someone
+                                      here has an allergy. */}
+                                  {favorite.unchecked_allergens && (
+                                    <p className="mt-1.5 text-[13px] leading-[1.5] text-ink-body">
+                                      {t("uncheckedAllergens")}
+                                    </p>
+                                  )}
 
                                   {favorite.conflicts.map((conflict) => (
                                     <p
@@ -625,9 +657,11 @@ export function SlotPanel({
                                       variant="danger"
                                       disabled={busy}
                                       onClick={() =>
-                                        choose(dish, favorite.recipe_id, {
+                                        choose(dish, target, {
                                           fromFavorite: true,
-                                          overrideAllergen: true,
+                                          // Only a known conflict is overridden;
+                                          // an unchecked title has none to keep.
+                                          overrideAllergen: favorite.conflicts.length > 0,
                                         })
                                       }
                                     >

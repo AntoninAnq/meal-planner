@@ -192,7 +192,7 @@
     "added": "En favori",
     "emptyTitle": "Aucun favori pour l'instant",
     "emptyBody": "Ouvrez un repas de la semaine et mettez un plat en favori : il vous sera reproposé ici, et dans chaque créneau, à côté des suggestions.",
-    "emptyRule": "Seuls les plats qui viennent d'une recette peuvent être mis en favori. Les plats proposés par le modèle seul n'ont pas de page à retrouver, donc pas de cœur.",
+    "emptyRule": "Un plat sans recette peut aussi être mis en favori. Il est gardé tel quel : sans liste d'ingrédients, rien ne vérifie ses allergènes et il n'ajoute rien à la liste de courses. Les semaines ne le proposent pas, c'est vous qui le placez depuis un repas.",
     "failed": "Échec, réessayez"
   },
   "exclusions": {
@@ -301,6 +301,7 @@
     "allergenTitle": "Contient {allergen}.",
     "allergenBody": "{name} ne mange pas {allergen}.",
     "allergenBodyHousehold": "Personne ici ne mange {allergen}.",
+    "uncheckedAllergens": "Écrit à la main : rien ne vérifie ce qu'il contient, et quelqu'un ici a une allergie.",
     "allergenConfirm": "Choisir quand même",
     "allergenOverridden": "{name} ne mange pas {allergen}. Vous avez choisi ce plat malgré l'alerte.",
     "allergenOverriddenHousehold": "Personne ici ne mange {allergen}. Vous avez choisi ce plat malgré l'alerte."

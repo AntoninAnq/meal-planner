@@ -45,10 +45,9 @@ export async function FavoritesView({
       <div className="flex flex-col items-center gap-4 rounded-card border border-border bg-surface-raised px-9 py-11 text-center">
         <p className="text-[17px] font-semibold text-ink">{t("emptyTitle")}</p>
         <p className="max-w-[52ch] text-sm leading-[1.6] text-ink-body">{t("emptyBody")}</p>
-        {/* The one place in the product where I7 is explained to the person
-            using it. It is what makes the absence of a control on a
-            model-proposed dish legible; without it that absence reads as a
-            bug, and the sentence has nowhere else to live. */}
+        {/* What a favourite without a recipe costs, said once: no ingredient
+            list, so no allergen check and nothing on the shopping list, and
+            never proposed by a week. */}
         <p className="max-w-[56ch] text-[13px] leading-[1.6] text-ink-muted">{t("emptyRule")}</p>
       </div>
     ) : (
@@ -71,13 +70,20 @@ export async function FavoritesView({
 
             return (
               <li
-                key={favorite.recipe_id}
+                key={favorite.recipe_id ?? `title:${favorite.title}`}
                 className="flex items-center gap-5 border-b border-border px-[18px] py-[15px] last:border-b-0"
               >
                 <div className="min-w-0 flex-1">
                   <p className="text-[15px] font-semibold text-ink [overflow-wrap:anywhere]">
                     {favorite.title}
                   </p>
+                  {/* Kept as written, so nothing checked it — the same mark as
+                      a title typed into a meal. */}
+                  {favorite.recipe_id === null && (
+                    <p className="mt-0.5 text-[13px] text-ink-muted italic">
+                      {tPlan("handWritten")}
+                    </p>
+                  )}
                   {/* Silent on the fifth of the catalogue that declares neither a
                       time nor a step count, rather than implying it is quick. */}
                   {effort.length > 0 && (

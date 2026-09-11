@@ -192,7 +192,7 @@
     "added": "In favourites",
     "emptyTitle": "No favourites yet",
     "emptyBody": "Open a meal of the week and add a dish to your favourites: it will be offered back here, and in every slot, beside the suggestions.",
-    "emptyRule": "Only dishes that come from a recipe can be favourited. Dishes the model proposed on its own have no page to come back to, so no heart.",
+    "emptyRule": "A dish without a recipe can be a favourite too. It is kept as written: with no ingredient list, nothing checks its allergens and it adds nothing to the shopping list. Weeks never suggest it; you place it yourself, from a meal.",
     "failed": "Failed, try again"
   },
   "exclusions": {
@@ -301,6 +301,7 @@
     "allergenTitle": "Contains {allergen}.",
     "allergenBody": "{name} does not eat {allergen}.",
     "allergenBodyHousehold": "Nobody here eats {allergen}.",
+    "uncheckedAllergens": "Hand-written: nothing checks what it contains, and someone here has an allergy.",
     "allergenConfirm": "Choose anyway",
     "allergenOverridden": "{name} does not eat {allergen}. You chose this dish despite the warning.",
     "allergenOverriddenHousehold": "Nobody here eats {allergen}. You chose this dish despite the warning."

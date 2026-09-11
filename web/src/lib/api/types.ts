@@ -188,7 +188,8 @@ export type AllergenConflict = {
  * two headings, and a row changing shape between the groups would read as a
  * different kind of thing. */
 export type Favorite = {
-  recipe_id: string;
+  /** Null for a dish kept by its title, which `title` then is. */
+  recipe_id: string | null;
   title: string;
   minutes: number | null;
   complexity: number | null;
@@ -197,6 +198,9 @@ export type Favorite = {
    * favourite is not a planned meal, and the warning belongs to the moment the
    * dish reaches a plate. */
   conflicts: AllergenConflict[];
+  /** No recipe, and someone here has an allergy: nothing checked it, so
+   * choosing it asks first. */
+  unchecked_allergens: boolean;
 };
 
 /** A recipe the household never wants proposed again. The other half of a

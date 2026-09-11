@@ -457,9 +457,12 @@ class FavoriteOut(BaseModel):
     Shaped like `AlternativeOut` on purpose: the slot panel lists the two side
     by side, under two headings, and a row that changed shape between the
     groups would read as a different kind of thing.
+
+    `recipe_id` is null for a dish kept by its title; `title` is then that
+    title, and the effort fields and the source are null.
     """
 
-    recipe_id: uuid.UUID
+    recipe_id: uuid.UUID | None
     title: str
     minutes: int | None = None
     complexity: int | None = None
@@ -468,10 +471,17 @@ class FavoriteOut(BaseModel):
     #: favourite is not a planned meal. The warning belongs to the moment the
     #: dish is put on a plate.
     conflicts: list[AllergenConflictOut] = Field(default_factory=list)
+    #: A favourite with no recipe, in a household that declares an allergy or
+    #: an intolerance. Nothing can say what it contains, so choosing it asks
+    #: first — the same gesture as a known conflict.
+    unchecked_allergens: bool = False
 
 
 class FavoriteCreate(BaseModel):
-    recipe_id: uuid.UUID
+    """A catalogue recipe, or a dish's title as it was written — one of the two."""
+
+    recipe_id: uuid.UUID | None = None
+    label: str | None = Field(default=None, max_length=200)
 
 
 class ExclusionOut(BaseModel):
