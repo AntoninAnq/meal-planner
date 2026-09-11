@@ -271,6 +271,7 @@
     "alternativesHeading": "Something else?",
     "alternativesHint": "Candidates the pre-filter kept and the model passed over. No model call, instant.",
     "alternativesEmpty": "No other recipe fits this slot.",
+    "alternativesLoading": "Looking for other ideas…",
     "choose": "Choose",
     "clearHeading": "Empty this slot",
     "clearHint": "Removes every dish from this meal. Useful when a habitual meal has to make way for an invitation.",

@@ -1,9 +1,11 @@
 import { getTranslations } from "next-intl/server";
 
 import { DishCard } from "@/components/plan/DishCard";
+import { SlotLink } from "@/components/plan/SlotLink";
 import { Link } from "@/i18n/navigation";
 import { cx } from "@/lib/cx";
 import type { Invitation, MealType, PlanSlot, Violation } from "@/lib/api/types";
+import type { SlotKey } from "@/lib/plan";
 
 /**
  * Adaptive: the simple case must look simple.
@@ -30,7 +32,8 @@ export async function SlotCard({
   memberNames,
   violations,
   planId,
-  href,
+  week,
+  panelKey,
   invitation,
   inviteHref,
   showMeal = true,
@@ -41,9 +44,11 @@ export async function SlotCard({
   memberNames: Record<string, string>;
   violations: Violation[];
   planId: string | null;
-  /** Opens the slot panel. The panel is driven by the URL, so the back button
-   * closes it and a reload reopens it on the same slot. */
-  href: { pathname: "/"; query: Record<string, string> };
+  /** The week and the meal this card opens. The panel is driven by the URL, so
+   * the back button closes it and a reload reopens it on the same slot — but
+   * opening it asks the server nothing: see `SlotLink`. */
+  week: string;
+  panelKey: SlotKey;
   /** When this meal is an invitation, the invitation IS the slot: it takes the
    * cell, with its own banner and its own way back in. It used to live in three
    * places at once — a link in the bar, a badge on the card and a reminder list
@@ -137,15 +142,16 @@ export async function SlotCard({
   // the whole slot as well as the link, and two rings at once say nothing about
   // where you are.
   const overlay = (
-    <Link
-      href={href}
+    <SlotLink
+      week={week}
+      panelKey={panelKey}
       className={cx(
         "absolute inset-0 rounded-card",
         "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
       )}
     >
       <span className="sr-only">{tMeal(mealType)}</span>
-    </Link>
+    </SlotLink>
   );
 
   if (invitation && inviteHref) {

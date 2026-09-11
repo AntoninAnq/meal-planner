@@ -17,6 +17,15 @@ export function parseSlotKey(key: string): { dayOfWeek: number; mealType: MealTy
   return { dayOfWeek, mealType: meal };
 }
 
+/** Where a meal's panel lives, or the bare week when `key` is null. `pathname`
+ * is the one in the address bar, locale prefix included: this is written
+ * straight into the history, past the locale-aware router. */
+export function slotHref(pathname: string, week: string, key: SlotKey | null): string {
+  const params = new URLSearchParams({ week });
+  if (key !== null) params.set("slot", key);
+  return `${pathname}?${params}`;
+}
+
 export function slotsByKey(plan: MealPlan | null): Map<SlotKey, PlanSlot> {
   const map = new Map<SlotKey, PlanSlot>();
   for (const slot of plan?.slots ?? []) {

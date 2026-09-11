@@ -271,6 +271,7 @@
     "alternativesHeading": "Autre chose ?",
     "alternativesHint": "Des candidats que le pré-filtre a retenus et que le modèle n'a pas choisis. Aucun appel de modèle, réponse immédiate.",
     "alternativesEmpty": "Aucune autre recette ne convient à ce créneau.",
+    "alternativesLoading": "On cherche d'autres idées…",
     "choose": "Choisir",
     "clearHeading": "Vider ce créneau",
     "clearHint": "Retire tous les plats de ce repas. Utile quand un repas habituel doit laisser la place à une invitation.",

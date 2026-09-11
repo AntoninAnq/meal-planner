@@ -1,6 +1,7 @@
 "use client";
 
 import { useFormatter, useTranslations } from "next-intl";
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { FavoriteToggle } from "@/components/plan/FavoriteButton";
@@ -15,6 +16,7 @@ import { useRouter } from "@/i18n/navigation";
 import { apiDelete, apiGet, apiPost, apiPut } from "@/lib/api/client";
 import { displayMessage } from "@/lib/api/error";
 import type { AllergenConflict, Alternative, Dish, Favorite, MealType } from "@/lib/api/types";
+import { slotHref } from "@/lib/plan";
 
 /**
  * Screen 5, in a native `<dialog>` driven by the URL.
@@ -66,6 +68,7 @@ export function SlotPanel({
   const tAllergenEats = useTranslations("allergenEats");
   const format = useFormatter();
   const router = useRouter();
+  const pathname = usePathname();
 
   const [labels, setLabels] = useState<Record<string, string>>({});
   const [reason, setReason] = useState("");
@@ -138,8 +141,10 @@ export function SlotPanel({
     return () => controller.abort();
   }, [open, planId, firstDishId]);
 
+  // The same shallow write as the card that opened it: closing a panel has
+  // nothing to ask the server either.
   function close() {
-    router.push({ pathname: "/", query: { week: weekStart } });
+    window.history.pushState(null, "", slotHref(pathname, weekStart, null));
   }
 
   function refresh() {
@@ -418,7 +423,10 @@ export function SlotPanel({
                   {/* First, because it is the cheapest and §6 measured it as
                       the most frequent request: "not that one, show me
                       something else". */}
-                  {alternatives !== null && (
+                  {/* Shown before the list arrives, with a placeholder in it:
+                      a section that appears a moment after the panel reads as
+                      the page jumping, not as something loading. */}
+                  {planId && (
                     <section className="flex flex-col gap-3">
                       <div>
                         <h3 className="text-sm font-semibold">{t("alternativesHeading")}</h3>
@@ -428,7 +436,11 @@ export function SlotPanel({
 
                       <div className="flex flex-col gap-1.5">
                         <h4 className={GROUP}>{t("suggestionsHeading")}</h4>
-                        {alternatives.length === 0 ? (
+                        {alternatives === null ? (
+                          <p className="text-sm text-ink-muted" aria-live="polite">
+                            {t("alternativesLoading")}
+                          </p>
+                        ) : alternatives.length === 0 ? (
                           <p className="text-sm text-ink-muted">{t("alternativesEmpty")}</p>
                         ) : (
                           <ul className="flex flex-col gap-1.5">

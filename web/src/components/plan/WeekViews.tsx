@@ -115,7 +115,8 @@ export async function WeekGrid(props: WeekViewProps) {
                 violations={props.violations.get(key) ?? []}
                 planId={props.planId}
                 invitation={props.invitations.get(key)}
-                href={{ pathname: "/", query: { week: props.weekStart, slot: key } }}
+                week={props.weekStart}
+                panelKey={key}
                 inviteHref={{
                   pathname: "/",
                   query: {
@@ -176,7 +177,8 @@ export async function DayList(props: WeekViewProps) {
                   violations={props.violations.get(key) ?? []}
                   planId={props.planId}
                   invitation={props.invitations.get(key)}
-                  href={{ pathname: "/", query: { week: props.weekStart, slot: key } }}
+                  week={props.weekStart}
+                  panelKey={key}
                   inviteHref={{
                     pathname: "/",
                     query: {

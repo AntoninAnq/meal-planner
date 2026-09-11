@@ -1,11 +1,12 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { cookies } from "next/headers";
+import { Suspense } from "react";
 
 import { FavoritesView } from "@/components/plan/FavoritesView";
 import { InvitationPanel } from "@/components/plan/InvitationPanel";
 import { WeekBoard } from "@/components/plan/WeekBoard";
 import { ShoppingList } from "@/components/plan/ShoppingList";
-import { SlotPanel } from "@/components/plan/SlotPanel";
+import { SlotPanelHost } from "@/components/plan/SlotPanelHost";
 import { DayList, WeekGrid, type WeekViewProps } from "@/components/plan/WeekViews";
 import { Link, redirect } from "@/i18n/navigation";
 import { apiGet } from "@/lib/api/server";
@@ -19,14 +20,8 @@ import type {
   MealSlot,
   Member,
 } from "@/lib/api/types";
-import {
-  invitationsByKey,
-  parseSlotKey,
-  slotKey,
-  slotsByKey,
-  violationsByKey,
-} from "@/lib/plan";
-import { addDays, mondayOf, resolveWeek, weekDates } from "@/lib/week";
+import { invitationsByKey, slotsByKey, violationsByKey } from "@/lib/plan";
+import { addDays, mondayOf, resolveWeek } from "@/lib/week";
 import { resolveView, VIEW_COOKIE } from "@/lib/week-view";
 
 /** Expected generation time, in seconds. Configuration, never a constant: a
@@ -423,12 +418,6 @@ async function Week({
   // the drawer and a reload reopens it.
   const listOpen = (Array.isArray(search.list) ? search.list[0] : search.list) === "1";
 
-  // The open slot travels in the URL too: the back button closes the panel and
-  // a reload reopens it on the same meal. A mistyped key simply leaves it shut.
-  const openSlot = parseSlotKey(
-    Array.isArray(search.slot) ? (search.slot[0] ?? "") : (search.slot ?? ""),
-  );
-
   // Same story for the invitation panel: `invite=new` to create, `invite=<id>`
   // to edit one. An id that matches nothing leaves it shut.
   const inviteParam = Array.isArray(search.invite) ? search.invite[0] : search.invite;
@@ -512,22 +501,22 @@ async function Week({
         />
       )}
 
-      {openSlot && (
-        <SlotPanel
-          open
+      {/* The open slot travels in the URL, but it is read on the client, from
+          the dishes already on this page. Opening a meal used to be a server
+          navigation that fetched the whole week again — seven API calls —
+          before the panel could appear. */}
+      <Suspense fallback={null}>
+        <SlotPanelHost
           planId={plan?.id ?? null}
           weekStart={weekStart}
-          date={weekDates(weekStart)[openSlot.dayOfWeek]}
-          dayOfWeek={openSlot.dayOfWeek}
-          mealType={openSlot.mealType}
-          dishes={
-            viewProps.slots.get(slotKey(openSlot.dayOfWeek, openSlot.mealType))?.dishes ?? []
-          }
+          dishesBySlot={Object.fromEntries(
+            [...viewProps.slots].map(([key, slot]) => [key, slot.dishes]),
+          )}
           memberNames={memberNames}
           locale={locale}
           expectedMs={EXPECTED_SECONDS * 1000}
         />
-      )}
+      </Suspense>
 
       {inviteOpen && (
         <InvitationPanel

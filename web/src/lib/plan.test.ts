@@ -4,6 +4,7 @@ import type { Dish, DishEater, Invitation, MealPlan, Violation } from "@/lib/api
 import {
   invitationsByKey,
   parseSlotKey,
+  slotHref,
   slotKey,
   slotsByKey,
   slotsInViolation,
@@ -63,6 +64,16 @@ describe("slotKey", () => {
     expect(parseSlotKey("3-brunch")).toBeNull();
     expect(parseSlotKey("dinner")).toBeNull();
     expect(parseSlotKey("")).toBeNull();
+  });
+});
+
+describe("slotHref", () => {
+  it("opens a meal over the week it belongs to", () => {
+    expect(slotHref("/fr", "2026-09-07", "3-dinner")).toBe("/fr?week=2026-09-07&slot=3-dinner");
+  });
+
+  it("closes back onto that same week", () => {
+    expect(slotHref("/fr", "2026-09-07", null)).toBe("/fr?week=2026-09-07");
   });
 });
 
