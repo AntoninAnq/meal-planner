@@ -106,8 +106,19 @@ const SIGN_IN_BUTTON =
  * serves the exact opposite: Tuesday evening, at home, with a baby and a fussy
  * eater. Left alone the name promises a site of festive recipes, so the tagline
  * does real work and sits directly under it, above the `h1`: a misreading is
- * corrected at first glance or not at all. Not to be shortened to "tous les
- * jours" — the correction is in the second half. */
+ * corrected at first glance or not at all.
+ *
+ * It corrects by APPOSITION and never by negation. "Repas de famille, le repas
+ * de tous les jours" reads in one breath: same turn of phrase, other
+ * complement, and the misreading falls away without being named. The first
+ * wording argued instead — "pas seulement le dimanche midi" — which made the
+ * very first line under the name a rebuttal of an objection the reader had not
+ * yet had, and threw out the warmth of the Sunday table along with the
+ * misreading. Nobody wants to be told their Sunday lunch is beside the point.
+ *
+ * Quiet on purpose. The eyebrow and the `h1` immediately below are what hook;
+ * a tagline that bit as hard would compete with them for the same second of
+ * attention, and the green eyebrow is the better sentence. */
 async function SignIn() {
   const t = await getTranslations("signIn");
   const tApp = await getTranslations("app");
