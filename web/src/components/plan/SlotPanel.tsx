@@ -32,7 +32,7 @@ import { slotHref } from "@/lib/plan";
  * make every page load pay for a list almost nobody reads, and the list would
  * go stale on the plan anyway.
  */
-/** Both groups of "Autre chose ?" are labelled the same way: the two lists are
+/** Both groups of "Changer de plat" are labelled the same way: the two lists are
  * the same kind of offer, they differ only in where they came from. */
 const GROUP = "text-xs font-semibold tracking-[0.06em] text-ink-muted uppercase";
 
@@ -467,14 +467,21 @@ export function SlotPanel({
                       the page jumping, not as something loading. */}
                   {planId && (
                     <section className="flex flex-col gap-3">
-                      <div>
-                        <h3 className="text-sm font-semibold">{t("alternativesHeading")}</h3>
-                        {/* True of both groups below: neither calls the model. */}
-                        <p className="text-xs text-ink-muted">{t("alternativesHint")}</p>
-                      </div>
+                      {/* "Changer de plat", not "Autre chose ?": the section
+                          at the bottom asks the model for something else, and
+                          two "autre chose" in one panel read as one. The old
+                          hint said which filter kept these and that no model
+                          was called — true, and of no use to the reader. */}
+                      <h3 className="text-sm font-semibold">{t("alternativesHeading")}</h3>
 
                       <div className="flex flex-col gap-1.5">
-                        <h4 className={GROUP}>{t("suggestionsHeading")}</h4>
+                        <div>
+                          <h4 className={GROUP}>{t("suggestionsHeading")}</h4>
+                          {/* Under the suggestions only: they went through the
+                              same filter as the week. A favourite can carry an
+                              allergen, and says so on its own row. */}
+                          <p className="text-xs text-ink-muted">{t("suggestionsHint")}</p>
+                        </div>
                         {alternatives === null ? (
                           <p className="text-sm text-ink-muted" aria-live="polite">
                             {t("alternativesLoading")}
