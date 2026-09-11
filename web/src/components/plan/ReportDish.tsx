@@ -14,11 +14,13 @@ const CATEGORIES: ReportCategory[] = ["not_a_meal", "dead_link", "bad_recipe"];
 /**
  * "This is wrong for everyone" — deliberately not the same thing as a refusal.
  *
- * `Proposer autre chose`, three sections up, records why THIS household said no
- * and turns it into a constraint of theirs. This says the catalogue entry is at
- * fault, and its resolution changes what every household is offered. The two
- * must not be confused, which is why this one is small, folded away, and last:
- * the frequent gesture stays the loud one.
+ * `Proposer autre chose`, further down, records why THIS household said no and
+ * turns it into a constraint of theirs; `Ne plus me proposer`, beside the
+ * favourite, is a matter of taste. This says the catalogue entry is at fault,
+ * and its resolution changes what every household is offered. It sits at the
+ * end of the dish it is about, small and folded away — under the suggestions
+ * it read as a report on one of them — and its label names the recipe, so it
+ * is not taken for a third way of saying "not for us".
  *
  * Folded rather than absent, because a household that has just been served a
  * cake for dinner needs somewhere to put that, and the alternative is a bug

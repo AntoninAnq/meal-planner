@@ -449,6 +449,16 @@ export function SlotPanel({
                     </ul>
                   )}
 
+                  {/* The end of what is said about THIS dish, before anything
+                      that would replace it. Under the suggestions it read as a
+                      report about the last one of them. Quiet, because it is
+                      rare and changes what every household sees. Only for a
+                      catalogue dish: a hand-written one has nothing
+                      catalogue-wide to fix. */}
+                  {planId && dish.recipe_id && (
+                    <ReportDish planId={planId} dishId={dish.id} />
+                  )}
+
                   {/* First, because it is the cheapest and §6 measured it as
                       the most frequent request: "not that one, show me
                       something else". */}
@@ -683,16 +693,7 @@ export function SlotPanel({
                       )}
                     </section>
                   )}
-
-                  {/* Last of the dish section, and quiet. "Proposer autre
-                      chose" below is the frequent gesture and stays the loud
-                      one; this one says the catalogue is wrong, which is rare
-                      and changes what every household sees. Only for a
-                      catalogue dish: a hand-written one has nothing
-                      catalogue-wide to fix. */}
-                  {planId && dish.recipe_id && (
-                    <ReportDish planId={planId} dishId={dish.id} />
-                  )}                </section>
+                </section>
               ))
             )}
 

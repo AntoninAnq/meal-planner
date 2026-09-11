@@ -282,7 +282,7 @@
     "clearHeading": "Empty this slot",
     "clearHint": "Removes every dish from this meal. Useful when a habitual meal has to make way for an invitation.",
     "clearSlot": "Empty this slot",
-    "reportOpen": "Report this dish",
+    "reportOpen": "Report a problem with this recipe",
     "reportHint": "If the problem is the recipe itself, not your taste. Someone will look at it.",
     "reportCancel": "Cancel",
     "reportDone": "Reported. Thank you.",
