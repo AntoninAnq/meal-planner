@@ -119,10 +119,9 @@
       "list": "Liste"
     },
     "today": "Aujourd'hui",
-    "emptySlot": "Rien de prévu",
     "untitled": "Plat sans titre",
     "variant": "{name} : {variant}",
-    "slotIncomplete": "Ce repas n'a pas pu être complété",
+    "slotIncomplete": "non complété",
     "violationsHeading": "{count, plural, one {Un repas n'a pas pu être complété} other {# repas n'ont pas pu être complétés}}",
     "violationsBody": "Ils sont signalés dans la semaine. Vous pouvez les régénérer ou écrire le plat vous-même.",
     "generationLost": "La génération n'a pas abouti. Relancez-la.",

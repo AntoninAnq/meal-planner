@@ -1,6 +1,6 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { useFormatter, useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 
@@ -47,6 +47,7 @@ export function WeekBoard({
   list: ReactNode;
   expectedMs: number;
 }) {
+  const format = useFormatter();
   const t = useTranslations("plan");
   const tCommon = useTranslations("common");
   const tInv = useTranslations("invitation");
@@ -144,7 +145,19 @@ export function WeekBoard({
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-sm text-ink-muted">{t("weekOf", { date: weekStart })}</h2>
+        {/* The page title, since the header above has none to give: the
+            household name was a placeholder and there is no brand to put
+            there. Formatted, not the raw ISO day — `weekOf` interpolates a
+            plain string, so the date has to arrive already readable. */}
+        <h1 className="text-lg font-semibold text-ink">
+          {t("weekOf", {
+            date: format.dateTime(new Date(`${weekStart}T12:00:00Z`), {
+              day: "numeric",
+              month: "long",
+              year: "numeric",
+            }),
+          })}
+        </h1>
 
         <div className="flex gap-1" role="group" aria-label={t("viewLabel")}>
           {(["grid", "list"] as const).map((mode) => (

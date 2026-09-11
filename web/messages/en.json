@@ -119,10 +119,9 @@
       "list": "List"
     },
     "today": "Today",
-    "emptySlot": "Nothing planned",
     "untitled": "Untitled dish",
     "variant": "{name}: {variant}",
-    "slotIncomplete": "This meal could not be completed",
+    "slotIncomplete": "not completed",
     "violationsHeading": "{count, plural, one {One meal could not be completed} other {# meals could not be completed}}",
     "violationsBody": "They are marked in the week. You can regenerate them or write the dish yourself.",
     "generationLost": "The generation did not arrive. Try again.",

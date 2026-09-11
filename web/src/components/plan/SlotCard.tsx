@@ -64,6 +64,21 @@ export async function SlotCard({
   const inviteCount = (invitation?.guests ?? []).reduce((total, g) => total + g.count, 0);
   const multiple = dishes.length > 1;
   const broken = violations.length > 0;
+  // An unplanned meal has no state, so it gets no box: no border, no ground, no
+  // "nothing planned". Lunches were already rendering as bare cells and only
+  // some dinners as a bordered card, which made one absence look like two. It
+  // stays clickable over its whole surface — that is how a meal gets planned.
+  const empty = dishes.length === 0;
+
+  // The dish the largest group eats is the default one, and it is the only card
+  // that says nothing about who eats it. A tie means there is no default —
+  // two halves of the household eating two things is exactly the divergence
+  // worth naming, so both cards name theirs.
+  const widest = Math.max(0, ...dishes.map((dish) => dish.eaters.length));
+  const defaultDish =
+    dishes.filter((dish) => dish.eaters.length === widest).length === 1
+      ? dishes.find((dish) => dish.eaters.length === widest)
+      : undefined;
 
   const body = (
     <>
@@ -85,9 +100,7 @@ export async function SlotCard({
           </p>
         )}
 
-        {dishes.length === 0 ? (
-          <p className="text-[13px] leading-[1.4] text-ink-muted">{t("emptySlot")}</p>
-        ) : (
+        {!empty && (
           <div className={cx("flex flex-col", multiple ? "gap-2" : "gap-0")}>
             {dishes.map((dish) => (
               <DishCard
@@ -95,6 +108,7 @@ export async function SlotCard({
                 dish={dish}
                 memberNames={memberNames}
                 multiple={multiple}
+                showEaters={multiple && dish.id !== defaultDish?.id}
                 planId={planId}
               />
             ))}
@@ -103,7 +117,17 @@ export async function SlotCard({
 
         {/* The codes stay in the logs. What is shown is that this meal is the
             one to redo — the only reaction a violation actually allows. */}
-        {broken && <p className="text-xs font-medium text-danger">{t("slotIncomplete")}</p>}
+        {/* The banner at the top of the week counts these and says they are
+            marked in the grid, so one mark per slot is owed — one, and short.
+            It used to be a two-line sentence AND a red rule around the cell,
+            which said the same thing three times over. */}
+        {broken && (
+          <p className="inline-flex">
+            <span className="rounded-full bg-danger-soft px-[9px] py-[3px] text-[11.5px] leading-[1.4] font-medium text-danger">
+              {t("slotIncomplete")}
+            </span>
+          </p>
+        )}
       </div>
     </>
   );
@@ -173,9 +197,10 @@ export async function SlotCard({
   return (
     <div
       className={cx(
-        "relative rounded-card border bg-surface-raised px-3 py-2.5",
-        "transition-colors hover:border-border-strong",
-        broken ? "border-danger/50 bg-danger-soft/40" : "border-border",
+        "relative rounded-card px-3 py-2.5 transition-colors",
+        empty
+          ? "min-h-[58px] hover:bg-surface-sunken"
+          : "border border-border bg-surface-raised hover:border-border-strong",
         className,
       )}
     >

@@ -52,7 +52,7 @@ export default async function HomePage({
   // thing the onboarding exists to ask — would never be asked.
   if (!settings?.onboarded_at) redirect({ href: "/onboarding", locale });
 
-  return <Week household={household} locale={locale} searchParams={searchParams} />;
+  return <Week locale={locale} searchParams={searchParams} />;
 }
 
 /** The same sentence, trimmed for the narrow layout.
@@ -327,11 +327,9 @@ function ProofExtract({
 }
 
 async function Week({
-  household,
   locale,
   searchParams,
 }: {
-  household: Household;
   locale: string;
   searchParams: Search;
 }) {
@@ -386,12 +384,14 @@ async function Week({
   return (
     <main className="mx-auto flex max-w-5xl flex-col gap-6 px-5 py-8">
       <header className="flex flex-wrap items-end justify-between gap-3">
-        <div className="flex flex-col gap-1">
-          <h1 className="text-2xl font-semibold">{household.name}</h1>
-          <p className="text-sm text-ink-muted">
-            {(members ?? []).map((member) => member.display_name).join(" · ")}
-          </p>
-        </div>
+        {/* No brand name here, and no household name either: `household.name`
+            is a provisioning placeholder — it read "Home" in production, over
+            the first names of the people who live there. The week is what this
+            page is about, so the week carries the title, inside `WeekBoard`
+            where it already sat. What is left is who eats. */}
+        <p className="text-sm text-ink-muted">
+          {(members ?? []).map((member) => member.display_name).join(" · ")}
+        </p>
 
         {/* The week travels in the URL, so back, reload and a shared link all
             land on the same one. */}
