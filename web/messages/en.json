@@ -73,6 +73,38 @@
     "lupin": "Lupin",
     "molluscs": "Molluscs"
   },
+  "allergenContains": {
+    "celery": "celery",
+    "crustaceans": "crustaceans",
+    "eggs": "eggs",
+    "fish": "fish",
+    "gluten": "gluten",
+    "lupin": "lupin",
+    "milk": "milk",
+    "molluscs": "molluscs",
+    "mustard": "mustard",
+    "nuts": "nuts",
+    "peanuts": "peanuts",
+    "sesame": "sesame",
+    "soybeans": "soy",
+    "sulphites": "sulphites"
+  },
+  "allergenEats": {
+    "celery": "celery",
+    "crustaceans": "crustaceans",
+    "eggs": "eggs",
+    "fish": "fish",
+    "gluten": "gluten",
+    "lupin": "lupin",
+    "milk": "milk",
+    "molluscs": "molluscs",
+    "mustard": "mustard",
+    "nuts": "nuts",
+    "peanuts": "peanuts",
+    "sesame": "sesame",
+    "soybeans": "soy",
+    "sulphites": "sulphites"
+  },
   "onboarding": {
     "heading": "Welcome",
     "intro": "Three questions, then on to the week. You can change everything afterwards.",
@@ -224,7 +256,21 @@
       "not_a_meal": "This is not a meal",
       "dead_link": "The link goes nowhere",
       "bad_recipe": "The recipe is unusable"
-    }
+    },
+    "suggestionsHeading": "Suggestions",
+    "favoritesHeading": "Your favourites · {count}",
+    "favoritesEmptyInSlot": "No favourite suits this meal.",
+    "fromFavorite": "from your favourites",
+    "noAdaptationTitle": "No adaptation for {name}",
+    "noAdaptationBody": "This favourite replaced the proposal; their portion was not recomputed.",
+    "noAdaptationWay": "Asking for something else on this meal would compute one — but it would change the dish too.",
+    "allergenTitle": "Contains {allergen}.",
+    "allergenBody": "{name} does not eat {allergen}.",
+    "allergenBodyHousehold": "Nobody here eats {allergen}.",
+    "allergenConfirm": "Choose anyway",
+    "allergenOverridden": "{name} does not eat {allergen}. You chose this dish despite the warning.",
+    "allergenOverriddenHousehold": "Nobody here eats {allergen}. You chose this dish despite the warning.",
+    "ratingHelp": "About today's meal. Unrelated to favourites, which say what you want to see again."
   },
   "invitation": {
     "create": "Have people over",

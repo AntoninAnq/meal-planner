@@ -73,6 +73,38 @@
     "lupin": "Lupin",
     "molluscs": "Mollusques"
   },
+  "allergenContains": {
+    "celery": "du céleri",
+    "crustaceans": "des crustacés",
+    "eggs": "des œufs",
+    "fish": "du poisson",
+    "gluten": "du gluten",
+    "lupin": "du lupin",
+    "milk": "du lait",
+    "molluscs": "des mollusques",
+    "mustard": "de la moutarde",
+    "nuts": "des fruits à coque",
+    "peanuts": "des arachides",
+    "sesame": "du sésame",
+    "soybeans": "du soja",
+    "sulphites": "des sulfites"
+  },
+  "allergenEats": {
+    "celery": "de céleri",
+    "crustaceans": "de crustacés",
+    "eggs": "d'œufs",
+    "fish": "de poisson",
+    "gluten": "de gluten",
+    "lupin": "de lupin",
+    "milk": "de lait",
+    "molluscs": "de mollusques",
+    "mustard": "de moutarde",
+    "nuts": "de fruits à coque",
+    "peanuts": "d'arachides",
+    "sesame": "de sésame",
+    "soybeans": "de soja",
+    "sulphites": "de sulfites"
+  },
   "onboarding": {
     "heading": "Bienvenue",
     "intro": "Trois questions, puis on passe à la semaine. Vous pourrez tout modifier ensuite.",
@@ -224,7 +256,21 @@
       "not_a_meal": "Ce n'est pas un plat",
       "dead_link": "Le lien ne mène nulle part",
       "bad_recipe": "La recette est inutilisable"
-    }
+    },
+    "suggestionsHeading": "Suggestions",
+    "favoritesHeading": "Vos favoris · {count}",
+    "favoritesEmptyInSlot": "Aucun favori ne convient à ce repas.",
+    "fromFavorite": "depuis vos favoris",
+    "noAdaptationTitle": "Sans adaptation pour {name}",
+    "noAdaptationBody": "Ce favori a remplacé la proposition, sa part n'a pas été recalculée.",
+    "noAdaptationWay": "Proposer autre chose pour ce repas en recalculerait une — mais changerait aussi le plat.",
+    "allergenTitle": "Contient {allergen}.",
+    "allergenBody": "{name} ne mange pas {allergen}.",
+    "allergenBodyHousehold": "Personne ici ne mange {allergen}.",
+    "allergenConfirm": "Choisir quand même",
+    "allergenOverridden": "{name} ne mange pas {allergen}. Vous avez choisi ce plat malgré l'alerte.",
+    "allergenOverriddenHousehold": "Personne ici ne mange {allergen}. Vous avez choisi ce plat malgré l'alerte.",
+    "ratingHelp": "Sur le repas d'aujourd'hui. Sans rapport avec les favoris, qui disent ce que vous voulez revoir."
   },
   "invitation": {
     "create": "Inviter du monde",
