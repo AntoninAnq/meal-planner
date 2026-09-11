@@ -1,7 +1,7 @@
 {
   "app": {
-    "title": "Meal Planner",
-    "tagline": "Planning the week when not everyone eats the same thing"
+    "title": "Repas de famille",
+    "tagline": "every day, not just Sunday lunch"
   },
   "signIn": {
     "heading": "Your constraints once. The week's menus, every week.",
@@ -14,6 +14,7 @@
     "proofBadge": "excerpt",
     "proofDay1": "Wednesday 9",
     "proofDish1": "Pork colombo",
+    "proofEaters1": "Antonin, Flora, Joséphine",
     "proofVariant1": "Marceau — portion taken out before salting, then blended",
     "proofValidate": "To confirm",
     "proofDay2": "Thursday 10",

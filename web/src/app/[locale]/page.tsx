@@ -98,20 +98,43 @@ const SIGN_IN_BUTTON =
  * more shown than told — the proof card is the argument of the whole product,
  * and someone who leaves without signing in should at least have seen it.
  *
- * No wordmark: the product has no name yet, and a placeholder would have to be
- * unpicked from every screen later. */
+ * The name is "Repas de famille", after the domain. In French it names the
+ * Sunday lunch — tablecloth, three generations, once a month — and the product
+ * serves the exact opposite: Tuesday evening, at home, with a baby and a fussy
+ * eater. Left alone the name promises a site of festive recipes, so the tagline
+ * does real work and sits directly under it, above the `h1`: a misreading is
+ * corrected at first glance or not at all. Not to be shortened to "tous les
+ * jours" — the correction is in the second half. */
 async function SignIn() {
   const t = await getTranslations("signIn");
+  const tApp = await getTranslations("app");
   const tMeal = await getTranslations("mealType");
 
   return (
     <main>
-      {/* 1. The promise, and the proof beside it. No header above: with no
-          name to put on the left, a "sign in" link on the right would only
-          repeat the button 150px below. */}
+      {/* 0. The name and its tagline, with NO rule underneath: they belong to
+          the hero, and a separating line would turn them into a navigation
+          bar. Nothing on the right either — a "sign in" link there would say
+          what the button 150px below already says. This screen has one action.
+
+          The name is not a heading level: the `h1` of the hero is what
+          structures the page, and an `h1` of the name above an `h1` of the
+          promise would give the page two titles. */}
+      <header
+        className={`${BAND} flex flex-col gap-[3px] pt-[22px] lg:flex-row lg:items-baseline lg:gap-3 lg:pt-6`}
+      >
+        <p className="text-[15px] font-semibold text-ink lg:text-base">{tApp("title")}</p>
+        {/* On 390px it does not fit beside the name, and breaking it over two
+            columns would read worse than giving it its own line. */}
+        <p className="text-[13px] leading-[1.4] text-ink-muted lg:text-[13.5px]">
+          {tApp("tagline")}
+        </p>
+      </header>
+
+      {/* 1. The promise, and the proof beside it. */}
       <section>
         <div
-          className={`${BAND} grid grid-cols-1 gap-14 pt-10 pb-8 lg:grid-cols-[minmax(0,1fr)_512px] lg:items-start lg:pt-[76px] lg:pb-[76px]`}
+          className={`${BAND} grid grid-cols-1 gap-14 pt-[30px] pb-8 lg:grid-cols-[minmax(0,1fr)_512px] lg:items-start lg:pt-14 lg:pb-[76px]`}
         >
           <div className="flex flex-col items-start">
             <p className="text-[11.5px] font-semibold tracking-[0.09em] text-accent uppercase lg:text-xs">
@@ -277,7 +300,9 @@ function ProofExtract({
         <p className="text-[11.5px] font-semibold tracking-[0.06em] text-ink-muted uppercase lg:text-xs">
           {t("proofHeading")}
         </p>
-        {raised && <span className="text-[13px] text-ink-faint">{t("proofBadge")}</span>}
+        {/* `ink-muted`, not `ink-faint`: faint is 3.0:1 here and this screen
+            does not put carrying text under 4.5:1. */}
+        {raised && <span className="text-[13px] text-ink-muted">{t("proofBadge")}</span>}
       </div>
 
       <ul className={cx("flex flex-col gap-3", raised ? "mt-4" : "mt-3.5")}>
@@ -286,8 +311,14 @@ function ProofExtract({
           <div className={slot}>
             <p className={meal}>{tMeal("dinner")}</p>
             <p className={dish}>{t("proofDish1")}</p>
-            {/* The eaters show up only where they diverge — here, because
-                Marceau's portion is not the same plate. */}
+            {/* The first names appear HERE and nowhere in the grid: a stranger
+                needs to see that there is a household behind the week, and
+                someone who already has one does not need to be told theirs on
+                every card. */}
+            <p className="text-[13px] leading-[1.35] text-ink-body lg:text-[13.5px]">
+              {t("proofEaters1")}
+            </p>
+            {/* The variant names the one person it concerns. */}
             <p className="text-[13px] leading-[1.45] text-ink-body text-pretty lg:text-[13.5px]">
               {t("proofVariant1")}
             </p>

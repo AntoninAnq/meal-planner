@@ -1,7 +1,7 @@
 {
   "app": {
-    "title": "Meal Planner",
-    "tagline": "Planifier la semaine quand tout le monde ne mange pas la même chose"
+    "title": "Repas de famille",
+    "tagline": "tous les jours, pas seulement le dimanche midi"
   },
   "signIn": {
     "heading": "Vos contraintes une fois. Les menus de la semaine, chaque semaine.",
@@ -14,6 +14,7 @@
     "proofBadge": "extrait",
     "proofDay1": "Mercredi 9",
     "proofDish1": "Porc au colombo",
+    "proofEaters1": "Antonin, Flora, Joséphine",
     "proofVariant1": "Marceau — part prélevée avant salage et mixée",
     "proofValidate": "À valider",
     "proofDay2": "Jeudi 10",
