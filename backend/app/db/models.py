@@ -229,6 +229,47 @@ class SuggestionReport(Base):
     resolved_by: Mapped[str | None] = mapped_column(String(255))
 
 
+class HouseholdFavorite(Base):
+    """A dish the household means to cook again.
+
+    **Not the same signal as "did you like it".** `MealHistory.rating` grades a
+    meal that has happened; this says what the household wants to see proposed
+    again. Two different questions, asked at two different moments, and the
+    answers do not imply one another — a dinner everyone liked can be one
+    nobody wants twice a month, and a favourite can have gone badly the one
+    time it was tried. They share no storage and no display.
+
+    **Only a catalogue recipe can be one.** A dish the model proposed on its own
+    never becomes a recipe (I7), so it has no page to come back to and nothing
+    to point at. There is no greyed-out heart for those: the rule is explained
+    once, on the empty state, and nowhere else.
+
+    **At the household, not at the account.** The plan is the household's,
+    `household_access` already carries the sharing, and two parents planning
+    together do not have two lists.
+
+    `ondelete="CASCADE"` on the recipe, unlike `meal_history`, which is
+    `RESTRICT`. A favourite is not a historical fact: if a recipe leaves the
+    catalogue there is nothing left to cook, and the favourite goes with it.
+    A meal that WAS eaten stays true whatever happens to the catalogue.
+    """
+
+    __tablename__ = "household_favorite"
+    __table_args__ = (
+        UniqueConstraint("household_id", "recipe_id", name="uq_favorite_household_recipe"),
+    )
+
+    id: Mapped[uuid.UUID] = _pk()
+    household_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("household.id", ondelete="CASCADE"), index=True
+    )
+    recipe_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("recipe.id", ondelete="CASCADE"), index=True
+    )
+    #: What the list is ordered by, most recent first. Nothing else reads it.
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
 class HouseholdSettings(Base):
     __tablename__ = "household_settings"
 

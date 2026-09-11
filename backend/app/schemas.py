@@ -411,3 +411,46 @@ class InvitationOut(BaseModel):
     meal_type: MealType
     guests: list[GuestCount]
     dislikes: list[str] = Field(default_factory=list)
+
+
+class FavoriteConflictOut(BaseModel):
+    """An allergen this favourite carries that someone here cannot eat.
+
+    Computed here rather than in the client because both halves live in the
+    database — `recipe_allergen` says what the dish contains, `dietary_constraint`
+    says who cannot have it — and naming ONLY the allergen would send the reader
+    off to check who it belongs to.
+
+    Aversions are excluded. Red is what this product reserves for the allergen
+    and for what cannot be undone; "n'aime pas les épinards" is neither, and
+    spending the strongest signal on it would spend it everywhere.
+    """
+
+    allergen_code: AllergenCode
+    #: Null on a household-wide constraint, which belongs to nobody in
+    #: particular. The interface has a separate sentence for that case rather
+    #: than inventing a name.
+    member_name: str | None = None
+
+
+class FavoriteOut(BaseModel):
+    """A recipe the household means to cook again.
+
+    Shaped like `AlternativeOut` on purpose: the slot panel lists the two side
+    by side, under two headings, and a row that changed shape between the
+    groups would read as a different kind of thing.
+    """
+
+    recipe_id: uuid.UUID
+    title: str
+    minutes: int | None = None
+    complexity: int | None = None
+    source_url: str | None = None
+    #: Empty on the favourites tab, which does not flag allergens by design: a
+    #: favourite is not a planned meal. The warning belongs to the moment the
+    #: dish is put on a plate.
+    conflicts: list[FavoriteConflictOut] = Field(default_factory=list)
+
+
+class FavoriteCreate(BaseModel):
+    recipe_id: uuid.UUID
