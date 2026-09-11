@@ -106,7 +106,7 @@ PORT=8000
 LOG_LEVEL=INFO                           # DEBUG le temps d'une investigation
 ```
 
-Commande de démarrage : `alembic upgrade head && uvicorn app.main:app --host :: --port 8000`.
+Aucune commande de démarrage à régler : le `CMD` de `backend/Dockerfile` lance `alembic upgrade head`, puis uvicorn sur `BIND_HOST` et `PORT`.
 
 > Migrer au démarrage est un anti-patron **au-delà d'un exemplaire** — deux conteneurs qui démarrent ensemble lancent deux migrations. À un seul exemplaire c'est le compromis juste : une pièce en moins, et une migration oubliée est impossible.
 
@@ -201,7 +201,9 @@ Le Root Directory est le seul réglage qui n'existe que dans l'interface : la CL
 
 > **Railway n'attend pas la CI.** Un commit qui casse les tests part quand même, et le badge GitHub l'apprend après coup. C'est un compromis assumé à un seul exploitant : les commits sont petits et le retour arrière est immédiat (Deployments → le déploiement précédent → Redeploy). Le jour où quelqu'un d'autre pousse, déployer depuis une branche `production` fusionnée après CI verte devient le bon geste.
 
-**Migrations.** `RAILWAY_RUN_COMMAND` lance `alembic upgrade head` avant `uvicorn`, donc une migration part avec son code et ne peut pas être oubliée. Anti-patron au-delà d'un exemplaire — deux conteneurs qui démarrent ensemble lancent deux migrations — et le bon compromis à un seul.
+**Migrations.** Le `CMD` de `backend/Dockerfile` lance `alembic upgrade head` avant `uvicorn`, donc une migration part avec son code et ne peut pas être oubliée. Anti-patron au-delà d'un exemplaire — deux conteneurs qui démarrent ensemble lancent deux migrations — et le bon compromis à un seul.
+
+> Ce paragraphe citait `RAILWAY_RUN_COMMAND`, qui ne lançait rien : 0018 à 0021 ne sont jamais arrivées en production, et `GET /favorites` répondait 500 juste après la connexion (2026-09-11). Pas de réglage Railway non plus : le Config as Code (`railway.toml`) est fermé aux services qui ne l'ont jamais utilisé, et un champ de l'interface vit hors du dépôt. Une base en retard se rattrape depuis son poste, comme au §6 bis : `DATABASE_URL=… poetry run alembic upgrade head`.
 
 **Déployer sans passer par GitHub**, pour éprouver quelque chose qui n'a pas vocation à être commité :
 
