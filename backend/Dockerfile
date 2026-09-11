@@ -24,4 +24,14 @@ EXPOSE 8000
 # Railway is one. `0.0.0.0` binds IPv4 only, so the container starts, looks
 # healthy, and is unreachable from every other service: a failure that reads as
 # "the proxy is misconfigured" and is not. `::` accepts both families.
-CMD ["sh", "-c", "uvicorn app.main:app --host ${BIND_HOST:-0.0.0.0} --port ${PORT:-8000}"]
+#
+# The migrations run HERE, so a migration ships with its code and cannot be
+# forgotten. Until 2026-09-11 this line started uvicorn alone, the host was
+# believed to migrate, and nothing did: 0018–0021 never reached production and
+# `GET /favorites` answered 500 right after sign-in. Not a host setting either —
+# Railway's Config as Code is closed to services that never used it, and a
+# dashboard field lives outside the repository.
+#
+# An anti-pattern beyond one replica (two containers starting together run two
+# migrations), the right trade-off at one: docs/DEPLOY.md §6 quater.
+CMD ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host ${BIND_HOST:-0.0.0.0} --port ${PORT:-8000}"]
