@@ -133,6 +133,17 @@ export type Dish = {
    * typed themselves is the only one no filter can vouch for, so it keeps a
    * mark after the global allergen notice disappears (UX §15). */
   source: DishSource;
+  /** Put here from the favourites rather than proposed. It is what explains the
+   * absence of a serving variant: the favourite replaced the proposal, and
+   * nothing recomputed the small portion. */
+  placed_from_favorite: boolean;
+  /** Somebody was warned this dish carries an allergen and chose it anyway. A
+   * warning one click removes for ever is not a warning, and this meal is on a
+   * table four days later. */
+  allergen_override: boolean;
+  /** Filled only when `allergen_override` is set. Recomputed server-side at
+   * every read, so an allergy declared afterwards shows up here too. */
+  allergen_conflicts: AllergenConflict[];
   /** Declared prep + cooking, and the computed 1..3 rating. Null on the fifth
    * of the catalogue that declares neither — the card then says nothing rather
    * than implying a recipe is quick. */
@@ -155,6 +166,37 @@ export type Alternative = {
   complexity: number | null;
   ingredients: string[];
   source_url: string | null;
+};
+
+/** An allergen a dish carries that somebody here cannot eat.
+ *
+ * Computed server-side: `recipe_allergen` says what the dish contains,
+ * `dietary_constraint` says who cannot have it, and naming only the allergen
+ * would send the reader off to check whose it is. Aversions never appear —
+ * red belongs to the allergen and to the irreversible. */
+export type AllergenConflict = {
+  allergen_code: AllergenCode;
+  /** Null on a household-wide constraint, which belongs to nobody in
+   * particular. The interface has its own sentence for that rather than
+   * inventing a name. */
+  member_name: string | null;
+};
+
+/** A recipe the household means to cook again.
+ *
+ * Same shape as `Alternative` on purpose: the slot panel lists the two under
+ * two headings, and a row changing shape between the groups would read as a
+ * different kind of thing. */
+export type Favorite = {
+  recipe_id: string;
+  title: string;
+  minutes: number | null;
+  complexity: number | null;
+  source_url: string | null;
+  /** Empty on the favourites tab, which does not flag allergens by design: a
+   * favourite is not a planned meal, and the warning belongs to the moment the
+   * dish reaches a plate. */
+  conflicts: AllergenConflict[];
 };
 
 /** An anonymous count, never an entity. Guests stay transitory — storing them
@@ -322,4 +364,37 @@ export type ReportedRecipe = {
   households: number;
   categories: ReportCategory[];
   notes: string[];
+};
+
+/** One thing to buy, and how much of it when the source said. */
+export type ShoppingLine = {
+  name: string;
+  /** Null when not one line carried a quantity. A real state, and a different
+   * one from zero: the source wrote "du sel". */
+  amount: string | null;
+};
+
+/** One `FoodCategory`, in the order a shop is walked — decided server-side, in
+ * a domain constant, so the screen and the copied text cannot disagree. */
+export type ShoppingSection = {
+  code: string;
+  label: string;
+  label_en: string | null;
+  lines: ShoppingLine[];
+};
+
+export type ShoppingList = {
+  week_start: string;
+  /** The selection, not the week. */
+  meals: number;
+  days: number;
+  sections: ShoppingSection[];
+  /** Names only: nobody checks whether they have 200 g of salt. */
+  pantry: string[];
+  /** Verbatim. No ingredient, no category, no possible grouping — hiding them
+   * makes the list incomplete, folding them in makes it unreadable. */
+  unparsed: string[];
+  /** A chosen meal holds a dish with no recipe (I7), so its ingredients are not
+   * here. Saying nothing would leave a list somebody believes is complete. */
+  missing_recipe: boolean;
 };

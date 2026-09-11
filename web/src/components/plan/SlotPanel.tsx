@@ -3,6 +3,7 @@
 import { useFormatter, useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
+import { FavoriteToggle } from "@/components/plan/FavoriteButton";
 import { ReportDish } from "@/components/plan/ReportDish";
 import { VariantConfirm } from "@/components/plan/VariantConfirm";
 import { WaitingState } from "@/components/plan/WaitingState";
@@ -13,7 +14,7 @@ import { ListRow } from "@/components/ui/ListRow";
 import { useRouter } from "@/i18n/navigation";
 import { apiDelete, apiGet, apiPost, apiPut } from "@/lib/api/client";
 import { displayMessage } from "@/lib/api/error";
-import type { Alternative, Dish, MealType } from "@/lib/api/types";
+import type { AllergenConflict, Alternative, Dish, Favorite, MealType } from "@/lib/api/types";
 
 /**
  * Screen 5, in a native `<dialog>` driven by the URL.
@@ -28,6 +29,10 @@ import type { Alternative, Dish, MealType } from "@/lib/api/types";
  * make every page load pay for a list almost nobody reads, and the list would
  * go stale on the plan anyway.
  */
+/** Both groups of "Autre chose ?" are labelled the same way: the two lists are
+ * the same kind of offer, they differ only in where they came from. */
+const GROUP = "text-xs font-semibold tracking-[0.06em] text-ink-muted uppercase";
+
 export function SlotPanel({
   open,
   planId,
@@ -57,6 +62,8 @@ export function SlotPanel({
   //: The link back to the source is worded once, in `plan`, because the week
   //: view and this panel must not name the same thing two different ways.
   const tPlan = useTranslations("plan");
+  const tAllergenIn = useTranslations("allergenContains");
+  const tAllergenEats = useTranslations("allergenEats");
   const format = useFormatter();
   const router = useRouter();
 
@@ -66,8 +73,45 @@ export function SlotPanel({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [alternatives, setAlternatives] = useState<Alternative[] | null>(null);
+  const [favorites, setFavorites] = useState<Favorite[] | null>(null);
+  // Which favourite row has opened its allergen warning. The decision is made
+  // in the list, so it is taken in the list: a modal would move it somewhere
+  // else and lose the two dishes it is being compared against.
+  const [warning, setWarning] = useState<string | null>(null);
 
   const firstDishId = dishes[0]?.id ?? null;
+
+  // Which recipes on screen are already favourites. Read off the slot list, so
+  // a favourite whose source has since been withdrawn is not in it — the toggle
+  // then offers to add one that is already there, and the endpoint is
+  // idempotent, so the worst case is a button that says the wrong word once.
+  const favorited = new Set((favorites ?? []).map((favorite) => favorite.recipe_id));
+
+  // Named, both of them. `recipe_allergen` and `dietary_constraint` give the
+  // allergen AND the person, and "this dish contains an allergen" on its own
+  // sends the reader off to find out whose it is.
+  // Who is eating this dish without an adaptation they need. Derived from the
+  // plate rather than stored: `requires_confirmation` already means "this
+  // assignment only holds BECAUSE of a variant", so the same member with no
+  // variant is precisely the gap.
+  //
+  // Read ONLY beside `placed_from_favorite`. The same gap appears when the
+  // model simply did not write a variant — measured on the first real week,
+  // eight slots out of eight — and there it is a generation failure with its
+  // own notice, not a consequence of anything the household chose. Saying "ce
+  // favori a remplacé la proposition" over it would be a lie.
+  const unadapted = (dish: Dish) =>
+    dish.eaters.filter((eater) => eater.requires_confirmation && !eater.serving_variant);
+
+  const allergenIn = (conflict: AllergenConflict) =>
+    tAllergenIn(conflict.allergen_code as "gluten");
+  const whoCannotEat = (conflict: AllergenConflict) =>
+    conflict.member_name === null
+      ? t("allergenBodyHousehold", { allergen: tAllergenEats(conflict.allergen_code as "gluten") })
+      : t("allergenBody", {
+          name: conflict.member_name,
+          allergen: tAllergenEats(conflict.allergen_code as "gluten"),
+        });
 
   // Read on open, and abandoned if the panel closes first. The request is
   // cheap, but a response landing after the user moved on would set state on a
@@ -84,6 +128,13 @@ export function SlotPanel({
     )
       .then(setAlternatives)
       .catch(() => setAlternatives([]));
+    // `for_slot`: the same predicate the pre-filter uses, so a favourite whose
+    // source has since been withdrawn is not offered as a replacement — it
+    // stays on the tab, where it can still be removed.
+    apiGet<Favorite[]>("/favorites?for_slot=true", controller.signal)
+      .then(setFavorites)
+      .catch(() => setFavorites([]));
+    setWarning(null);
     return () => controller.abort();
   }, [open, planId, firstDishId]);
 
@@ -118,11 +169,23 @@ export function SlotPanel({
 
   // No model call: the candidate was already cleared by the pre-filter, so
   // choosing it is a write and a reload.
-  const choose = (dish: Dish, alternative: Alternative) =>
+  //
+  // The two flags travel with the write because only this screen knows what the
+  // person was looking at — which list they picked from, and whether a warning
+  // was on screen when they did. Both are cleared by any write that does not
+  // set them, so nothing lingers from an earlier choice.
+  const choose = (
+    dish: Dish,
+    recipeId: string,
+    { fromFavorite = false, overrideAllergen = false } = {},
+  ) =>
     act(async () => {
       await apiPut(`/meal-plans/${planId}/dishes/${dish.id}`, {
-        recipe_id: alternative.recipe_id,
+        recipe_id: recipeId,
+        from_favorite: fromFavorite,
+        allergen_override: overrideAllergen,
       });
+      setWarning(null);
       refresh();
     });
 
@@ -231,6 +294,83 @@ export function SlotPanel({
                     </Button>
                   </div>
 
+                  {/* Explains the two blocks under it. Without the pill, the
+                      missing adaptation reads as a fault rather than as a
+                      consequence of what the household chose. */}
+                  {(dish.placed_from_favorite || dish.recipe_id) && (
+                    <div className="flex flex-wrap items-center gap-2">
+                      {dish.placed_from_favorite && (
+                        <span className="rounded-full border border-border bg-surface-sunken px-2.5 py-1 text-xs font-medium text-ink-body">
+                          {t("fromFavorite")}
+                        </span>
+                      )}
+                      {/* Only for a catalogue dish: a model suggestion never
+                          becomes a recipe (I7), so it has nothing to point at
+                          — and rather than a control that exists to be
+                          refused, there is none. The rule is explained once,
+                          on the favourites tab. */}
+                      {dish.recipe_id && dish.label && (
+                        <FavoriteToggle
+                          recipeId={dish.recipe_id}
+                          title={dish.label}
+                          favorited={favorited.has(dish.recipe_id)}
+                        />
+                      )}
+                    </div>
+                  )}
+
+                  {/* Neutral, not red: this is a fact, not an error, and red is
+                      reserved. Not `warn-soft` either — "À valider" already
+                      occupies that register and the two do not mean the same
+                      thing. */}
+                  {dish.placed_from_favorite && unadapted(dish).length > 0 && (
+                    <div className="rounded-control border border-border bg-surface-sunken px-3.5 py-3">
+                      <p className="text-sm font-semibold text-ink">
+                        {t("noAdaptationTitle", {
+                          name: unadapted(dish)
+                            .map((eater) => memberNames[eater.member_id] ?? "?")
+                            .join(", "),
+                        })}
+                      </p>
+                      <p className="mt-1 text-[13px] leading-[1.5] text-ink-body">
+                        {t("noAdaptationBody")}
+                      </p>
+                      {/* No "ask for an adaptation" button: nothing regenerates
+                          a serving variant on its own, and the one endpoint
+                          that could would replace the dish as well. Saying so
+                          is better than a control that does something else. */}
+                      <p className="mt-1.5 text-[13px] leading-[1.5] text-ink-muted">
+                        {t("noAdaptationWay")}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* It survives the click, and it survives the reload. A
+                      warning one gesture removes for ever is not a warning —
+                      and this meal is on a table four days later, cooked by
+                      whoever is free that evening. */}
+                  {dish.allergen_override && dish.allergen_conflicts.length > 0 && (
+                    <div className="rounded-control border border-danger/30 bg-danger-soft px-3.5 py-3">
+                      {dish.allergen_conflicts.map((conflict) => (
+                        <div key={`${conflict.allergen_code}-${conflict.member_name ?? ""}`}>
+                          <p className="text-sm font-semibold text-danger">
+                            {t("allergenTitle", { allergen: allergenIn(conflict) })}
+                          </p>
+                          <p className="mt-1 text-[13px] leading-[1.5] text-ink-body">
+                            {conflict.member_name === null
+                              ? t("allergenOverriddenHousehold", {
+                                  allergen: tAllergenEats(conflict.allergen_code as "gluten"),
+                                })
+                              : t("allergenOverridden", {
+                                  name: conflict.member_name,
+                                  allergen: tAllergenEats(conflict.allergen_code as "gluten"),
+                                })}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
                   {/* One row for everyone eating the dish as it comes, one row
                       per divergence. A row each would repeat three names that
                       say nothing, and bury the one line that does (UX §5). */}
@@ -279,60 +419,204 @@ export function SlotPanel({
                       the most frequent request: "not that one, show me
                       something else". */}
                   {alternatives !== null && (
-                    <section className="flex flex-col gap-2">
+                    <section className="flex flex-col gap-3">
                       <div>
                         <h3 className="text-sm font-semibold">{t("alternativesHeading")}</h3>
+                        {/* True of both groups below: neither calls the model. */}
                         <p className="text-xs text-ink-muted">{t("alternativesHint")}</p>
                       </div>
-                      {alternatives.length === 0 ? (
-                        <p className="text-sm text-ink-muted">{t("alternativesEmpty")}</p>
-                      ) : (
-                        <ul className="flex flex-col gap-1.5">
-                          {alternatives.map((alternative) => (
-                            <ListRow
-                              key={alternative.recipe_id}
-                              action={
-                                <Button
-                                  size="sm"
-                                  disabled={busy}
-                                  onClick={() => choose(dish, alternative)}
-                                >
-                                  {t("choose")}
-                                </Button>
-                              }
-                            >
-                              <span className="text-sm">{alternative.title}</span>
-                              {/* Worded through `plan.minutes` like everywhere
-                                  else: the panel and the grid must not spell
-                                  the same duration two different ways. */}
-                              {alternative.minutes !== null && (
-                                <span className="text-ink-body">
-                                  {" "}
-                                  — {tPlan("minutes", { count: alternative.minutes })}
-                                </span>
-                              )}
-                              {/* Deciding between two dishes on a title alone is
-                                  guesswork. This is the one place where reading
-                                  the recipe first is the whole point. */}
-                              {alternative.source_url && (
+
+                      <div className="flex flex-col gap-1.5">
+                        <h4 className={GROUP}>{t("suggestionsHeading")}</h4>
+                        {alternatives.length === 0 ? (
+                          <p className="text-sm text-ink-muted">{t("alternativesEmpty")}</p>
+                        ) : (
+                          <ul className="flex flex-col gap-1.5">
+                            {alternatives.map((alternative) => (
+                              <ListRow
+                                key={alternative.recipe_id}
+                                action={
+                                  <span className="flex flex-none items-center gap-1">
+                                    {/* A dish is often favourited before it is
+                                        chosen — that is the frequent case, not
+                                        the rare one. */}
+                                    <FavoriteToggle
+                                      recipeId={alternative.recipe_id}
+                                      title={alternative.title}
+                                      favorited={favorited.has(alternative.recipe_id)}
+                                    />
+                                    <Button
+                                      size="sm"
+                                      disabled={busy}
+                                      onClick={() => choose(dish, alternative.recipe_id)}
+                                    >
+                                      {t("choose")}
+                                    </Button>
+                                  </span>
+                                }
+                              >
+                                <span className="text-sm">{alternative.title}</span>
+                                {/* Worded through `plan.minutes` like everywhere
+                                    else: the panel and the grid must not spell
+                                    the same duration two different ways. */}
+                                {alternative.minutes !== null && (
+                                  <span className="text-ink-body">
+                                    {" "}
+                                    — {tPlan("minutes", { count: alternative.minutes })}
+                                  </span>
+                                )}
+                                {/* Deciding between two dishes on a title alone is
+                                    guesswork. This is the one place where reading
+                                    the recipe first is the whole point. */}
+                                {alternative.source_url && (
+                                  <>
+                                    {" "}
+                                    <a
+                                      href={alternative.source_url}
+                                      target="_blank"
+                                      rel="noreferrer noopener"
+                                      aria-label={tPlan("sourceLinkLabel", {
+                                        title: alternative.title,
+                                      })}
+                                      className="text-xs text-ink-muted underline underline-offset-2 hover:text-accent"
+                                    >
+                                      {tPlan("sourceLink")} ↗
+                                    </a>
+                                  </>
+                                )}
+                              </ListRow>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+
+                      {/* Second group, same row shape: one is what the
+                          pre-filter had left over, the other is what this
+                          household already said it wanted back. A row changing
+                          shape between them would read as a different kind of
+                          thing. */}
+                      {favorites !== null && favorites.length > 0 && (
+                        <div className="flex flex-col gap-1.5">
+                          <h4 className={GROUP}>
+                            {t("favoritesHeading", { count: favorites.length })}
+                          </h4>
+                          <ul className="flex flex-col gap-1.5">
+                            {favorites.map((favorite) => {
+                              const open = warning === favorite.recipe_id;
+                              const meta = (
                                 <>
-                                  {" "}
-                                  <a
-                                    href={alternative.source_url}
-                                    target="_blank"
-                                    rel="noreferrer noopener"
-                                    aria-label={tPlan("sourceLinkLabel", {
-                                      title: alternative.title,
-                                    })}
-                                    className="text-xs text-ink-muted underline underline-offset-2 hover:text-accent"
-                                  >
-                                    {tPlan("sourceLink")} ↗
-                                  </a>
+                                  <span className="text-sm">{favorite.title}</span>
+                                  {favorite.minutes !== null && (
+                                    <span className="text-ink-body">
+                                      {" "}
+                                      — {tPlan("minutes", { count: favorite.minutes })}
+                                    </span>
+                                  )}
+                                  {favorite.source_url && (
+                                    <>
+                                      {" "}
+                                      <a
+                                        href={favorite.source_url}
+                                        target="_blank"
+                                        rel="noreferrer noopener"
+                                        aria-label={tPlan("sourceLinkLabel", {
+                                          title: favorite.title,
+                                        })}
+                                        className="text-xs text-ink-muted underline underline-offset-2 hover:text-accent"
+                                      >
+                                        {tPlan("sourceLink")} ↗
+                                      </a>
+                                    </>
+                                  )}
                                 </>
-                              )}
-                            </ListRow>
-                          ))}
-                        </ul>
+                              );
+
+                              // Unfolded in place, and as its own box rather
+                              // than inside `ListRow`: that primitive is one
+                              // line with one action on the right, which is
+                              // exactly what this row stops being. The choice
+                              // is made against the rows around it, so the
+                              // decision is taken there too — a dialog would
+                              // move it somewhere they are not.
+                              if (!open) {
+                                return (
+                                  <ListRow
+                                    key={favorite.recipe_id}
+                                    action={
+                                      <Button
+                                        size="sm"
+                                        disabled={busy}
+                                        onClick={() =>
+                                          // Raised before the write, not after:
+                                          // by then the dish is on the plan.
+                                          favorite.conflicts.length > 0
+                                            ? setWarning(favorite.recipe_id)
+                                            : choose(dish, favorite.recipe_id, {
+                                                fromFavorite: true,
+                                              })
+                                        }
+                                      >
+                                        {t("choose")}
+                                      </Button>
+                                    }
+                                  >
+                                    {meta}
+                                  </ListRow>
+                                );
+                              }
+
+                              return (
+                                <li
+                                  key={favorite.recipe_id}
+                                  className="rounded-control border border-danger/30 bg-danger-soft px-3 py-2.5"
+                                >
+                                  <p className="text-sm">{meta}</p>
+
+                                  {favorite.conflicts.map((conflict) => (
+                                    <p
+                                      key={`${conflict.allergen_code}-${conflict.member_name ?? ""}`}
+                                      className="mt-1.5 text-[13px] leading-[1.5]"
+                                    >
+                                      {/* The allergen AND the person. One
+                                          without the other sends the reader
+                                          off to check the half that is
+                                          missing. */}
+                                      <span className="font-semibold text-danger">
+                                        {t("allergenTitle", { allergen: allergenIn(conflict) })}
+                                      </span>{" "}
+                                      <span className="text-ink-body">
+                                        {whoCannotEat(conflict)}
+                                      </span>
+                                    </p>
+                                  ))}
+
+                                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                                    <Button
+                                      size="sm"
+                                      variant="danger"
+                                      disabled={busy}
+                                      onClick={() =>
+                                        choose(dish, favorite.recipe_id, {
+                                          fromFavorite: true,
+                                          overrideAllergen: true,
+                                        })
+                                      }
+                                    >
+                                      {t("allergenConfirm")}
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      onClick={() => setWarning(null)}
+                                    >
+                                      {tCommon("cancel")}
+                                    </Button>
+                                  </div>
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        </div>
                       )}
                     </section>
                   )}
@@ -347,14 +631,26 @@ export function SlotPanel({
                     <ReportDish planId={planId} dishId={dish.id} />
                   )}
 
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-ink-muted">{t("rate")}</span>
-                    <Button size="sm" disabled={busy} onClick={() => rate(dish, 1)}>
-                      {t("liked")}
-                    </Button>
-                    <Button size="sm" disabled={busy} onClick={() => rate(dish, -1)}>
-                      {t("disliked")}
-                    </Button>
+                  {/* Separated from the favourite control by the whole
+                      alternatives block, and on purpose: two neighbouring
+                      affordances would look like one question asked twice. */}
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-ink-muted">{t("rate")}</span>
+                      <Button size="sm" disabled={busy} onClick={() => rate(dish, 1)}>
+                        {t("liked")}
+                      </Button>
+                      <Button size="sm" disabled={busy} onClick={() => rate(dish, -1)}>
+                        {t("disliked")}
+                      </Button>
+                    </div>
+                    {/* Two signals, one screen: this grades the meal that has
+                        just happened, a favourite says what to propose again.
+                        Without this line the two read as one question asked
+                        twice. */}
+                    <p className="mt-1.5 text-[13px] leading-[1.5] text-ink-muted">
+                      {t("ratingHelp")}
+                    </p>
                   </div>
                 </section>
               ))

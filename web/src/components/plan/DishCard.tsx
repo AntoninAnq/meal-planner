@@ -30,6 +30,7 @@ export async function DishCard({
   dish,
   memberNames,
   multiple,
+  showEaters,
   planId,
 }: {
   dish: Dish;
@@ -40,6 +41,12 @@ export async function DishCard({
    * person it concerns, and listing the other three underneath is the wall of
    * names the grid used to be (UX §5). */
   multiple: boolean;
+  /** Names of who eats this dish, shown only where there is divergence to show.
+   * The slot decides: the dish the largest group eats is the default one, and
+   * naming its eaters restated the household on every card of the week — the
+   * wall of names UX §5 asks us to drop. A dish only some of the household eats
+   * is the exception, and the exception is what has to be named. */
+  showEaters: boolean;
   /** Null when there is no plan to act on — the empty-week placeholder. The
    * confirmation button needs it and nothing else on this card does. */
   planId?: string | null;
@@ -52,8 +59,12 @@ export async function DishCard({
   ].filter(Boolean);
 
   return (
-    <div className={cx(multiple && "rounded-control border border-border px-2.5 py-2")}>
-      <p className="text-sm leading-[1.3] font-semibold text-ink text-pretty">
+    <div className={cx("min-w-0", multiple && "rounded-control border border-border px-2.5 py-2")}>
+      {/* `anywhere` rather than a truncation: "Aubergines farcies de viande et
+          feta à la méditerranéenne" ran out of its card, and the name of the
+          dish IS the information the card carries — an ellipsis would cut the
+          one thing worth reading. */}
+      <p className="text-sm leading-[1.3] font-semibold text-ink text-pretty [overflow-wrap:anywhere]">
         {dish.label ?? t("untitled")}
       </p>
 
@@ -102,14 +113,14 @@ export async function DishCard({
           in the preparation steps the catalogue does not keep. */}
       {dish.shares_ingredients_with && (
         <p className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-accent-soft px-2 py-[3px]">
-          <span aria-hidden className="h-[5px] w-[5px] flex-none rounded-full bg-accent" />
-          <span className="text-[11px] leading-none font-semibold text-accent">
+          <span aria-hidden className="h-[5px] w-[5px] flex-none rounded-full bg-accent-hover" />
+          <span className="text-[11px] leading-none font-semibold text-accent-hover">
             {t("sharedIngredients")}
           </span>
         </p>
       )}
 
-      {multiple && dish.eaters.length > 0 && (
+      {showEaters && dish.eaters.length > 0 && (
         <p className="mt-1 flex flex-wrap gap-1">
           {dish.eaters.map((eater) => (
             <span

@@ -118,3 +118,21 @@ def slots_to_skip(
             else:
                 skipped.add((day, None))
     return frozenset(skipped)
+
+
+def parse_slot(slot: str) -> tuple[int, MealType]:
+    """`"5-dinner"` → `(5, MealType.DINNER)`, the same key the grid uses.
+
+    Here rather than in a router because two of them read it now — clearing a
+    slot, and choosing which meals go on a shopping list — and the key travels
+    in the URL of the week screen as well. Its own function so a malformed key
+    is one `ValueError` the caller turns into a 422, rather than an `IndexError`
+    or a bare `KeyError` 500.
+    """
+    day, _, meal = slot.partition("-")
+    if not day.isdigit() or not (0 <= int(day) <= 6):
+        raise ValueError("slot day must be 0..6")
+    try:
+        return int(day), MealType(meal)
+    except ValueError:
+        raise ValueError("slot meal must be 'lunch' or 'dinner'") from None

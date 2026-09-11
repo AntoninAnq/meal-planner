@@ -271,6 +271,18 @@ class DishOut(BaseModel):
     #: not a convenience — it is the half of the bargain the interface owes.
     #: Null on a dish someone typed themselves: there is nothing to link to.
     source_url: str | None = None
+    #: This dish was put here from the household's favourites rather than
+    #: proposed. It explains why no serving variant follows it — without it the
+    #: missing adaptation reads as a bug rather than as a consequence.
+    placed_from_favorite: bool = False
+    #: Somebody was warned that this dish carries an allergen, and chose it
+    #: anyway. A warning one click makes disappear for ever is not a warning,
+    #: and this meal is on a table four days later.
+    allergen_override: bool = False
+    #: Filled only when `allergen_override` is set: what was overridden, and
+    #: whose it is. Computed at read time from the two tables that hold it, so
+    #: a constraint added afterwards is reflected without a migration.
+    allergen_conflicts: list[AllergenConflictOut] = Field(default_factory=list)
 
 
 class SlotGuestsOut(BaseModel):
@@ -347,10 +359,21 @@ class DishReplace(BaseModel):
     what they want to eat, and letting them write it beats any negotiation with
     a model. A hand-written dish is also the one thing no filter can vouch for,
     which is why it stays marked in the interface (§15).
+
+    The two flags travel with the write because only the client knows what the
+    person was looking at: which list the dish was picked from, and whether a
+    warning was on screen when they picked it. Both are cleared by any later
+    write that does not set them — a dish chosen from the suggestions is no
+    longer "depuis vos favoris", and the allergen it does not carry is no
+    longer overridden.
     """
 
     label: str | None = Field(default=None, min_length=1, max_length=200)
     recipe_id: uuid.UUID | None = None
+    #: Picked from the favourites list rather than from the suggestions.
+    from_favorite: bool = False
+    #: The person saw the allergen warning on this dish and chose it anyway.
+    allergen_override: bool = False
 
 
 class DishRegenerate(BaseModel):
@@ -411,3 +434,96 @@ class InvitationOut(BaseModel):
     meal_type: MealType
     guests: list[GuestCount]
     dislikes: list[str] = Field(default_factory=list)
+
+
+class AllergenConflictOut(BaseModel):
+    """An allergen a dish carries that someone here cannot eat.
+
+    Computed here rather than in the client because both halves live in the
+    database — `recipe_allergen` says what the dish contains, `dietary_constraint`
+    says who cannot have it — and naming ONLY the allergen would send the reader
+    off to check who it belongs to.
+
+    Aversions are excluded. Red is what this product reserves for the allergen
+    and for what cannot be undone; "n'aime pas les épinards" is neither, and
+    spending the strongest signal on it would spend it everywhere.
+    """
+
+    allergen_code: AllergenCode
+    #: Null on a household-wide constraint, which belongs to nobody in
+    #: particular. The interface has a separate sentence for that case rather
+    #: than inventing a name.
+    member_name: str | None = None
+
+
+class FavoriteOut(BaseModel):
+    """A recipe the household means to cook again.
+
+    Shaped like `AlternativeOut` on purpose: the slot panel lists the two side
+    by side, under two headings, and a row that changed shape between the
+    groups would read as a different kind of thing.
+    """
+
+    recipe_id: uuid.UUID
+    title: str
+    minutes: int | None = None
+    complexity: int | None = None
+    source_url: str | None = None
+    #: Empty on the favourites tab, which does not flag allergens by design: a
+    #: favourite is not a planned meal. The warning belongs to the moment the
+    #: dish is put on a plate.
+    conflicts: list[AllergenConflictOut] = Field(default_factory=list)
+
+
+class FavoriteCreate(BaseModel):
+    recipe_id: uuid.UUID
+
+
+class ShoppingLineOut(BaseModel):
+    """One thing to buy, and how much of it when the source said."""
+
+    name: str
+    #: Null when not one line carried a quantity. A real state and a different
+    #: one from zero: the source wrote "du sel", so the list says it does not
+    #: know rather than inventing an amount.
+    amount: str | None = None
+
+
+class ShoppingSectionOut(BaseModel):
+    """One `FoodCategory`, in the order a shop is walked.
+
+    Both labels travel: the client knows its locale, and the alternative —
+    resolving it here — would put the request's language into a service that
+    has no other reason to know it.
+    """
+
+    code: str
+    label: str
+    label_en: str | None = None
+    lines: list[ShoppingLineOut] = Field(default_factory=list)
+
+
+class ShoppingListOut(BaseModel):
+    """What to buy for the meals someone picked, and what we cannot tell them.
+
+    `pantry` carries names only. Nobody checks whether they have 200 g of salt;
+    they check whether there is salt.
+
+    `unparsed` is verbatim. Those lines have no ingredient, no category and no
+    possible grouping — hiding them makes the list incomplete, folding them in
+    makes it unreadable, so they are copied as written with the sentence that
+    explains why.
+    """
+
+    week_start: date
+    #: The SELECTION, not the week: the header of the copied text says how many
+    #: meals it covers, and that has to be the meals it covers.
+    meals: int
+    days: int
+    sections: list[ShoppingSectionOut] = Field(default_factory=list)
+    pantry: list[str] = Field(default_factory=list)
+    unparsed: list[str] = Field(default_factory=list)
+    #: At least one chosen meal holds a dish with no recipe, so its ingredients
+    #: are not here. Saying nothing would be the worst case — a list somebody
+    #: believes is complete.
+    missing_recipe: bool = False

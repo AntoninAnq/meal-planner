@@ -1,7 +1,7 @@
 {
   "app": {
-    "title": "Meal Planner",
-    "tagline": "Planning the week when not everyone eats the same thing"
+    "title": "Repas de famille",
+    "tagline": "every day, not just Sunday lunch"
   },
   "signIn": {
     "heading": "Your constraints once. The week's menus, every week.",
@@ -14,6 +14,7 @@
     "proofBadge": "excerpt",
     "proofDay1": "Wednesday 9",
     "proofDish1": "Pork colombo",
+    "proofEaters1": "Antonin, Flora, Joséphine",
     "proofVariant1": "Marceau — portion taken out before salting, then blended",
     "proofValidate": "To confirm",
     "proofDay2": "Thursday 10",
@@ -72,6 +73,38 @@
     "lupin": "Lupin",
     "molluscs": "Molluscs"
   },
+  "allergenContains": {
+    "celery": "celery",
+    "crustaceans": "crustaceans",
+    "eggs": "eggs",
+    "fish": "fish",
+    "gluten": "gluten",
+    "lupin": "lupin",
+    "milk": "milk",
+    "molluscs": "molluscs",
+    "mustard": "mustard",
+    "nuts": "nuts",
+    "peanuts": "peanuts",
+    "sesame": "sesame",
+    "soybeans": "soy",
+    "sulphites": "sulphites"
+  },
+  "allergenEats": {
+    "celery": "celery",
+    "crustaceans": "crustaceans",
+    "eggs": "eggs",
+    "fish": "fish",
+    "gluten": "gluten",
+    "lupin": "lupin",
+    "milk": "milk",
+    "molluscs": "molluscs",
+    "mustard": "mustard",
+    "nuts": "nuts",
+    "peanuts": "peanuts",
+    "sesame": "sesame",
+    "soybeans": "soy",
+    "sulphites": "sulphites"
+  },
   "onboarding": {
     "heading": "Welcome",
     "intro": "Three questions, then on to the week. You can change everything afterwards.",
@@ -119,10 +152,9 @@
       "list": "List"
     },
     "today": "Today",
-    "emptySlot": "Nothing planned",
     "untitled": "Untitled dish",
     "variant": "{name}: {variant}",
-    "slotIncomplete": "This meal could not be completed",
+    "slotIncomplete": "not completed",
     "violationsHeading": "{count, plural, one {One meal could not be completed} other {# meals could not be completed}}",
     "violationsBody": "They are marked in the week. You can regenerate them or write the dish yourself.",
     "generationLost": "The generation did not arrive. Try again.",
@@ -148,6 +180,47 @@
     "notPlannedBody": "The catalogue holds no recipe suited to a baby under 18 months. Those meals stay yours to make.",
     "variantConfirmShort": "To confirm",
     "sharedIngredients": "same ingredients"
+  },
+  "favorites": {
+    "tab": "Favourites",
+    "heading": "Your favourites",
+    "count": "{count, plural, one {# recipe} other {# recipes}}",
+    "help": "The dishes you want to see again. To put one in the week, open the meal it belongs to: your favourites are offered there, beside the suggestions.",
+    "remove": "Remove",
+    "removeLabel": "Remove “{title}” from favourites",
+    "add": "Add to favourites",
+    "added": "In favourites",
+    "emptyTitle": "No favourites yet",
+    "emptyBody": "Open a meal of the week and add a dish to your favourites: it will be offered back here, and in every slot, beside the suggestions.",
+    "emptyRule": "Only dishes that come from a recipe can be favourited. Dishes the model proposed on its own have no page to come back to, so no heart.",
+    "failed": "Failed, try again"
+  },
+  "shoppingList": {
+    "open": "Shopping list",
+    "title": "Shopping list",
+    "week": "Week of {date}",
+    "close": "Close",
+    "whichMeals": "Which meals?",
+    "checkAll": "Check all",
+    "uncheckAll": "Uncheck all",
+    "selection": "{meals, plural, one {# meal} other {# meals}} over {days, plural, one {# day} other {# days}}. Empty cells are meals with no dish.",
+    "mealLabel": "{day}, {meal}",
+    "toBuy": "To buy",
+    "pantry": "Check the cupboard for",
+    "unparsed": "Unrecognised lines · {count}",
+    "unparsedHelp": "Copied exactly as the recipe writes them. We cannot group them, so we do not try.",
+    "noQuantity": "amount not read",
+    "missingRecipe": "One dish in this selection has no recipe: its ingredients are not on the list.",
+    "scaleNote": "Quantities are the ones from the original recipes, for the number of portions they state. They are not adjusted to your household.",
+    "empty": "No meal checked.",
+    "copy": "Copy the list",
+    "copyHint": "as text, ready to send",
+    "copied": "Copied",
+    "copyFailed": "Copying failed.",
+    "textHeading": "Shopping — {range} ({meals, plural, one {# meal} other {# meals}})",
+    "textPantry": "CHECK THE CUPBOARD FOR",
+    "textUnparsed": "UNRECOGNISED LINES",
+    "textScaleNote": "Quantities from the original recipes, not adjusted to the household."
   },
   "composer": {
     "collapsed": "Anything to note for this week?",
@@ -210,7 +283,21 @@
       "not_a_meal": "This is not a meal",
       "dead_link": "The link goes nowhere",
       "bad_recipe": "The recipe is unusable"
-    }
+    },
+    "suggestionsHeading": "Suggestions",
+    "favoritesHeading": "Your favourites · {count}",
+    "favoritesEmptyInSlot": "No favourite suits this meal.",
+    "fromFavorite": "from your favourites",
+    "noAdaptationTitle": "No adaptation for {name}",
+    "noAdaptationBody": "This favourite replaced the proposal; their portion was not recomputed.",
+    "noAdaptationWay": "Asking for something else on this meal would compute one — but it would change the dish too.",
+    "allergenTitle": "Contains {allergen}.",
+    "allergenBody": "{name} does not eat {allergen}.",
+    "allergenBodyHousehold": "Nobody here eats {allergen}.",
+    "allergenConfirm": "Choose anyway",
+    "allergenOverridden": "{name} does not eat {allergen}. You chose this dish despite the warning.",
+    "allergenOverriddenHousehold": "Nobody here eats {allergen}. You chose this dish despite the warning.",
+    "ratingHelp": "About today's meal. Unrelated to favourites, which say what you want to see again."
   },
   "invitation": {
     "create": "Have people over",

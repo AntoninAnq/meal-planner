@@ -1,7 +1,7 @@
 {
   "app": {
-    "title": "Meal Planner",
-    "tagline": "Planifier la semaine quand tout le monde ne mange pas la même chose"
+    "title": "Repas de famille",
+    "tagline": "tous les jours, pas seulement le dimanche midi"
   },
   "signIn": {
     "heading": "Vos contraintes une fois. Les menus de la semaine, chaque semaine.",
@@ -14,6 +14,7 @@
     "proofBadge": "extrait",
     "proofDay1": "Mercredi 9",
     "proofDish1": "Porc au colombo",
+    "proofEaters1": "Antonin, Flora, Joséphine",
     "proofVariant1": "Marceau — part prélevée avant salage et mixée",
     "proofValidate": "À valider",
     "proofDay2": "Jeudi 10",
@@ -72,6 +73,38 @@
     "lupin": "Lupin",
     "molluscs": "Mollusques"
   },
+  "allergenContains": {
+    "celery": "du céleri",
+    "crustaceans": "des crustacés",
+    "eggs": "des œufs",
+    "fish": "du poisson",
+    "gluten": "du gluten",
+    "lupin": "du lupin",
+    "milk": "du lait",
+    "molluscs": "des mollusques",
+    "mustard": "de la moutarde",
+    "nuts": "des fruits à coque",
+    "peanuts": "des arachides",
+    "sesame": "du sésame",
+    "soybeans": "du soja",
+    "sulphites": "des sulfites"
+  },
+  "allergenEats": {
+    "celery": "de céleri",
+    "crustaceans": "de crustacés",
+    "eggs": "d'œufs",
+    "fish": "de poisson",
+    "gluten": "de gluten",
+    "lupin": "de lupin",
+    "milk": "de lait",
+    "molluscs": "de mollusques",
+    "mustard": "de moutarde",
+    "nuts": "de fruits à coque",
+    "peanuts": "d'arachides",
+    "sesame": "de sésame",
+    "soybeans": "de soja",
+    "sulphites": "de sulfites"
+  },
   "onboarding": {
     "heading": "Bienvenue",
     "intro": "Trois questions, puis on passe à la semaine. Vous pourrez tout modifier ensuite.",
@@ -119,10 +152,9 @@
       "list": "Liste"
     },
     "today": "Aujourd'hui",
-    "emptySlot": "Rien de prévu",
     "untitled": "Plat sans titre",
     "variant": "{name} : {variant}",
-    "slotIncomplete": "Ce repas n'a pas pu être complété",
+    "slotIncomplete": "non complété",
     "violationsHeading": "{count, plural, one {Un repas n'a pas pu être complété} other {# repas n'ont pas pu être complétés}}",
     "violationsBody": "Ils sont signalés dans la semaine. Vous pouvez les régénérer ou écrire le plat vous-même.",
     "generationLost": "La génération n'a pas abouti. Relancez-la.",
@@ -148,6 +180,47 @@
     "notPlannedBody": "Le catalogue ne contient aucune recette adaptée à un bébé de moins de 18 mois. Ses repas restent à votre main.",
     "variantConfirmShort": "À valider",
     "sharedIngredients": "mêmes ingrédients"
+  },
+  "favorites": {
+    "tab": "Favoris",
+    "heading": "Vos favoris",
+    "count": "{count, plural, one {# recette} other {# recettes}}",
+    "help": "Les plats que vous voulez revoir. Pour en mettre un dans la semaine, ouvrez le repas concerné : vos favoris y sont proposés à côté des suggestions.",
+    "remove": "Retirer",
+    "removeLabel": "Retirer « {title} » des favoris",
+    "add": "Mettre en favori",
+    "added": "En favori",
+    "emptyTitle": "Aucun favori pour l'instant",
+    "emptyBody": "Ouvrez un repas de la semaine et mettez un plat en favori : il vous sera reproposé ici, et dans chaque créneau, à côté des suggestions.",
+    "emptyRule": "Seuls les plats qui viennent d'une recette peuvent être mis en favori. Les plats proposés par le modèle seul n'ont pas de page à retrouver, donc pas de cœur.",
+    "failed": "Échec, réessayez"
+  },
+  "shoppingList": {
+    "open": "Liste de courses",
+    "title": "Liste de courses",
+    "week": "Semaine du {date}",
+    "close": "Fermer",
+    "whichMeals": "Quels repas ?",
+    "checkAll": "Tout cocher",
+    "uncheckAll": "Tout décocher",
+    "selection": "{meals, plural, one {# repas} other {# repas}} sur {days, plural, one {# jour} other {# jours}}. Les cases vides sont des repas sans plat.",
+    "mealLabel": "{day}, {meal}",
+    "toBuy": "À acheter",
+    "pantry": "À vérifier dans le placard",
+    "unparsed": "Lignes non reconnues · {count}",
+    "unparsedHelp": "Recopiées telles qu'elles sont écrites dans la recette. Nous ne savons pas les regrouper, donc nous n'essayons pas.",
+    "noQuantity": "quantité non lue",
+    "missingRecipe": "Un plat de cette sélection n'a pas de recette : ses ingrédients ne sont pas dans la liste.",
+    "scaleNote": "Les quantités sont celles des recettes d'origine, pour le nombre de parts qu'elles indiquent. Elles ne sont pas ajustées à votre foyer.",
+    "empty": "Aucun repas coché.",
+    "copy": "Copier la liste",
+    "copyHint": "en texte, prêt à envoyer",
+    "copied": "Copié",
+    "copyFailed": "La copie a échoué.",
+    "textHeading": "Courses — {range} ({meals, plural, one {# repas} other {# repas}})",
+    "textPantry": "À VÉRIFIER DANS LE PLACARD",
+    "textUnparsed": "LIGNES NON RECONNUES",
+    "textScaleNote": "Quantités des recettes d'origine, non ajustées au foyer."
   },
   "composer": {
     "collapsed": "Une précision pour cette semaine ?",
@@ -210,7 +283,21 @@
       "not_a_meal": "Ce n'est pas un plat",
       "dead_link": "Le lien ne mène nulle part",
       "bad_recipe": "La recette est inutilisable"
-    }
+    },
+    "suggestionsHeading": "Suggestions",
+    "favoritesHeading": "Vos favoris · {count}",
+    "favoritesEmptyInSlot": "Aucun favori ne convient à ce repas.",
+    "fromFavorite": "depuis vos favoris",
+    "noAdaptationTitle": "Sans adaptation pour {name}",
+    "noAdaptationBody": "Ce favori a remplacé la proposition, sa part n'a pas été recalculée.",
+    "noAdaptationWay": "Proposer autre chose pour ce repas en recalculerait une — mais changerait aussi le plat.",
+    "allergenTitle": "Contient {allergen}.",
+    "allergenBody": "{name} ne mange pas {allergen}.",
+    "allergenBodyHousehold": "Personne ici ne mange {allergen}.",
+    "allergenConfirm": "Choisir quand même",
+    "allergenOverridden": "{name} ne mange pas {allergen}. Vous avez choisi ce plat malgré l'alerte.",
+    "allergenOverriddenHousehold": "Personne ici ne mange {allergen}. Vous avez choisi ce plat malgré l'alerte.",
+    "ratingHelp": "Sur le repas d'aujourd'hui. Sans rapport avec les favoris, qui disent ce que vous voulez revoir."
   },
   "invitation": {
     "create": "Inviter du monde",

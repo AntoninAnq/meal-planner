@@ -1,14 +1,17 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { cookies } from "next/headers";
 
+import { FavoritesView } from "@/components/plan/FavoritesView";
 import { InvitationPanel } from "@/components/plan/InvitationPanel";
 import { WeekBoard } from "@/components/plan/WeekBoard";
+import { ShoppingList } from "@/components/plan/ShoppingList";
 import { SlotPanel } from "@/components/plan/SlotPanel";
 import { DayList, WeekGrid, type WeekViewProps } from "@/components/plan/WeekViews";
 import { Link, redirect } from "@/i18n/navigation";
 import { apiGet } from "@/lib/api/server";
 import { cx } from "@/lib/cx";
 import type {
+  Favorite,
   Household,
   HouseholdSettings,
   Invitation,
@@ -52,7 +55,7 @@ export default async function HomePage({
   // thing the onboarding exists to ask — would never be asked.
   if (!settings?.onboarded_at) redirect({ href: "/onboarding", locale });
 
-  return <Week household={household} locale={locale} searchParams={searchParams} />;
+  return <Week locale={locale} searchParams={searchParams} />;
 }
 
 /** The same sentence, trimmed for the narrow layout.
@@ -98,20 +101,43 @@ const SIGN_IN_BUTTON =
  * more shown than told — the proof card is the argument of the whole product,
  * and someone who leaves without signing in should at least have seen it.
  *
- * No wordmark: the product has no name yet, and a placeholder would have to be
- * unpicked from every screen later. */
+ * The name is "Repas de famille", after the domain. In French it names the
+ * Sunday lunch — tablecloth, three generations, once a month — and the product
+ * serves the exact opposite: Tuesday evening, at home, with a baby and a fussy
+ * eater. Left alone the name promises a site of festive recipes, so the tagline
+ * does real work and sits directly under it, above the `h1`: a misreading is
+ * corrected at first glance or not at all. Not to be shortened to "tous les
+ * jours" — the correction is in the second half. */
 async function SignIn() {
   const t = await getTranslations("signIn");
+  const tApp = await getTranslations("app");
   const tMeal = await getTranslations("mealType");
 
   return (
     <main>
-      {/* 1. The promise, and the proof beside it. No header above: with no
-          name to put on the left, a "sign in" link on the right would only
-          repeat the button 150px below. */}
+      {/* 0. The name and its tagline, with NO rule underneath: they belong to
+          the hero, and a separating line would turn them into a navigation
+          bar. Nothing on the right either — a "sign in" link there would say
+          what the button 150px below already says. This screen has one action.
+
+          The name is not a heading level: the `h1` of the hero is what
+          structures the page, and an `h1` of the name above an `h1` of the
+          promise would give the page two titles. */}
+      <header
+        className={`${BAND} flex flex-col gap-[3px] pt-[22px] lg:flex-row lg:items-baseline lg:gap-3 lg:pt-6`}
+      >
+        <p className="text-[15px] font-semibold text-ink lg:text-base">{tApp("title")}</p>
+        {/* On 390px it does not fit beside the name, and breaking it over two
+            columns would read worse than giving it its own line. */}
+        <p className="text-[13px] leading-[1.4] text-ink-muted lg:text-[13.5px]">
+          {tApp("tagline")}
+        </p>
+      </header>
+
+      {/* 1. The promise, and the proof beside it. */}
       <section>
         <div
-          className={`${BAND} grid grid-cols-1 gap-14 pt-10 pb-8 lg:grid-cols-[minmax(0,1fr)_512px] lg:items-start lg:pt-[76px] lg:pb-[76px]`}
+          className={`${BAND} grid grid-cols-1 gap-14 pt-[30px] pb-8 lg:grid-cols-[minmax(0,1fr)_512px] lg:items-start lg:pt-14 lg:pb-[76px]`}
         >
           <div className="flex flex-col items-start">
             <p className="text-[11.5px] font-semibold tracking-[0.09em] text-accent uppercase lg:text-xs">
@@ -277,7 +303,9 @@ function ProofExtract({
         <p className="text-[11.5px] font-semibold tracking-[0.06em] text-ink-muted uppercase lg:text-xs">
           {t("proofHeading")}
         </p>
-        {raised && <span className="text-[13px] text-ink-faint">{t("proofBadge")}</span>}
+        {/* `ink-muted`, not `ink-faint`: faint is 3.0:1 here and this screen
+            does not put carrying text under 4.5:1. */}
+        {raised && <span className="text-[13px] text-ink-muted">{t("proofBadge")}</span>}
       </div>
 
       <ul className={cx("flex flex-col gap-3", raised ? "mt-4" : "mt-3.5")}>
@@ -286,8 +314,14 @@ function ProofExtract({
           <div className={slot}>
             <p className={meal}>{tMeal("dinner")}</p>
             <p className={dish}>{t("proofDish1")}</p>
-            {/* The eaters show up only where they diverge — here, because
-                Marceau's portion is not the same plate. */}
+            {/* The first names appear HERE and nowhere in the grid: a stranger
+                needs to see that there is a household behind the week, and
+                someone who already has one does not need to be told theirs on
+                every card. */}
+            <p className="text-[13px] leading-[1.35] text-ink-body lg:text-[13.5px]">
+              {t("proofEaters1")}
+            </p>
+            {/* The variant names the one person it concerns. */}
             <p className="text-[13px] leading-[1.45] text-ink-body text-pretty lg:text-[13.5px]">
               {t("proofVariant1")}
             </p>
@@ -327,11 +361,9 @@ function ProofExtract({
 }
 
 async function Week({
-  household,
   locale,
   searchParams,
 }: {
-  household: Household;
   locale: string;
   searchParams: Search;
 }) {
@@ -344,11 +376,12 @@ async function Week({
   // The view loads the plan itself rather than displaying the response of the
   // generation POST. That is what makes a lost response survivable: the plan
   // was written before the endpoint replied, so a reload recovers it.
-  const [plan, members, enabledSlots, invitations] = await Promise.all([
+  const [plan, members, enabledSlots, invitations, favorites] = await Promise.all([
     apiGet<MealPlan | null>(`/meal-plans?week_start=${weekStart}`),
     apiGet<Member[]>("/members"),
     apiGet<MealSlot[]>("/household/slots"),
     apiGet<Invitation[]>(`/invitations?week_start=${weekStart}`),
+    apiGet<Favorite[]>("/favorites"),
   ]);
 
   const memberNames = Object.fromEntries(
@@ -368,6 +401,17 @@ async function Week({
 
   const view = resolveView((await cookies()).get(VIEW_COOKIE)?.value);
 
+  // Favourites is URL state, NOT the view cookie. The cookie is what makes the
+  // first paint right without a flash, and it must keep meaning "grid or list":
+  // were `favorites` allowed into it, next week would open on the favourites
+  // list instead of on the plan. Leaving the tab drops back to the remembered
+  // view, which is exactly what the cookie is for.
+  const favoritesOpen = (Array.isArray(search.view) ? search.view[0] : search.view) === "favorites";
+
+  // Same URL-state as everything else on this screen, so the back button closes
+  // the drawer and a reload reopens it.
+  const listOpen = (Array.isArray(search.list) ? search.list[0] : search.list) === "1";
+
   // The open slot travels in the URL too: the back button closes the panel and
   // a reload reopens it on the same meal. A mistyped key simply leaves it shut.
   const openSlot = parseSlotKey(
@@ -386,12 +430,14 @@ async function Week({
   return (
     <main className="mx-auto flex max-w-5xl flex-col gap-6 px-5 py-8">
       <header className="flex flex-wrap items-end justify-between gap-3">
-        <div className="flex flex-col gap-1">
-          <h1 className="text-2xl font-semibold">{household.name}</h1>
-          <p className="text-sm text-ink-muted">
-            {(members ?? []).map((member) => member.display_name).join(" · ")}
-          </p>
-        </div>
+        {/* No brand name here, and no household name either: `household.name`
+            is a provisioning placeholder — it read "Home" in production, over
+            the first names of the people who live there. The week is what this
+            page is about, so the week carries the title, inside `WeekBoard`
+            where it already sat. What is left is who eats. */}
+        <p className="text-sm text-ink-muted">
+          {(members ?? []).map((member) => member.display_name).join(" · ")}
+        </p>
 
         {/* The week travels in the URL, so back, reload and a shared link all
             land on the same one. */}
@@ -437,12 +483,23 @@ async function Week({
         expectedMs={EXPECTED_SECONDS * 1000}
         grid={<WeekGrid {...viewProps} />}
         list={<DayList {...viewProps} />}
+        favoritesOpen={favoritesOpen}
+        favorites={<FavoritesView favorites={favorites ?? []} />}
       />
 
       {/* No reminder list under the plan any more. It existed only because
           nothing in the grid showed an invitation; now the invitation IS the
           cell, banner and all, and a list repeating it below was a third place
           to look for the same thing. */}
+
+      {listOpen && (
+        <ShoppingList
+          open
+          weekStart={weekStart}
+          today={today}
+          plannedSlots={[...slotsByKey(plan).keys()]}
+        />
+      )}
 
       {openSlot && (
         <SlotPanel

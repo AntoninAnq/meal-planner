@@ -29,6 +29,7 @@ from app.db.models import (
     SuggestionReport,
 )
 from app.db.session import get_db
+from app.domain.days import parse_slot
 from app.domain.enums import DishSource, GenerationKind, LifeStage, MealType
 from app.domain.shared_ingredients import pantry, shared_ingredient_links
 from app.llm.base import LLMClient, LLMError, SchemaValidationError
@@ -52,6 +53,7 @@ from app.schemas import (
     VariantConfirmation,
     ViolationOut,
 )
+from app.services.conflicts import conflicts_for
 from app.services.planning_service import (
     GuestGroup,
     Intent,
@@ -198,6 +200,16 @@ def _serialise(db: Session, plan: MealPlan) -> MealPlanOut:
 
     shares_with = _shared_ingredient_links(db, dishes)
 
+    # Only for the dishes somebody actually overrode — a handful at most, and
+    # usually none. Recomputed at read time rather than frozen at the click, so
+    # an allergy declared afterwards shows up on a dish already on the plan.
+    overridden = {
+        dish.recipe_id
+        for dish in dishes
+        if dish.allergen_override and dish.recipe_id is not None
+    }
+    conflicts = conflicts_for(db, plan.household_id, overridden)
+
     slots: dict[tuple[int, str], PlanSlotOut] = {}
     for dish in dishes:
         key = (dish.day_of_week, dish.meal_type)
@@ -224,6 +236,13 @@ def _serialise(db: Session, plan: MealPlan) -> MealPlanOut:
                 complexity=about.complexity if about else None,
                 source_url=about.source_url if about else None,
                 shares_ingredients_with=shares_with.get(dish.id),
+                placed_from_favorite=dish.placed_from_favorite,
+                allergen_override=dish.allergen_override,
+                allergen_conflicts=(
+                    conflicts.get(dish.recipe_id, [])
+                    if dish.allergen_override and dish.recipe_id is not None
+                    else []
+                ),
                 eaters=[
                     DishEaterOut(
                         member_id=assignment.member_id,
@@ -627,6 +646,23 @@ def replace_dish(
         dish.free_text_label = payload.label
         dish.source = DishSource.USER
 
+    # Set on EVERY replace, not only when true. A dish chosen from the
+    # suggestions is no longer "depuis vos favoris", and an allergen the new
+    # recipe does not carry is no longer overridden — leaving either flag
+    # standing would keep a sentence on screen about a dish that is gone.
+    dish.placed_from_favorite = payload.from_favorite
+    dish.allergen_override = payload.allergen_override
+
+    # The serving variants described the dish that just left. "Part prélevée
+    # avant salage et mixée" is an instruction about a specific preparation, and
+    # keeping it would pin it on a recipe nobody wrote it for. Worse, a
+    # `variant_confirmed_at` would survive with it — a parent's confirmation of
+    # a plate that is no longer being served, which is precisely what §4.9 asks
+    # the code never to let happen.
+    for assignment in dish.eaters:
+        assignment.serving_variant = None
+        assignment.variant_confirmed_at = None
+
     db.commit()
     return _serialise(db, db.get(MealPlan, plan_id))  # type: ignore[arg-type]
 
@@ -764,21 +800,6 @@ def rate_dish(
     db.commit()
 
 
-def _parse_slot(slot: str) -> tuple[int, MealType]:
-    """`"5-dinner"` → `(5, MealType.DINNER)`, the same key the grid uses.
-
-    Its own function so a malformed key is one `ValueError` the caller turns
-    into a 422, rather than an `IndexError` or a bare `KeyError` 500.
-    """
-    day, _, meal = slot.partition("-")
-    if not day.isdigit() or not (0 <= int(day) <= 6):
-        raise ValueError("slot day must be 0..6")
-    try:
-        return int(day), MealType(meal)
-    except ValueError:
-        raise ValueError("slot meal must be 'lunch' or 'dinner'") from None
-
-
 @router.delete("/{plan_id}/slots/{slot}", response_model=MealPlanOut)
 def clear_slot(
     plan_id: uuid.UUID,
@@ -802,7 +823,7 @@ def clear_slot(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "plan not found")
 
     try:
-        day_of_week, meal_type = _parse_slot(slot)
+        day_of_week, meal_type = parse_slot(slot)
     except ValueError as exc:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(exc)) from exc
 

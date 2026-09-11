@@ -229,6 +229,47 @@ class SuggestionReport(Base):
     resolved_by: Mapped[str | None] = mapped_column(String(255))
 
 
+class HouseholdFavorite(Base):
+    """A dish the household means to cook again.
+
+    **Not the same signal as "did you like it".** `MealHistory.rating` grades a
+    meal that has happened; this says what the household wants to see proposed
+    again. Two different questions, asked at two different moments, and the
+    answers do not imply one another — a dinner everyone liked can be one
+    nobody wants twice a month, and a favourite can have gone badly the one
+    time it was tried. They share no storage and no display.
+
+    **Only a catalogue recipe can be one.** A dish the model proposed on its own
+    never becomes a recipe (I7), so it has no page to come back to and nothing
+    to point at. There is no greyed-out heart for those: the rule is explained
+    once, on the empty state, and nowhere else.
+
+    **At the household, not at the account.** The plan is the household's,
+    `household_access` already carries the sharing, and two parents planning
+    together do not have two lists.
+
+    `ondelete="CASCADE"` on the recipe, unlike `meal_history`, which is
+    `RESTRICT`. A favourite is not a historical fact: if a recipe leaves the
+    catalogue there is nothing left to cook, and the favourite goes with it.
+    A meal that WAS eaten stays true whatever happens to the catalogue.
+    """
+
+    __tablename__ = "household_favorite"
+    __table_args__ = (
+        UniqueConstraint("household_id", "recipe_id", name="uq_favorite_household_recipe"),
+    )
+
+    id: Mapped[uuid.UUID] = _pk()
+    household_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("household.id", ondelete="CASCADE"), index=True
+    )
+    recipe_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("recipe.id", ondelete="CASCADE"), index=True
+    )
+    #: What the list is ordered by, most recent first. Nothing else reads it.
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
 class HouseholdSettings(Base):
     __tablename__ = "household_settings"
 
@@ -421,6 +462,20 @@ class PlannedDish(Base):
     #: until the catalogue exists: overlap is not computable without ingredients.
     derived_from_dish_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("planned_dish.id", ondelete="SET NULL")
+    )
+    #: Put here from the household's favourites rather than proposed. It is what
+    #: explains the absence of a serving variant on a slot that had one: the
+    #: favourite replaced the proposal, and nothing recomputed the small
+    #: portion. Without it the missing adaptation reads as a bug.
+    placed_from_favorite: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("false")
+    )
+    #: Someone was told this dish carries an allergen somebody here cannot eat,
+    #: and chose it anyway. Stored rather than shown once: a warning that one
+    #: click removes for ever is not a warning, and this meal is on a table four
+    #: days later.
+    allergen_override: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("false")
     )
 
     plan: Mapped[MealPlan] = relationship(back_populates="dishes")
@@ -698,6 +753,14 @@ class FoodCategory(Base):
     id: Mapped[uuid.UUID] = _pk()
     code: Mapped[str] = mapped_column(String(60), unique=True)
     label: Mapped[str] = mapped_column(String(120))
+    #: The shopping list prints these as section headings, so they are the one
+    #: piece of catalogue data a reader sees in their own language. A column
+    #: rather than message keys: the codes live in `db/ingredients.yaml` and are
+    #: reviewed as a Git diff, and splitting their labels across two files would
+    #: let a category exist with no heading. Nullable for the rows that predate
+    #: it — the reader falls back on the French label, which is a heading in the
+    #: wrong language rather than a section with no name.
+    label_en: Mapped[str | None] = mapped_column(String(120))
 
 
 class Ingredient(Base):

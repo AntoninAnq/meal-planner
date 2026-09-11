@@ -93,3 +93,41 @@ body {
 [data-view="list"] > [data-week-view="list"] {
   display: block;
 }
+
+/* Which tab reads as current.
+ *
+ * Exactly the problem the rules above solve, and solved the same way: with no
+ * explicit choice the value is `auto` and only the media query knows which of
+ * the two views is on screen, so the server cannot render the underline. It is
+ * decided here, beside the rule that decides the view itself — the two must
+ * never disagree.
+ *
+ * `favorites` is not one of the two: it comes from the URL, never from the
+ * cookie, so it is always known and always wins. */
+[data-tabs] > [data-tab] {
+  border-color: transparent;
+  color: var(--color-ink-muted);
+}
+
+[data-tabs="auto"] > [data-tab="list"],
+[data-tabs="grid"] > [data-tab="grid"],
+[data-tabs="list"] > [data-tab="list"],
+[data-tabs="favorites"] > [data-tab="favorites"] {
+  border-color: var(--color-accent);
+  color: var(--color-ink);
+  font-weight: 600;
+}
+
+@media (min-width: 64rem) {
+  [data-tabs="auto"] > [data-tab="list"] {
+    border-color: transparent;
+    color: var(--color-ink-muted);
+    font-weight: 400;
+  }
+
+  [data-tabs="auto"] > [data-tab="grid"] {
+    border-color: var(--color-accent);
+    color: var(--color-ink);
+    font-weight: 600;
+  }
+}

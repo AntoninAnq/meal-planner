@@ -39,10 +39,18 @@ class DishSource(StrEnum):
 
     Invariant I7: LLM_SUGGESTION entries live in the plan and the history, and
     are NEVER promoted to catalogue recipes.
+
+    `USER` is the one nothing vouched for. The allergen filter reads tags, and a
+    title someone typed has none — so `UX-V0.md` §15 keeps a mark on it in the
+    interface after the global notice is gone. The member was missing while the
+    code, the client type and the card that renders the mark all expected it:
+    saving a hand-written title raised `AttributeError` and answered 500, and
+    the mark could never be shown.
     """
 
     CATALOG = "catalog"
     LLM_SUGGESTION = "llm_suggestion"
+    USER = "user"
 
 
 class RecipeSourceType(StrEnum):

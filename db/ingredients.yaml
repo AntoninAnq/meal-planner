@@ -36,29 +36,29 @@
 #    aussi du lait.
 
 food_categories:
-  - { code: cereal, label: Céréales et féculents }
-  - { code: legumes_secs, label: Légumes secs }
-  - { code: green_vegetable, label: Légumes verts }
-  - { code: root_vegetable, label: Légumes racines }
-  - { code: vegetable, label: Autres légumes }
-  - { code: fruit, label: Fruits }
-  - { code: red_meat, label: Viande rouge }
-  - { code: white_meat, label: Viande blanche }
-  - { code: charcuterie, label: Charcuterie }
-  - { code: fish, label: Poisson }
-  - { code: seafood, label: Fruits de mer }
-  - { code: egg, label: Œufs }
-  - { code: dairy, label: Produits laitiers }
-  - { code: cheese, label: Fromages }
-  - { code: nuts_seeds, label: Fruits à coque et graines }
-  - { code: fat_oil, label: Matières grasses }
-  - { code: sweetener, label: Sucres }
-  - { code: herb_spice, label: Herbes et épices }
-  - { code: condiment, label: Condiments et sauces }
-  - { code: alcohol, label: Alcools }
-  - { code: broth, label: Bouillons }
-  - { code: leavening, label: Levures et poudres }
-  - { code: other, label: Autres }
+  - { code: cereal, label: Céréales et féculents, label_en: Grains and starches }
+  - { code: legumes_secs, label: Légumes secs, label_en: Pulses }
+  - { code: green_vegetable, label: Légumes verts, label_en: Green vegetables }
+  - { code: root_vegetable, label: Légumes racines, label_en: Root vegetables }
+  - { code: vegetable, label: Autres légumes, label_en: Other vegetables }
+  - { code: fruit, label: Fruits, label_en: Fruit }
+  - { code: red_meat, label: Viande rouge, label_en: Red meat }
+  - { code: white_meat, label: Viande blanche, label_en: White meat }
+  - { code: charcuterie, label: Charcuterie, label_en: Cured meats }
+  - { code: fish, label: Poisson, label_en: Fish }
+  - { code: seafood, label: Fruits de mer, label_en: Seafood }
+  - { code: egg, label: Œufs, label_en: Eggs }
+  - { code: dairy, label: Produits laitiers, label_en: Dairy }
+  - { code: cheese, label: Fromages, label_en: Cheese }
+  - { code: nuts_seeds, label: Fruits à coque et graines, label_en: Nuts and seeds }
+  - { code: fat_oil, label: Matières grasses, label_en: Fats and oils }
+  - { code: sweetener, label: Sucres, label_en: Sugars }
+  - { code: herb_spice, label: Herbes et épices, label_en: Herbs and spices }
+  - { code: condiment, label: Condiments et sauces, label_en: Condiments and sauces }
+  - { code: alcohol, label: Alcools, label_en: Alcohol }
+  - { code: broth, label: Bouillons, label_en: Stocks }
+  - { code: leavening, label: Levures et poudres, label_en: Leavening agents }
+  - { code: other, label: Autres, label_en: Other }
 
 ingredients:
   # ── Base : sel, poivre, eau ───────────────────────────────────────────────

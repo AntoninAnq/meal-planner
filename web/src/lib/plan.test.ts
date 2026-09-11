@@ -34,6 +34,9 @@ function dish(overrides: Partial<Dish> = {}): Dish {
     minutes: null,
     complexity: null,
     source_url: null,
+    placed_from_favorite: false,
+    allergen_override: false,
+    allergen_conflicts: [],
     ...overrides,
   };
 }
