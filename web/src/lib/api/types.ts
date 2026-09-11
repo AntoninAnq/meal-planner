@@ -365,3 +365,36 @@ export type ReportedRecipe = {
   categories: ReportCategory[];
   notes: string[];
 };
+
+/** One thing to buy, and how much of it when the source said. */
+export type ShoppingLine = {
+  name: string;
+  /** Null when not one line carried a quantity. A real state, and a different
+   * one from zero: the source wrote "du sel". */
+  amount: string | null;
+};
+
+/** One `FoodCategory`, in the order a shop is walked — decided server-side, in
+ * a domain constant, so the screen and the copied text cannot disagree. */
+export type ShoppingSection = {
+  code: string;
+  label: string;
+  label_en: string | null;
+  lines: ShoppingLine[];
+};
+
+export type ShoppingList = {
+  week_start: string;
+  /** The selection, not the week. */
+  meals: number;
+  days: number;
+  sections: ShoppingSection[];
+  /** Names only: nobody checks whether they have 200 g of salt. */
+  pantry: string[];
+  /** Verbatim. No ingredient, no category, no possible grouping — hiding them
+   * makes the list incomplete, folding them in makes it unreadable. */
+  unparsed: string[];
+  /** A chosen meal holds a dish with no recipe (I7), so its ingredients are not
+   * here. Saying nothing would leave a list somebody believes is complete. */
+  missing_recipe: boolean;
+};

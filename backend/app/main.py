@@ -21,6 +21,7 @@ from app.routers import (
     invitations,
     meal_plans,
     members,
+    shopping_list,
 )
 
 settings = get_settings()
@@ -61,5 +62,6 @@ app.include_router(members.router)
 app.include_router(constraints.router)
 app.include_router(invitations.router)
 app.include_router(favorites.router)
+app.include_router(shopping_list.router)
 app.include_router(meal_plans.router)
 app.include_router(admin.router)

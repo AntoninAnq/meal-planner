@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { FavoritesView } from "@/components/plan/FavoritesView";
 import { InvitationPanel } from "@/components/plan/InvitationPanel";
 import { WeekBoard } from "@/components/plan/WeekBoard";
+import { ShoppingList } from "@/components/plan/ShoppingList";
 import { SlotPanel } from "@/components/plan/SlotPanel";
 import { DayList, WeekGrid, type WeekViewProps } from "@/components/plan/WeekViews";
 import { Link, redirect } from "@/i18n/navigation";
@@ -407,6 +408,10 @@ async function Week({
   // view, which is exactly what the cookie is for.
   const favoritesOpen = (Array.isArray(search.view) ? search.view[0] : search.view) === "favorites";
 
+  // Same URL-state as everything else on this screen, so the back button closes
+  // the drawer and a reload reopens it.
+  const listOpen = (Array.isArray(search.list) ? search.list[0] : search.list) === "1";
+
   // The open slot travels in the URL too: the back button closes the panel and
   // a reload reopens it on the same meal. A mistyped key simply leaves it shut.
   const openSlot = parseSlotKey(
@@ -486,6 +491,15 @@ async function Week({
           nothing in the grid showed an invitation; now the invitation IS the
           cell, banner and all, and a list repeating it below was a third place
           to look for the same thing. */}
+
+      {listOpen && (
+        <ShoppingList
+          open
+          weekStart={weekStart}
+          today={today}
+          plannedSlots={[...slotsByKey(plan).keys()]}
+        />
+      )}
 
       {openSlot && (
         <SlotPanel

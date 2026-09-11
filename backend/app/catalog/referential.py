@@ -118,10 +118,13 @@ def load_referential(db: Session, path: Path | None = None) -> LoadReport:
     for entry in document.get("food_categories") or []:
         category = db.scalar(select(FoodCategory).where(FoodCategory.code == entry["code"]))
         if category is None:
-            category = FoodCategory(code=entry["code"], label=entry["label"])
+            category = FoodCategory(
+                code=entry["code"], label=entry["label"], label_en=entry.get("label_en")
+            )
             db.add(category)
         else:
             category.label = entry["label"]
+            category.label_en = entry.get("label_en")
         categories[entry["code"]] = category
     db.flush()
     report.categories = len(categories)

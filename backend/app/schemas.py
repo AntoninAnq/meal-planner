@@ -477,3 +477,53 @@ class FavoriteOut(BaseModel):
 
 class FavoriteCreate(BaseModel):
     recipe_id: uuid.UUID
+
+
+class ShoppingLineOut(BaseModel):
+    """One thing to buy, and how much of it when the source said."""
+
+    name: str
+    #: Null when not one line carried a quantity. A real state and a different
+    #: one from zero: the source wrote "du sel", so the list says it does not
+    #: know rather than inventing an amount.
+    amount: str | None = None
+
+
+class ShoppingSectionOut(BaseModel):
+    """One `FoodCategory`, in the order a shop is walked.
+
+    Both labels travel: the client knows its locale, and the alternative —
+    resolving it here — would put the request's language into a service that
+    has no other reason to know it.
+    """
+
+    code: str
+    label: str
+    label_en: str | None = None
+    lines: list[ShoppingLineOut] = Field(default_factory=list)
+
+
+class ShoppingListOut(BaseModel):
+    """What to buy for the meals someone picked, and what we cannot tell them.
+
+    `pantry` carries names only. Nobody checks whether they have 200 g of salt;
+    they check whether there is salt.
+
+    `unparsed` is verbatim. Those lines have no ingredient, no category and no
+    possible grouping — hiding them makes the list incomplete, folding them in
+    makes it unreadable, so they are copied as written with the sentence that
+    explains why.
+    """
+
+    week_start: date
+    #: The SELECTION, not the week: the header of the copied text says how many
+    #: meals it covers, and that has to be the meals it covers.
+    meals: int
+    days: int
+    sections: list[ShoppingSectionOut] = Field(default_factory=list)
+    pantry: list[str] = Field(default_factory=list)
+    unparsed: list[str] = Field(default_factory=list)
+    #: At least one chosen meal holds a dish with no recipe, so its ingredients
+    #: are not here. Saying nothing would be the worst case — a list somebody
+    #: believes is complete.
+    missing_recipe: bool = False

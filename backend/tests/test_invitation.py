@@ -15,8 +15,8 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError
 
+from app.domain.days import parse_slot
 from app.domain.enums import LifeStage, MealType
-from app.routers.meal_plans import _parse_slot
 from app.schemas import InvitationCreate
 
 
@@ -75,11 +75,11 @@ def test_dislikes_are_optional() -> None:
     ],
 )
 def test_a_well_formed_slot_key_parses(key: str, expected: tuple[int, MealType]) -> None:
-    assert _parse_slot(key) == expected
+    assert parse_slot(key) == expected
 
 
 @pytest.mark.parametrize("key", ["7-dinner", "-1-dinner", "3-brunch", "dinner", "3", "3-"])
 def test_a_malformed_slot_key_is_a_value_error(key: str) -> None:
     """The caller turns this into a 422 that names the problem, not a 500."""
     with pytest.raises(ValueError):
-        _parse_slot(key)
+        parse_slot(key)

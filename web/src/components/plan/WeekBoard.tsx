@@ -62,6 +62,7 @@ export function WeekBoard({
   const format = useFormatter();
   const t = useTranslations("plan");
   const tFav = useTranslations("favorites");
+  const tList = useTranslations("shoppingList");
   const tCommon = useTranslations("common");
   const tInv = useTranslations("invitation");
   const router = useRouter();
@@ -161,7 +162,12 @@ export function WeekBoard({
 
   return (
     <div className="flex flex-col gap-5">
+      {/* Two groups, not one row of controls: on the left the week and what can
+          be done with it, on the right how to look at it. The shopping list is
+          NOT a view, so it does not join the tabs — and not a generation
+          either, so it does not join the composer. */}
       <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-3">
         {/* The page title, since the header above has none to give: the
             household name was a placeholder and there is no brand to put
             there. Formatted, not the raw ISO day — `weekOf` interpolates a
@@ -175,6 +181,23 @@ export function WeekBoard({
             }),
           })}
         </h1>
+
+        {/* Never offered on a week with nothing on it: there is no empty state
+            for a list of nothing, and the honest way to say that is not to
+            offer the button. */}
+        {hasPlan && (
+          <Link
+            href={{ pathname: "/", query: { week: weekStart, list: "1" } }}
+            className={cx(
+              "rounded-control px-2 py-1 text-sm font-medium text-ink-muted",
+              "transition-colors hover:bg-surface-sunken hover:text-ink",
+              "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
+            )}
+          >
+            {tList("open")}
+          </Link>
+        )}
+        </div>
 
         {/* Three tabs now, and they stopped being buttons-that-look-pressed:
             an underline says "you are here" without borrowing the weight of

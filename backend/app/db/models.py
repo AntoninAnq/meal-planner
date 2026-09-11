@@ -753,6 +753,14 @@ class FoodCategory(Base):
     id: Mapped[uuid.UUID] = _pk()
     code: Mapped[str] = mapped_column(String(60), unique=True)
     label: Mapped[str] = mapped_column(String(120))
+    #: The shopping list prints these as section headings, so they are the one
+    #: piece of catalogue data a reader sees in their own language. A column
+    #: rather than message keys: the codes live in `db/ingredients.yaml` and are
+    #: reviewed as a Git diff, and splitting their labels across two files would
+    #: let a category exist with no heading. Nullable for the rows that predate
+    #: it — the reader falls back on the French label, which is a heading in the
+    #: wrong language rather than a section with no name.
+    label_en: Mapped[str | None] = mapped_column(String(120))
 
 
 class Ingredient(Base):

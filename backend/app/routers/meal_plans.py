@@ -29,6 +29,7 @@ from app.db.models import (
     SuggestionReport,
 )
 from app.db.session import get_db
+from app.domain.days import parse_slot
 from app.domain.enums import DishSource, GenerationKind, LifeStage, MealType
 from app.domain.shared_ingredients import pantry, shared_ingredient_links
 from app.llm.base import LLMClient, LLMError, SchemaValidationError
@@ -799,21 +800,6 @@ def rate_dish(
     db.commit()
 
 
-def _parse_slot(slot: str) -> tuple[int, MealType]:
-    """`"5-dinner"` → `(5, MealType.DINNER)`, the same key the grid uses.
-
-    Its own function so a malformed key is one `ValueError` the caller turns
-    into a 422, rather than an `IndexError` or a bare `KeyError` 500.
-    """
-    day, _, meal = slot.partition("-")
-    if not day.isdigit() or not (0 <= int(day) <= 6):
-        raise ValueError("slot day must be 0..6")
-    try:
-        return int(day), MealType(meal)
-    except ValueError:
-        raise ValueError("slot meal must be 'lunch' or 'dinner'") from None
-
-
 @router.delete("/{plan_id}/slots/{slot}", response_model=MealPlanOut)
 def clear_slot(
     plan_id: uuid.UUID,
@@ -837,7 +823,7 @@ def clear_slot(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "plan not found")
 
     try:
-        day_of_week, meal_type = _parse_slot(slot)
+        day_of_week, meal_type = parse_slot(slot)
     except ValueError as exc:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(exc)) from exc
 
