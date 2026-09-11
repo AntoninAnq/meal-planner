@@ -18,12 +18,12 @@ import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.auth.deps import CurrentHousehold
-from app.db.models import HouseholdFavorite, Recipe
+from app.db.models import HouseholdExclusion, HouseholdFavorite, Recipe
 from app.db.session import get_db
 from app.schemas import FavoriteCreate, FavoriteOut
 from app.services.catalogue import offerable
@@ -105,6 +105,14 @@ def add_favorite(
     if db.get(Recipe, payload.recipe_id) is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "recipe not found")
 
+    # Favouriting a withheld dish is changing one's mind about it: the latest
+    # answer holds, and a recipe is never both (see `routers/exclusions.py`).
+    db.execute(
+        delete(HouseholdExclusion).where(
+            HouseholdExclusion.household_id == household_id,
+            HouseholdExclusion.recipe_id == payload.recipe_id,
+        )
+    )
     db.add(HouseholdFavorite(household_id=household_id, recipe_id=payload.recipe_id))
     try:
         db.commit()

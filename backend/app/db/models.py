@@ -270,6 +270,37 @@ class HouseholdFavorite(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
+class HouseholdExclusion(Base):
+    """A dish the household never wants proposed again.
+
+    The other half of `HouseholdFavorite`, and shaped like it: at the household,
+    one row per recipe, gone with the recipe. `SqlCatalogue` reads it and
+    withholds these from every pool it builds for this household — the
+    generation and the alternatives alike.
+
+    It replaces a rating nothing ever read. A household that answered "Non" to
+    "Ce plat a plu ?" saw the dish come back the next week; this one does not.
+
+    A recipe is never both a favourite and withheld: the two routers each clear
+    the other row, so the latest answer is the one that holds.
+    """
+
+    __tablename__ = "household_exclusion"
+    __table_args__ = (
+        UniqueConstraint("household_id", "recipe_id", name="uq_exclusion_household_recipe"),
+    )
+
+    id: Mapped[uuid.UUID] = _pk()
+    household_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("household.id", ondelete="CASCADE"), index=True
+    )
+    recipe_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("recipe.id", ondelete="CASCADE"), index=True
+    )
+    #: What the list is ordered by, most recent first. Nothing else reads it.
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
 class HouseholdSettings(Base):
     __tablename__ = "household_settings"
 

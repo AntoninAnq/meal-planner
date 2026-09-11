@@ -195,6 +195,15 @@
     "emptyRule": "Seuls les plats qui viennent d'une recette peuvent être mis en favori. Les plats proposés par le modèle seul n'ont pas de page à retrouver, donc pas de cœur.",
     "failed": "Échec, réessayez"
   },
+  "exclusions": {
+    "exclude": "Ne plus me proposer",
+    "restore": "Reproposer",
+    "restoreLabel": "Reproposer « {title} »",
+    "pill": "ne sera plus proposé",
+    "heading": "Plats écartés",
+    "help": "Ils ne reviennent plus dans vos semaines ni dans les suggestions.",
+    "failed": "Échec, réessayez"
+  },
   "shoppingList": {
     "open": "Liste de courses",
     "title": "Liste de courses",
@@ -259,9 +268,6 @@
     "empty": "Rien de prévu pour ce repas.",
     "titleLabel": "Le plat",
     "save": "Enregistrer",
-    "rate": "Ce plat a plu ?",
-    "liked": "Oui",
-    "disliked": "Non",
     "elseHeading": "Proposer autre chose",
     "elseHint": "Dites pourquoi : la raison devient une contrainte, elle ne se perd pas.",
     "reasonLabel": "Pourquoi",
@@ -297,8 +303,7 @@
     "allergenBodyHousehold": "Personne ici ne mange {allergen}.",
     "allergenConfirm": "Choisir quand même",
     "allergenOverridden": "{name} ne mange pas {allergen}. Vous avez choisi ce plat malgré l'alerte.",
-    "allergenOverriddenHousehold": "Personne ici ne mange {allergen}. Vous avez choisi ce plat malgré l'alerte.",
-    "ratingHelp": "Sur le repas d'aujourd'hui. Sans rapport avec les favoris, qui disent ce que vous voulez revoir."
+    "allergenOverriddenHousehold": "Personne ici ne mange {allergen}. Vous avez choisi ce plat malgré l'alerte."
   },
   "invitation": {
     "create": "Inviter du monde",

@@ -20,6 +20,7 @@ export function SlotPanelHost({
   weekStart,
   dishesBySlot,
   memberNames,
+  excluded,
   locale,
   expectedMs,
 }: {
@@ -27,6 +28,7 @@ export function SlotPanelHost({
   weekStart: string;
   dishesBySlot: Record<string, Dish[]>;
   memberNames: Record<string, string>;
+  excluded: string[];
   locale: string;
   expectedMs: number;
 }) {
@@ -47,6 +49,7 @@ export function SlotPanelHost({
       mealType={open.mealType}
       dishes={dishesBySlot[key] ?? []}
       memberNames={memberNames}
+      excluded={excluded}
       locale={locale}
       expectedMs={expectedMs}
     />

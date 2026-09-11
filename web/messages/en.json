@@ -195,6 +195,15 @@
     "emptyRule": "Only dishes that come from a recipe can be favourited. Dishes the model proposed on its own have no page to come back to, so no heart.",
     "failed": "Failed, try again"
   },
+  "exclusions": {
+    "exclude": "Don't suggest again",
+    "restore": "Suggest again",
+    "restoreLabel": "Suggest “{title}” again",
+    "pill": "won't be suggested again",
+    "heading": "Set aside",
+    "help": "They no longer come back in your weeks or in the suggestions.",
+    "failed": "Failed, try again"
+  },
   "shoppingList": {
     "open": "Shopping list",
     "title": "Shopping list",
@@ -259,9 +268,6 @@
     "empty": "Nothing planned for this meal.",
     "titleLabel": "The dish",
     "save": "Save",
-    "rate": "Did this one go down well?",
-    "liked": "Yes",
-    "disliked": "No",
     "elseHeading": "Suggest something else",
     "elseHint": "Say why: the reason becomes a constraint, it is not thrown away.",
     "reasonLabel": "Why",
@@ -297,8 +303,7 @@
     "allergenBodyHousehold": "Nobody here eats {allergen}.",
     "allergenConfirm": "Choose anyway",
     "allergenOverridden": "{name} does not eat {allergen}. You chose this dish despite the warning.",
-    "allergenOverriddenHousehold": "Nobody here eats {allergen}. You chose this dish despite the warning.",
-    "ratingHelp": "About today's meal. Unrelated to favourites, which say what you want to see again."
+    "allergenOverriddenHousehold": "Nobody here eats {allergen}. You chose this dish despite the warning."
   },
   "invitation": {
     "create": "Have people over",

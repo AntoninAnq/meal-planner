@@ -201,9 +201,9 @@ def test_every_endpoint_that_reaches_the_model_sits_behind_the_quota() -> None:
     day an endpoint is added, and forgetting it means an unmetered door onto a
     paid API that no other test would notice.
 
-    The endpoints that call NO model are deliberately left alone: rating a
-    dish, replacing one by hand or listing the alternatives the pre-filter
-    already computed cost nothing, and rate-limiting them would only make the
+    The endpoints that call NO model are deliberately left alone: replacing a
+    dish by hand or listing the alternatives the pre-filter already computed
+    cost nothing, and rate-limiting them would only make the
     product worse for the household that is using it normally.
     """
     from app.llm.factory import get_llm_client

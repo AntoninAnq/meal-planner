@@ -4,6 +4,7 @@ import { useFormatter, useTranslations } from "next-intl";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { ExclusionToggle } from "@/components/plan/ExclusionButton";
 import { FavoriteToggle } from "@/components/plan/FavoriteButton";
 import { ReportDish } from "@/components/plan/ReportDish";
 import { VariantConfirm } from "@/components/plan/VariantConfirm";
@@ -44,6 +45,7 @@ export function SlotPanel({
   mealType,
   dishes,
   memberNames,
+  excluded,
   locale,
   expectedMs,
 }: {
@@ -55,6 +57,9 @@ export function SlotPanel({
   mealType: MealType;
   dishes: Dish[];
   memberNames: Record<string, string>;
+  /** Recipes this household withheld. Read off the page rather than fetched,
+   * so the mark and the button agree with the tab after every refresh. */
+  excluded: string[];
   locale: string;
   expectedMs: number;
 }) {
@@ -66,6 +71,7 @@ export function SlotPanel({
   const tPlan = useTranslations("plan");
   const tAllergenIn = useTranslations("allergenContains");
   const tAllergenEats = useTranslations("allergenEats");
+  const tExclusions = useTranslations("exclusions");
   const format = useFormatter();
   const router = useRouter();
   const pathname = usePathname();
@@ -89,6 +95,7 @@ export function SlotPanel({
   // then offers to add one that is already there, and the endpoint is
   // idempotent, so the worst case is a button that says the wrong word once.
   const favorited = new Set((favorites ?? []).map((favorite) => favorite.recipe_id));
+  const withheld = new Set(excluded);
 
   // Named, both of them. `recipe_allergen` and `dietary_constraint` give the
   // allergen AND the person, and "this dish contains an allergen" on its own
@@ -191,14 +198,6 @@ export function SlotPanel({
         allergen_override: overrideAllergen,
       });
       setWarning(null);
-      refresh();
-    });
-
-  const rate = (dish: Dish, value: 1 | -1) =>
-    act(async () => {
-      // Rating is also an implicit confirmation that the dish was eaten, which
-      // fills the history without ever asking anyone to fill in a form.
-      await apiPost(`/meal-plans/${planId}/dishes/${dish.id}/rating`, { value });
       refresh();
     });
 
@@ -309,6 +308,13 @@ export function SlotPanel({
                           {t("fromFavorite")}
                         </span>
                       )}
+                      {/* The dish stays on this week — withholding is about
+                          the weeks to come — so the mark says what changed. */}
+                      {dish.recipe_id && withheld.has(dish.recipe_id) && (
+                        <span className="rounded-full border border-border bg-surface-sunken px-2.5 py-1 text-xs font-medium text-ink-body">
+                          {tExclusions("pill")}
+                        </span>
+                      )}
                       {/* Only for a catalogue dish: a model suggestion never
                           becomes a recipe (I7), so it has nothing to point at
                           — and rather than a control that exists to be
@@ -319,6 +325,17 @@ export function SlotPanel({
                           recipeId={dish.recipe_id}
                           title={dish.label}
                           favorited={favorited.has(dish.recipe_id)}
+                        />
+                      )}
+                      {/* Beside the favourite because it is its opposite, and
+                          catalogue-only for the same reason: the model writes
+                          no dish of its own, so a one-line one never comes
+                          back anyway. */}
+                      {dish.recipe_id && dish.label && (
+                        <ExclusionToggle
+                          recipeId={dish.recipe_id}
+                          title={dish.label}
+                          excluded={withheld.has(dish.recipe_id)}
                         />
                       )}
                     </div>
@@ -641,30 +658,7 @@ export function SlotPanel({
                       catalogue-wide to fix. */}
                   {planId && dish.recipe_id && (
                     <ReportDish planId={planId} dishId={dish.id} />
-                  )}
-
-                  {/* Separated from the favourite control by the whole
-                      alternatives block, and on purpose: two neighbouring
-                      affordances would look like one question asked twice. */}
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-ink-muted">{t("rate")}</span>
-                      <Button size="sm" disabled={busy} onClick={() => rate(dish, 1)}>
-                        {t("liked")}
-                      </Button>
-                      <Button size="sm" disabled={busy} onClick={() => rate(dish, -1)}>
-                        {t("disliked")}
-                      </Button>
-                    </div>
-                    {/* Two signals, one screen: this grades the meal that has
-                        just happened, a favourite says what to propose again.
-                        Without this line the two read as one question asked
-                        twice. */}
-                    <p className="mt-1.5 text-[13px] leading-[1.5] text-ink-muted">
-                      {t("ratingHelp")}
-                    </p>
-                  </div>
-                </section>
+                  )}                </section>
               ))
             )}
 

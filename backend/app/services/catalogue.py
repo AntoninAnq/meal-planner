@@ -40,6 +40,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.sql.elements import ColumnElement
 
 from app.db.models import (
+    HouseholdExclusion,
     Ingredient,
     IngredientAlias,
     MealPlan,
@@ -411,6 +412,18 @@ class Candidate:
         return " — ".join(parts)
 
 
+def withhold(ranked: Sequence[uuid.UUID], withheld: Collection[uuid.UUID]) -> list[uuid.UUID]:
+    """The ranking without what the household asked never to see again.
+
+    Applied AFTER the draw, not in `_eligible`. The ranking is seeded and
+    recomputed rather than stored, and a pool one recipe shorter shuffles into
+    a different order altogether: withholding a dish on Wednesday would change
+    which alternatives Monday's plan offers. Filtering the result leaves every
+    other recipe exactly where it was.
+    """
+    return [recipe_id for recipe_id in ranked if recipe_id not in withheld]
+
+
 class SqlCatalogue:
     """`CataloguePort` over the real catalogue.
 
@@ -476,7 +489,7 @@ class SqlCatalogue:
         #: The names actually acted upon. What is NOT here is what the prompt
         #: still has to carry, so the two never state the same aversion twice.
         self.enforced_dislikes: frozenset[str] = frozenset()
-        self._ranked = self._rank(household_id, week_start)
+        self._ranked = withhold(self._rank(household_id, week_start), self._withheld(household_id))
         self._chosen = self._decorate(self._ranked[:limit])
         self._by_handle = {candidate.handle: candidate for candidate in self._chosen}
         self._ingredient_ids = self._resolved_ingredients(
@@ -620,6 +633,17 @@ class SqlCatalogue:
         # Explicit order for the same reason `rank` sorts: an unordered
         # SELECT is free to change its mind after any table rewrite.
         return list(self._db.scalars(statement.order_by(Recipe.id)))
+
+    def _withheld(self, household_id: uuid.UUID) -> frozenset[uuid.UUID]:
+        """Read here rather than passed in, so no caller can forget it: every
+        pool built for a household honours what it said never to propose."""
+        return frozenset(
+            self._db.scalars(
+                select(HouseholdExclusion.recipe_id).where(
+                    HouseholdExclusion.household_id == household_id
+                )
+            )
+        )
 
     def _last_planned(self, household_id: uuid.UUID) -> dict[uuid.UUID, date]:
         rows = self._db.execute(

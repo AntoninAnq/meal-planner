@@ -26,6 +26,7 @@ from app.db.models import (
     Base,
     DietaryConstraint,
     Household,
+    HouseholdExclusion,
     HouseholdFavorite,
     Member,
     Recipe,
@@ -54,6 +55,8 @@ TABLES = [
     RecipeAllergen.__table__,
     DietaryConstraint.__table__,
     HouseholdFavorite.__table__,
+    # Adding a favourite clears a withheld row for the same recipe.
+    HouseholdExclusion.__table__,
 ]
 
 

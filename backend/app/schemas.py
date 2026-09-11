@@ -395,11 +395,6 @@ class SuggestionReportIn(BaseModel):
     note: str | None = Field(default=None, max_length=280)
 
 
-class DishRating(BaseModel):
-    #: Rating a dish is also an implicit confirmation that it was eaten.
-    value: int = Field(ge=-1, le=1)
-
-
 class GuestCount(BaseModel):
     """One life stage and a head count. No member, nothing nominative."""
 
@@ -476,6 +471,22 @@ class FavoriteOut(BaseModel):
 
 
 class FavoriteCreate(BaseModel):
+    recipe_id: uuid.UUID
+
+
+class ExclusionOut(BaseModel):
+    """A recipe the household never wants proposed again.
+
+    Only what the "Plats écartés" list shows: enough to recognise the dish and
+    to go and read it before bringing it back.
+    """
+
+    recipe_id: uuid.UUID
+    title: str
+    source_url: str | None = None
+
+
+class ExclusionCreate(BaseModel):
     recipe_id: uuid.UUID
 
 

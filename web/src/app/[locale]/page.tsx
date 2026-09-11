@@ -12,6 +12,7 @@ import { Link, redirect } from "@/i18n/navigation";
 import { apiGet } from "@/lib/api/server";
 import { cx } from "@/lib/cx";
 import type {
+  Exclusion,
   Favorite,
   Household,
   HouseholdSettings,
@@ -382,12 +383,13 @@ async function Week({
   // The view loads the plan itself rather than displaying the response of the
   // generation POST. That is what makes a lost response survivable: the plan
   // was written before the endpoint replied, so a reload recovers it.
-  const [plan, members, enabledSlots, invitations, favorites] = await Promise.all([
+  const [plan, members, enabledSlots, invitations, favorites, exclusions] = await Promise.all([
     apiGet<MealPlan | null>(`/meal-plans?week_start=${weekStart}`),
     apiGet<Member[]>("/members"),
     apiGet<MealSlot[]>("/household/slots"),
     apiGet<Invitation[]>(`/invitations?week_start=${weekStart}`),
     apiGet<Favorite[]>("/favorites"),
+    apiGet<Exclusion[]>("/exclusions"),
   ]);
 
   const memberNames = Object.fromEntries(
@@ -484,7 +486,7 @@ async function Week({
         grid={<WeekGrid {...viewProps} />}
         list={<DayList {...viewProps} />}
         favoritesOpen={favoritesOpen}
-        favorites={<FavoritesView favorites={favorites ?? []} />}
+        favorites={<FavoritesView favorites={favorites ?? []} exclusions={exclusions ?? []} />}
       />
 
       {/* No reminder list under the plan any more. It existed only because
@@ -513,6 +515,7 @@ async function Week({
             [...viewProps.slots].map(([key, slot]) => [key, slot.dishes]),
           )}
           memberNames={memberNames}
+          excluded={(exclusions ?? []).map((exclusion) => exclusion.recipe_id)}
           locale={locale}
           expectedMs={EXPECTED_SECONDS * 1000}
         />

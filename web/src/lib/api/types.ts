@@ -199,6 +199,14 @@ export type Favorite = {
   conflicts: AllergenConflict[];
 };
 
+/** A recipe the household never wants proposed again. The other half of a
+ * favourite: a recipe is never both, and setting one clears the other. */
+export type Exclusion = {
+  recipe_id: string;
+  title: string;
+  source_url: string | null;
+};
+
 /** An anonymous count, never an entity. Guests stay transitory — storing them
  * as members would skew anti-repetition and portions all year long — but a
  * meal cooked for nine that displays as a meal for three is misleading. */
