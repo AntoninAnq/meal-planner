@@ -17,7 +17,6 @@ from sqlalchemy.orm import Session
 from app.auth.deps import CurrentHousehold
 from app.db.models import (
     Ingredient,
-    MealHistory,
     MealPlan,
     Member,
     PlannedDish,
@@ -38,7 +37,6 @@ from app.schemas import (
     AlternativeOut,
     DishEaterOut,
     DishOut,
-    DishRating,
     DishRegenerate,
     DishReplace,
     GeneratePlanRequest,
@@ -754,49 +752,6 @@ def confirm_variant(
         )
 
     assignment.variant_confirmed_at = datetime.now(UTC) if payload.confirmed else None
-    db.commit()
-
-
-@router.post("/{plan_id}/dishes/{dish_id}/rating", status_code=status.HTTP_204_NO_CONTENT)
-def rate_dish(
-    plan_id: uuid.UUID,
-    dish_id: uuid.UUID,
-    payload: DishRating,
-    db: DbDep,
-    household_id: CurrentHousehold,
-) -> None:
-    """Optional, unobtrusive, and nothing depends on it.
-
-    It seeds the appetence score of phase 3+ — which calibrates on history, so
-    the earlier it starts the better — and rating IS an implicit confirmation
-    that the dish was eaten, which fills `confirmed_at` without ever asking
-    anyone to fill in a form.
-    """
-    dish = _load_dish(db, plan_id, dish_id, household_id)
-    plan = db.get(MealPlan, plan_id)
-    assert plan is not None
-
-    from datetime import timedelta
-
-    eaten_on = plan.week_start + timedelta(days=dish.day_of_week)
-    now = datetime.now(UTC)
-
-    for assignment in db.scalars(
-        select(PlannedDishMember).where(PlannedDishMember.planned_dish_id == dish.id)
-    ):
-        db.add(
-            MealHistory(
-                household_id=household_id,
-                member_id=assignment.member_id,
-                eaten_on=eaten_on,
-                meal_type=dish.meal_type,
-                recipe_id=dish.recipe_id,
-                free_text_label=dish.free_text_label,
-                source=DishSource.LLM_SUGGESTION,
-                rating=payload.value,
-                confirmed_at=now,
-            )
-        )
     db.commit()
 
 

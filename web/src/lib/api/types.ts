@@ -188,7 +188,8 @@ export type AllergenConflict = {
  * two headings, and a row changing shape between the groups would read as a
  * different kind of thing. */
 export type Favorite = {
-  recipe_id: string;
+  /** Null for a dish kept by its title, which `title` then is. */
+  recipe_id: string | null;
   title: string;
   minutes: number | null;
   complexity: number | null;
@@ -197,6 +198,17 @@ export type Favorite = {
    * favourite is not a planned meal, and the warning belongs to the moment the
    * dish reaches a plate. */
   conflicts: AllergenConflict[];
+  /** No recipe, and someone here has an allergy: nothing checked it, so
+   * choosing it asks first. */
+  unchecked_allergens: boolean;
+};
+
+/** A recipe the household never wants proposed again. The other half of a
+ * favourite: a recipe is never both, and setting one clears the other. */
+export type Exclusion = {
+  recipe_id: string;
+  title: string;
+  source_url: string | null;
 };
 
 /** An anonymous count, never an entity. Guests stay transitory — storing them
@@ -397,4 +409,9 @@ export type ShoppingList = {
   /** A chosen meal holds a dish with no recipe (I7), so its ingredients are not
    * here. Saying nothing would leave a list somebody believes is complete. */
   missing_recipe: boolean;
+  /** At least one dish was scaled to the people eating it. */
+  scaled: boolean;
+  /** Recipes whose quantities are the source's — their yield is not a number
+   * of people, or there is none — each with what the source wrote. */
+  unscaled: { title: string; servings_raw: string | null }[];
 };

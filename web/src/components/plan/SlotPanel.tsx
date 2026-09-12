@@ -1,8 +1,10 @@
 "use client";
 
 import { useFormatter, useTranslations } from "next-intl";
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { ExclusionToggle } from "@/components/plan/ExclusionButton";
 import { FavoriteToggle } from "@/components/plan/FavoriteButton";
 import { ReportDish } from "@/components/plan/ReportDish";
 import { VariantConfirm } from "@/components/plan/VariantConfirm";
@@ -15,6 +17,7 @@ import { useRouter } from "@/i18n/navigation";
 import { apiDelete, apiGet, apiPost, apiPut } from "@/lib/api/client";
 import { displayMessage } from "@/lib/api/error";
 import type { AllergenConflict, Alternative, Dish, Favorite, MealType } from "@/lib/api/types";
+import { slotHref } from "@/lib/plan";
 
 /**
  * Screen 5, in a native `<dialog>` driven by the URL.
@@ -29,7 +32,7 @@ import type { AllergenConflict, Alternative, Dish, Favorite, MealType } from "@/
  * make every page load pay for a list almost nobody reads, and the list would
  * go stale on the plan anyway.
  */
-/** Both groups of "Autre chose ?" are labelled the same way: the two lists are
+/** Both groups of "Changer de plat" are labelled the same way: the two lists are
  * the same kind of offer, they differ only in where they came from. */
 const GROUP = "text-xs font-semibold tracking-[0.06em] text-ink-muted uppercase";
 
@@ -42,6 +45,7 @@ export function SlotPanel({
   mealType,
   dishes,
   memberNames,
+  excluded,
   locale,
   expectedMs,
 }: {
@@ -53,6 +57,9 @@ export function SlotPanel({
   mealType: MealType;
   dishes: Dish[];
   memberNames: Record<string, string>;
+  /** Recipes this household withheld. Read off the page rather than fetched,
+   * so the mark and the button agree with the tab after every refresh. */
+  excluded: string[];
   locale: string;
   expectedMs: number;
 }) {
@@ -64,8 +71,10 @@ export function SlotPanel({
   const tPlan = useTranslations("plan");
   const tAllergenIn = useTranslations("allergenContains");
   const tAllergenEats = useTranslations("allergenEats");
+  const tExclusions = useTranslations("exclusions");
   const format = useFormatter();
   const router = useRouter();
+  const pathname = usePathname();
 
   const [labels, setLabels] = useState<Record<string, string>>({});
   const [reason, setReason] = useState("");
@@ -85,7 +94,16 @@ export function SlotPanel({
   // a favourite whose source has since been withdrawn is not in it — the toggle
   // then offers to add one that is already there, and the endpoint is
   // idempotent, so the worst case is a button that says the wrong word once.
-  const favorited = new Set((favorites ?? []).map((favorite) => favorite.recipe_id));
+  const favorited = new Set(
+    (favorites ?? []).flatMap((favorite) => (favorite.recipe_id ? [favorite.recipe_id] : [])),
+  );
+  // A favourite with no recipe is known by its title, as it was written.
+  const favoritedTitles = new Set(
+    (favorites ?? [])
+      .filter((favorite) => favorite.recipe_id === null)
+      .map((favorite) => favorite.title),
+  );
+  const withheld = new Set(excluded);
 
   // Named, both of them. `recipe_allergen` and `dietary_constraint` give the
   // allergen AND the person, and "this dish contains an allergen" on its own
@@ -138,8 +156,10 @@ export function SlotPanel({
     return () => controller.abort();
   }, [open, planId, firstDishId]);
 
+  // The same shallow write as the card that opened it: closing a panel has
+  // nothing to ask the server either.
   function close() {
-    router.push({ pathname: "/", query: { week: weekStart } });
+    window.history.pushState(null, "", slotHref(pathname, weekStart, null));
   }
 
   function refresh() {
@@ -176,24 +196,18 @@ export function SlotPanel({
   // set them, so nothing lingers from an earlier choice.
   const choose = (
     dish: Dish,
-    recipeId: string,
+    // A catalogue recipe, or — for a favourite that has none — its title,
+    // written onto the plan exactly like one typed by hand.
+    target: { recipe_id: string } | { label: string },
     { fromFavorite = false, overrideAllergen = false } = {},
   ) =>
     act(async () => {
       await apiPut(`/meal-plans/${planId}/dishes/${dish.id}`, {
-        recipe_id: recipeId,
+        ...target,
         from_favorite: fromFavorite,
         allergen_override: overrideAllergen,
       });
       setWarning(null);
-      refresh();
-    });
-
-  const rate = (dish: Dish, value: 1 | -1) =>
-    act(async () => {
-      // Rating is also an implicit confirmation that the dish was eaten, which
-      // fills the history without ever asking anyone to fill in a form.
-      await apiPost(`/meal-plans/${planId}/dishes/${dish.id}/rating`, { value });
       refresh();
     });
 
@@ -297,23 +311,43 @@ export function SlotPanel({
                   {/* Explains the two blocks under it. Without the pill, the
                       missing adaptation reads as a fault rather than as a
                       consequence of what the household chose. */}
-                  {(dish.placed_from_favorite || dish.recipe_id) && (
+                  {(dish.placed_from_favorite || dish.label) && (
                     <div className="flex flex-wrap items-center gap-2">
                       {dish.placed_from_favorite && (
                         <span className="rounded-full border border-border bg-surface-sunken px-2.5 py-1 text-xs font-medium text-ink-body">
                           {t("fromFavorite")}
                         </span>
                       )}
-                      {/* Only for a catalogue dish: a model suggestion never
-                          becomes a recipe (I7), so it has nothing to point at
-                          — and rather than a control that exists to be
-                          refused, there is none. The rule is explained once,
-                          on the favourites tab. */}
-                      {dish.recipe_id && dish.label && (
+                      {/* The dish stays on this week — withholding is about
+                          the weeks to come — so the mark says what changed. */}
+                      {dish.recipe_id && withheld.has(dish.recipe_id) && (
+                        <span className="rounded-full border border-border bg-surface-sunken px-2.5 py-1 text-xs font-medium text-ink-body">
+                          {tExclusions("pill")}
+                        </span>
+                      )}
+                      {/* Any dish with a title. One without a recipe is kept
+                          as written — it never becomes one, I7 is about the
+                          catalogue — and the tab says what that costs. */}
+                      {dish.label && (
                         <FavoriteToggle
                           recipeId={dish.recipe_id}
                           title={dish.label}
-                          favorited={favorited.has(dish.recipe_id)}
+                          favorited={
+                            dish.recipe_id
+                              ? favorited.has(dish.recipe_id)
+                              : favoritedTitles.has(dish.label)
+                          }
+                        />
+                      )}
+                      {/* Beside the favourite because it is its opposite, and
+                          catalogue-only for the same reason: the model writes
+                          no dish of its own, so a one-line one never comes
+                          back anyway. */}
+                      {dish.recipe_id && dish.label && (
+                        <ExclusionToggle
+                          recipeId={dish.recipe_id}
+                          title={dish.label}
+                          excluded={withheld.has(dish.recipe_id)}
                         />
                       )}
                     </div>
@@ -415,20 +449,44 @@ export function SlotPanel({
                     </ul>
                   )}
 
+                  {/* The end of what is said about THIS dish, before anything
+                      that would replace it. Under the suggestions it read as a
+                      report about the last one of them. Quiet, because it is
+                      rare and changes what every household sees. Only for a
+                      catalogue dish: a hand-written one has nothing
+                      catalogue-wide to fix. */}
+                  {planId && dish.recipe_id && (
+                    <ReportDish planId={planId} dishId={dish.id} />
+                  )}
+
                   {/* First, because it is the cheapest and §6 measured it as
                       the most frequent request: "not that one, show me
                       something else". */}
-                  {alternatives !== null && (
+                  {/* Shown before the list arrives, with a placeholder in it:
+                      a section that appears a moment after the panel reads as
+                      the page jumping, not as something loading. */}
+                  {planId && (
                     <section className="flex flex-col gap-3">
-                      <div>
-                        <h3 className="text-sm font-semibold">{t("alternativesHeading")}</h3>
-                        {/* True of both groups below: neither calls the model. */}
-                        <p className="text-xs text-ink-muted">{t("alternativesHint")}</p>
-                      </div>
+                      {/* "Changer de plat", not "Autre chose ?": the section
+                          at the bottom asks the model for something else, and
+                          two "autre chose" in one panel read as one. The old
+                          hint said which filter kept these and that no model
+                          was called — true, and of no use to the reader. */}
+                      <h3 className="text-sm font-semibold">{t("alternativesHeading")}</h3>
 
                       <div className="flex flex-col gap-1.5">
-                        <h4 className={GROUP}>{t("suggestionsHeading")}</h4>
-                        {alternatives.length === 0 ? (
+                        <div>
+                          <h4 className={GROUP}>{t("suggestionsHeading")}</h4>
+                          {/* Under the suggestions only: they went through the
+                              same filter as the week. A favourite can carry an
+                              allergen, and says so on its own row. */}
+                          <p className="text-xs text-ink-muted">{t("suggestionsHint")}</p>
+                        </div>
+                        {alternatives === null ? (
+                          <p className="text-sm text-ink-muted" aria-live="polite">
+                            {t("alternativesLoading")}
+                          </p>
+                        ) : alternatives.length === 0 ? (
                           <p className="text-sm text-ink-muted">{t("alternativesEmpty")}</p>
                         ) : (
                           <ul className="flex flex-col gap-1.5">
@@ -448,7 +506,9 @@ export function SlotPanel({
                                     <Button
                                       size="sm"
                                       disabled={busy}
-                                      onClick={() => choose(dish, alternative.recipe_id)}
+                                      onClick={() =>
+                                        choose(dish, { recipe_id: alternative.recipe_id })
+                                      }
                                     >
                                       {t("choose")}
                                     </Button>
@@ -502,10 +562,20 @@ export function SlotPanel({
                           </h4>
                           <ul className="flex flex-col gap-1.5">
                             {favorites.map((favorite) => {
-                              const open = warning === favorite.recipe_id;
+                              const key = favorite.recipe_id ?? `title:${favorite.title}`;
+                              const target = favorite.recipe_id
+                                ? { recipe_id: favorite.recipe_id }
+                                : { label: favorite.title };
+                              const open = warning === key;
                               const meta = (
                                 <>
                                   <span className="text-sm">{favorite.title}</span>
+                                  {favorite.recipe_id === null && (
+                                    <span className="text-xs text-ink-muted italic">
+                                      {" "}
+                                      — {tPlan("handWritten")}
+                                    </span>
+                                  )}
                                   {favorite.minutes !== null && (
                                     <span className="text-ink-body">
                                       {" "}
@@ -541,7 +611,7 @@ export function SlotPanel({
                               if (!open) {
                                 return (
                                   <ListRow
-                                    key={favorite.recipe_id}
+                                    key={key}
                                     action={
                                       <Button
                                         size="sm"
@@ -549,11 +619,10 @@ export function SlotPanel({
                                         onClick={() =>
                                           // Raised before the write, not after:
                                           // by then the dish is on the plan.
-                                          favorite.conflicts.length > 0
-                                            ? setWarning(favorite.recipe_id)
-                                            : choose(dish, favorite.recipe_id, {
-                                                fromFavorite: true,
-                                              })
+                                          favorite.conflicts.length > 0 ||
+                                          favorite.unchecked_allergens
+                                            ? setWarning(key)
+                                            : choose(dish, target, { fromFavorite: true })
                                         }
                                       >
                                         {t("choose")}
@@ -567,10 +636,19 @@ export function SlotPanel({
 
                               return (
                                 <li
-                                  key={favorite.recipe_id}
+                                  key={key}
                                   className="rounded-control border border-danger/30 bg-danger-soft px-3 py-2.5"
                                 >
                                   <p className="text-sm">{meta}</p>
+
+                                  {/* No recipe, so no ingredient list: the
+                                      filter has nothing to read, and someone
+                                      here has an allergy. */}
+                                  {favorite.unchecked_allergens && (
+                                    <p className="mt-1.5 text-[13px] leading-[1.5] text-ink-body">
+                                      {t("uncheckedAllergens")}
+                                    </p>
+                                  )}
 
                                   {favorite.conflicts.map((conflict) => (
                                     <p
@@ -596,9 +674,11 @@ export function SlotPanel({
                                       variant="danger"
                                       disabled={busy}
                                       onClick={() =>
-                                        choose(dish, favorite.recipe_id, {
+                                        choose(dish, target, {
                                           fromFavorite: true,
-                                          overrideAllergen: true,
+                                          // Only a known conflict is overridden;
+                                          // an unchecked title has none to keep.
+                                          overrideAllergen: favorite.conflicts.length > 0,
                                         })
                                       }
                                     >
@@ -620,38 +700,6 @@ export function SlotPanel({
                       )}
                     </section>
                   )}
-
-                  {/* Last of the dish section, and quiet. "Proposer autre
-                      chose" below is the frequent gesture and stays the loud
-                      one; this one says the catalogue is wrong, which is rare
-                      and changes what every household sees. Only for a
-                      catalogue dish: a hand-written one has nothing
-                      catalogue-wide to fix. */}
-                  {planId && dish.recipe_id && (
-                    <ReportDish planId={planId} dishId={dish.id} />
-                  )}
-
-                  {/* Separated from the favourite control by the whole
-                      alternatives block, and on purpose: two neighbouring
-                      affordances would look like one question asked twice. */}
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-ink-muted">{t("rate")}</span>
-                      <Button size="sm" disabled={busy} onClick={() => rate(dish, 1)}>
-                        {t("liked")}
-                      </Button>
-                      <Button size="sm" disabled={busy} onClick={() => rate(dish, -1)}>
-                        {t("disliked")}
-                      </Button>
-                    </div>
-                    {/* Two signals, one screen: this grades the meal that has
-                        just happened, a favourite says what to propose again.
-                        Without this line the two read as one question asked
-                        twice. */}
-                    <p className="mt-1.5 text-[13px] leading-[1.5] text-ink-muted">
-                      {t("ratingHelp")}
-                    </p>
-                  </div>
                 </section>
               ))
             )}

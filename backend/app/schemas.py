@@ -395,11 +395,6 @@ class SuggestionReportIn(BaseModel):
     note: str | None = Field(default=None, max_length=280)
 
 
-class DishRating(BaseModel):
-    #: Rating a dish is also an implicit confirmation that it was eaten.
-    value: int = Field(ge=-1, le=1)
-
-
 class GuestCount(BaseModel):
     """One life stage and a head count. No member, nothing nominative."""
 
@@ -462,9 +457,12 @@ class FavoriteOut(BaseModel):
     Shaped like `AlternativeOut` on purpose: the slot panel lists the two side
     by side, under two headings, and a row that changed shape between the
     groups would read as a different kind of thing.
+
+    `recipe_id` is null for a dish kept by its title; `title` is then that
+    title, and the effort fields and the source are null.
     """
 
-    recipe_id: uuid.UUID
+    recipe_id: uuid.UUID | None
     title: str
     minutes: int | None = None
     complexity: int | None = None
@@ -473,9 +471,32 @@ class FavoriteOut(BaseModel):
     #: favourite is not a planned meal. The warning belongs to the moment the
     #: dish is put on a plate.
     conflicts: list[AllergenConflictOut] = Field(default_factory=list)
+    #: A favourite with no recipe, in a household that declares an allergy or
+    #: an intolerance. Nothing can say what it contains, so choosing it asks
+    #: first — the same gesture as a known conflict.
+    unchecked_allergens: bool = False
 
 
 class FavoriteCreate(BaseModel):
+    """A catalogue recipe, or a dish's title as it was written — one of the two."""
+
+    recipe_id: uuid.UUID | None = None
+    label: str | None = Field(default=None, max_length=200)
+
+
+class ExclusionOut(BaseModel):
+    """A recipe the household never wants proposed again.
+
+    Only what the "Plats écartés" list shows: enough to recognise the dish and
+    to go and read it before bringing it back.
+    """
+
+    recipe_id: uuid.UUID
+    title: str
+    source_url: str | None = None
+
+
+class ExclusionCreate(BaseModel):
     recipe_id: uuid.UUID
 
 
@@ -503,6 +524,14 @@ class ShoppingSectionOut(BaseModel):
     lines: list[ShoppingLineOut] = Field(default_factory=list)
 
 
+class UnscaledRecipeOut(BaseModel):
+    """A recipe whose quantities are the source's, and what the source said."""
+
+    title: str
+    #: `recipeYield` as written — "20 tartelettes" — or null when there was none.
+    servings_raw: str | None = None
+
+
 class ShoppingListOut(BaseModel):
     """What to buy for the meals someone picked, and what we cannot tell them.
 
@@ -527,3 +556,8 @@ class ShoppingListOut(BaseModel):
     #: are not here. Saying nothing would be the worst case — a list somebody
     #: believes is complete.
     missing_recipe: bool = False
+    #: At least one dish was scaled to the people eating it.
+    scaled: bool = False
+    #: The recipes that were not, each with what its source wrote — the lines
+    #: worth checking before buying.
+    unscaled: list[UnscaledRecipeOut] = Field(default_factory=list)

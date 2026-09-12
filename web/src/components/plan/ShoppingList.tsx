@@ -99,6 +99,11 @@ export function ShoppingList({
   const sectionLabel = (section: ShoppingListData["sections"][number]) =>
     locale === "en" ? (section.label_en ?? section.label) : section.label;
 
+  const unscaledLine = (recipe: ShoppingListData["unscaled"][number]) =>
+    recipe.servings_raw
+      ? t("unscaledAs", { title: recipe.title, servings: recipe.servings_raw })
+      : t("unscaledUnknown", { title: recipe.title });
+
   /**
    * Plain text, because that is where it is going.
    *
@@ -135,9 +140,17 @@ export function ShoppingList({
         [t("textUnparsed"), ...data.unparsed.map((raw) => `- ${raw}`)].join("\n"),
       );
     }
-    // Always. It is the one thing the list cannot do, and it has to travel with
-    // the list rather than stay on the screen it was copied from.
-    blocks.push(t("textScaleNote"));
+    // What the quantities are travels with the list rather than staying on the
+    // screen it was copied from: adjusted to the table, and which recipes could
+    // not be — those are the lines worth checking before buying.
+    if (data.scaled) blocks.push(t("textScaled"));
+    if (data.unscaled.length > 0) {
+      blocks.push(
+        [t("textUnscaled"), ...data.unscaled.map((recipe) => `- ${unscaledLine(recipe)}`)].join(
+          "\n",
+        ),
+      );
+    }
 
     return blocks.join("\n\n");
   }
@@ -349,11 +362,29 @@ export function ShoppingList({
               </div>
             )}
 
-            {/* `Recipe.servings` is nullable and its comment forbids deriving a
-                factor from `servings_raw`. Not to be dropped for space. */}
-            <p className="mt-[18px] text-[12.5px] leading-[1.6] text-ink-muted">
-              {t("scaleNote")}
-            </p>
+            {/* Said per recipe rather than once for the whole list: most
+                quantities are adjusted to the table now, and the ones that are
+                not are the ones to check. Not to be dropped for space. */}
+            {list.scaled && (
+              <p className="mt-[18px] text-[12.5px] leading-[1.6] text-ink-muted">
+                {t("scaledNote")}
+              </p>
+            )}
+            {list.unscaled.length > 0 && (
+              <div className="mt-[18px]">
+                <p className="text-[12.5px] font-medium text-ink-body">{t("unscaledHeading")}</p>
+                <ul className="mt-1 flex flex-col gap-0.5">
+                  {list.unscaled.map((recipe, index) => (
+                    <li
+                      key={`${index}-${recipe.title}`}
+                      className="text-[12.5px] leading-[1.5] text-ink-muted"
+                    >
+                      {unscaledLine(recipe)}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
 
             <div className="mt-[18px] flex flex-wrap items-center gap-3">
               <Button variant="primary" className="h-11 px-5" onClick={copy}>

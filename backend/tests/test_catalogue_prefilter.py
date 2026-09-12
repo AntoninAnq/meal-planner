@@ -19,6 +19,7 @@ from app.services.catalogue import (
     candidate_count,
     overlap_groups,
     rank,
+    withhold,
 )
 
 
@@ -90,6 +91,22 @@ def test_the_order_the_database_returned_does_not_change_the_draw() -> None:
     backwards = rank(list(reversed(eligible)), last_planned={}, seed=seed)
 
     assert forwards == backwards
+
+
+def test_withholding_a_dish_leaves_every_other_rank_where_it_was() -> None:
+    """Withheld AFTER the draw, never before it.
+
+    A pool one recipe shorter shuffles into another order entirely, so a dish
+    withheld on Wednesday would otherwise change the alternatives Monday's plan
+    offers — the reserve would stop matching what the model was shown.
+    """
+    ranked = rank(_ids(50), last_planned={}, seed="household-1:2026-08-17")
+    withheld = {ranked[0], ranked[7], ranked[31]}
+
+    kept = withhold(ranked, withheld)
+
+    assert kept == [recipe_id for recipe_id in ranked if recipe_id not in withheld]
+    assert len(kept) == 47
 
 
 def test_the_next_week_draws_differently() -> None:

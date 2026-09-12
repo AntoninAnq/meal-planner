@@ -1,16 +1,18 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { cookies } from "next/headers";
+import { Suspense } from "react";
 
 import { FavoritesView } from "@/components/plan/FavoritesView";
 import { InvitationPanel } from "@/components/plan/InvitationPanel";
 import { WeekBoard } from "@/components/plan/WeekBoard";
 import { ShoppingList } from "@/components/plan/ShoppingList";
-import { SlotPanel } from "@/components/plan/SlotPanel";
+import { SlotPanelHost } from "@/components/plan/SlotPanelHost";
 import { DayList, WeekGrid, type WeekViewProps } from "@/components/plan/WeekViews";
 import { Link, redirect } from "@/i18n/navigation";
 import { apiGet } from "@/lib/api/server";
 import { cx } from "@/lib/cx";
 import type {
+  Exclusion,
   Favorite,
   Household,
   HouseholdSettings,
@@ -19,14 +21,8 @@ import type {
   MealSlot,
   Member,
 } from "@/lib/api/types";
-import {
-  invitationsByKey,
-  parseSlotKey,
-  slotKey,
-  slotsByKey,
-  violationsByKey,
-} from "@/lib/plan";
-import { addDays, mondayOf, resolveWeek, weekDates } from "@/lib/week";
+import { invitationsByKey, slotsByKey, violationsByKey, weekIssues } from "@/lib/plan";
+import { addDays, mondayOf, resolveWeek } from "@/lib/week";
 import { resolveView, VIEW_COOKIE } from "@/lib/week-view";
 
 /** Expected generation time, in seconds. Configuration, never a constant: a
@@ -387,12 +383,13 @@ async function Week({
   // The view loads the plan itself rather than displaying the response of the
   // generation POST. That is what makes a lost response survivable: the plan
   // was written before the endpoint replied, so a reload recovers it.
-  const [plan, members, enabledSlots, invitations, favorites] = await Promise.all([
+  const [plan, members, enabledSlots, invitations, favorites, exclusions] = await Promise.all([
     apiGet<MealPlan | null>(`/meal-plans?week_start=${weekStart}`),
     apiGet<Member[]>("/members"),
     apiGet<MealSlot[]>("/household/slots"),
     apiGet<Invitation[]>(`/invitations?week_start=${weekStart}`),
     apiGet<Favorite[]>("/favorites"),
+    apiGet<Exclusion[]>("/exclusions"),
   ]);
 
   const memberNames = Object.fromEntries(
@@ -422,12 +419,6 @@ async function Week({
   // Same URL-state as everything else on this screen, so the back button closes
   // the drawer and a reload reopens it.
   const listOpen = (Array.isArray(search.list) ? search.list[0] : search.list) === "1";
-
-  // The open slot travels in the URL too: the back button closes the panel and
-  // a reload reopens it on the same meal. A mistyped key simply leaves it shut.
-  const openSlot = parseSlotKey(
-    Array.isArray(search.slot) ? (search.slot[0] ?? "") : (search.slot ?? ""),
-  );
 
   // Same story for the invitation panel: `invite=new` to create, `invite=<id>`
   // to edit one. An id that matches nothing leaves it shut.
@@ -491,11 +482,12 @@ async function Week({
         hasPlan={plan !== null}
         generatedAt={plan?.generated_at ?? null}
         violations={plan?.violations ?? []}
+        issues={weekIssues(viewProps.violations, viewProps.slots, memberNames)}
         expectedMs={EXPECTED_SECONDS * 1000}
         grid={<WeekGrid {...viewProps} />}
         list={<DayList {...viewProps} />}
         favoritesOpen={favoritesOpen}
-        favorites={<FavoritesView favorites={favorites ?? []} />}
+        favorites={<FavoritesView favorites={favorites ?? []} exclusions={exclusions ?? []} />}
       />
 
       {/* No reminder list under the plan any more. It existed only because
@@ -512,22 +504,23 @@ async function Week({
         />
       )}
 
-      {openSlot && (
-        <SlotPanel
-          open
+      {/* The open slot travels in the URL, but it is read on the client, from
+          the dishes already on this page. Opening a meal used to be a server
+          navigation that fetched the whole week again — seven API calls —
+          before the panel could appear. */}
+      <Suspense fallback={null}>
+        <SlotPanelHost
           planId={plan?.id ?? null}
           weekStart={weekStart}
-          date={weekDates(weekStart)[openSlot.dayOfWeek]}
-          dayOfWeek={openSlot.dayOfWeek}
-          mealType={openSlot.mealType}
-          dishes={
-            viewProps.slots.get(slotKey(openSlot.dayOfWeek, openSlot.mealType))?.dishes ?? []
-          }
+          dishesBySlot={Object.fromEntries(
+            [...viewProps.slots].map(([key, slot]) => [key, slot.dishes]),
+          )}
           memberNames={memberNames}
+          excluded={(exclusions ?? []).map((exclusion) => exclusion.recipe_id)}
           locale={locale}
           expectedMs={EXPECTED_SECONDS * 1000}
         />
-      )}
+      </Suspense>
 
       {inviteOpen && (
         <InvitationPanel
