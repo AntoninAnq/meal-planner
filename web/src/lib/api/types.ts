@@ -234,6 +234,19 @@ export type HouseholdRecipe = {
   rejected_reason: string | null;
 };
 
+/** A household's recipe waiting for an operator to say whether it may leave
+ * that household. The method travels: it is what tells a dish somebody cooks
+ * from a page copied off a site. */
+export type PendingRecipe = {
+  recipe_id: string;
+  title: string;
+  servings_raw: string | null;
+  instructions: string | null;
+  source_url: string | null;
+  lines: string[];
+  allergens_verified: boolean;
+};
+
 /** One food of the referential, offered while someone writes a line. */
 export type IngredientMatch = { ingredient_id: string; name: string };
 

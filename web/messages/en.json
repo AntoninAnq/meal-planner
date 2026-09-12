@@ -259,6 +259,37 @@
       "unusable": "Not taken for the catalogue: the recipe cannot be used as it stands. It stays yours."
     }
   },
+  "terms": {
+    "footer": "Terms of use",
+    "back": "Back",
+    "heading": "Terms of use",
+    "intro": "This service suggests a household's weekly menus. These terms say what it does with what you write here — nothing more, and nothing that is not true of the product as it works.",
+    "data": {
+      "heading": "What we store",
+      "body": "Who eats at your place, the allergies and intolerances you declare, the foods you dislike, your weeks and your recipes. Allergies are health data: they are used only to filter the dishes offered to your household, and are passed to nobody. Your email and name come from your Google account; no password is stored."
+    },
+    "recipes": {
+      "heading": "The recipes you write",
+      "body": "A recipe you write stays yours and is visible to your household alone. You can edit or delete it at any time. By writing it you state that it is yours, or that you are entitled to share it — and if it comes from elsewhere, the field provided lets you give the link."
+    },
+    "sharing": {
+      "heading": "Sharing to the common catalogue",
+      "body": "A recipe written here is offered for review. If it is taken, it becomes visible to other households, with its text, and you allow us to distribute it for that purpose. If it is not, it stays yours, as usable as before, with the reason shown on your own screen. Editing a shared recipe puts it back in the queue: nothing changes for others without being read again."
+    },
+    "takedown": {
+      "heading": "Reporting content",
+      "body": "If a text published here reproduces yours, write to us: it will be removed from the common catalogue without argument. A removed recipe becomes private to its author again rather than being destroyed."
+    },
+    "liability": {
+      "heading": "What the service does not guarantee",
+      "body": "Catalogue recipes come from third-party sites and from households like yours: their quantities, times and ingredients are the ones their source declared. The allergen filter rests on recognised ingredients, and a recipe whose ingredients are not all recognised is never served to a household that declared an allergy. None of this replaces reading a label yourself."
+    },
+    "contact": {
+      "heading": "Writing to us",
+      "link": "Write to us",
+      "unset": "No contact address is configured on this instance."
+    }
+  },
   "shoppingList": {
     "open": "Shopping list",
     "title": "Shopping list",
@@ -445,6 +476,19 @@
     "operatorHintContributor": "Classify the recipes nobody has sorted, and act on what households report."
   },
   "admin": {
+    "pendingHeading": "Recipes households offered",
+    "pendingIntro": "Sharing publishes the text to every household. So the question is: is this a real dish, and was the text written here or copied off a site? Refusing costs its author nothing — they keep it.",
+    "pendingDone": "No recipe waiting.",
+    "noServings": "no yield stated",
+    "declaredSource": "link given by the author",
+    "recipeVerified": "every ingredient recognised",
+    "recipeUnverified": "not every ingredient recognised — never served to a household with an allergy",
+    "share": "Share with every household",
+    "reject": {
+      "not_a_meal": "This is not a meal",
+      "copied": "Text copied from a site",
+      "unusable": "Recipe cannot be used"
+    },
     "heading": "Administration",
     "intro": "Catalogue quality, as households meet it: what was never classified, and what they report.",
     "remaining": "{count, plural, one {# recipe to classify} other {# recipes to classify}}",

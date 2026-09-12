@@ -1,11 +1,12 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { notFound } from "next/navigation";
 
+import { RecipeQueue } from "@/components/admin/RecipeQueue";
 import { ReportQueue } from "@/components/admin/ReportQueue";
 import { TypeQueue } from "@/components/admin/TypeQueue";
 import { Link } from "@/i18n/navigation";
 import { apiGet } from "@/lib/api/server";
-import type { Operator, RecipeToType, ReportedRecipe } from "@/lib/api/types";
+import type { Operator, PendingRecipe, RecipeToType, ReportedRecipe } from "@/lib/api/types";
 
 /**
  * The back office — one screen, for the judgement no rule reaches.
@@ -35,9 +36,10 @@ export default async function AdminPage({
   const { locale } = await params;
   setRequestLocale(locale);
 
-  const [queue, reported, me] = await Promise.all([
+  const [queue, reported, pending, me] = await Promise.all([
     apiGet<RecipeToType[]>("/admin/recipes/untyped"),
     apiGet<ReportedRecipe[]>("/admin/reports"),
+    apiGet<PendingRecipe[]>("/admin/recipes/pending"),
     apiGet<Operator>("/admin/me"),
   ]);
   if (queue === null) notFound();
@@ -82,6 +84,22 @@ export default async function AdminPage({
             </p>
           </div>
           <ReportQueue initial={reported} />
+        </section>
+      )}
+
+      {/* After the reports, before the steady work: somebody wrote this and is
+          waiting, and what is being decided is whether their text goes to
+          every household. Hidden when empty, like the reports — most weeks
+          nobody writes anything. */}
+      {pending !== null && pending.length > 0 && (
+        <section className="flex flex-col gap-3 rounded-card border border-border bg-surface-sunken px-4 py-4">
+          <div>
+            <h2 className="font-semibold">{t("pendingHeading")}</h2>
+            <p className="mt-1 text-sm leading-[1.5] text-ink-muted text-pretty">
+              {t("pendingIntro")}
+            </p>
+          </div>
+          <RecipeQueue initial={pending} />
         </section>
       )}
 
