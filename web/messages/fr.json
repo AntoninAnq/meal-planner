@@ -187,6 +187,9 @@
     "notPlannedHeading": "Certains repas ne sont pas planifiés",
     "notPlannedBody": "Le catalogue ne contient aucune recette adaptée à un bébé de moins de 18 mois. Ses repas restent à votre main.",
     "variantConfirmShort": "À valider",
+    "variantMissing": "sans part adaptée",
+    "variantWritePlaceholder": "sa part, si vous voulez la noter",
+    "variantWriteLabel": "Écrire la part de {name}",
     "sharedIngredients": "mêmes ingrédients"
   },
   "favorites": {
@@ -211,6 +214,81 @@
     "heading": "Plats écartés",
     "help": "Ils ne reviennent plus dans vos semaines ni dans les suggestions.",
     "failed": "Échec, réessayez"
+  },
+  "recipes": {
+    "write": "Écrire une recette",
+    "back": "Retour à la semaine",
+    "heading": "Vos recettes",
+    "intro": "Le catalogue propose des plats à huit ingrédients, et un mardi soir c'est souvent « steak purée ». Écrivez-le ici : la recette reste la vôtre, elle rejoint vos favoris, et vous pouvez la poser dans n'importe quel repas.",
+    "writeHeading": "Écrire une recette",
+    "editHeading": "Modifier la recette",
+    "titleLabel": "Le plat",
+    "titlePlaceholder": "Steak purée",
+    "servingsLabel": "Pour combien de personnes ?",
+    "servingsHint": "Facultatif. Renseigné, les quantités de votre liste de courses s'ajustent au nombre de personnes à table, invités compris.",
+    "linesLabel": "Ingrédients",
+    "linesPlaceholder": "400 g de tomates\n2 oignons\n1 pincée de sel",
+    "linesHint": "Un par ligne, comme vous l'écririez sur un papier. Ils entrent dans votre liste de courses.",
+    "searchLabel": "Chercher un aliment",
+    "searchPlaceholder": "tomate, huile…",
+    "search": "Chercher",
+    "searchEmpty": "Aucun aliment connu sous ce nom. Écrivez la ligne comme vous voulez : elle restera telle quelle.",
+    "instructionsLabel": "La façon de faire",
+    "instructionsPlaceholder": "Faire revenir les oignons, ajouter les tomates…",
+    "instructionsHint": "Facultatif, et pour vous. Ce texte ne quitte pas votre foyer tant que la recette n'est pas partagée.",
+    "sourceLabel": "Le lien, si la recette vient d'ailleurs",
+    "sourceHint": "Facultatif. Un lien permet de retrouver la recette d'origine, et dit d'où vient le texte.",
+    "save": "Enregistrer la recette",
+    "saveEdit": "Enregistrer les modifications",
+    "mineHeading": "Vos recettes",
+    "mineEmpty": "Vous n'en avez pas encore écrit.",
+    "edit": "Modifier",
+    "delete": "Supprimer",
+    "verified": "Tous ses ingrédients sont reconnus : elle peut vous être proposée dans une semaine.",
+    "unverified": "Certains ingrédients ne sont pas reconnus : elle ne vous sera pas proposée toute seule, mais vous pouvez la poser vous-même.",
+    "unknownLines": "Non reconnu : {lines}. La recette reste utilisable — vous la posez vous-même — et ces lignes apparaîtront telles quelles dans la liste de courses.",
+    "state": {
+      "private": "à vous",
+      "pending": "proposée au catalogue",
+      "shared": "partagée",
+      "rejected": "non retenue"
+    },
+    "rejected": {
+      "not_a_meal": "Non retenue pour le catalogue : ce n'est pas un plat. Elle reste la vôtre.",
+      "copied": "Non retenue pour le catalogue : le texte semble recopié d'un site. Elle reste la vôtre.",
+      "unusable": "Non retenue pour le catalogue : la recette est inutilisable en l'état. Elle reste la vôtre."
+    }
+  },
+  "terms": {
+    "footer": "Conditions d'utilisation",
+    "back": "Retour",
+    "heading": "Conditions d'utilisation",
+    "intro": "Ce service propose des menus de la semaine à un foyer. Ces conditions disent ce qu'il fait de ce que vous y écrivez — rien de plus, et rien qui ne soit vrai du produit tel qu'il fonctionne.",
+    "data": {
+      "heading": "Ce que nous stockons",
+      "body": "Qui mange chez vous, les allergies et intolérances déclarées, les aliments que vous n'aimez pas, vos semaines et vos recettes. Les allergies sont des données de santé : elles ne servent qu'à filtrer les plats proposés à votre foyer, et ne sont transmises à personne. Votre adresse et votre nom viennent de votre compte Google ; aucun mot de passe n'est stocké."
+    },
+    "recipes": {
+      "heading": "Les recettes que vous écrivez",
+      "body": "Une recette que vous écrivez reste la vôtre et n'est visible que de votre foyer. Vous pouvez la modifier ou la supprimer à tout moment. En l'écrivant, vous déclarez qu'elle est de vous, ou que vous avez le droit de la partager — et si elle vient d'ailleurs, le champ prévu vous permet d'en indiquer le lien."
+    },
+    "sharing": {
+      "heading": "Le partage au catalogue commun",
+      "body": "Une recette écrite ici est proposée à une relecture. Si elle est retenue, elle devient visible des autres foyers, avec son texte, et vous nous autorisez à la diffuser à cette fin. Si elle ne l'est pas, elle reste la vôtre, utilisable comme avant, avec le motif affiché sur votre écran. Modifier une recette partagée la remet en attente : rien ne change chez les autres sans être relu."
+    },
+    "takedown": {
+      "heading": "Signaler un contenu",
+      "body": "Si un texte publié ici reprend le vôtre, écrivez-nous : il sera retiré du catalogue commun sans discussion préalable. Une recette retirée redevient privée à son auteur plutôt que d'être détruite."
+    },
+    "liability": {
+      "heading": "Ce que le service ne garantit pas",
+      "body": "Les recettes du catalogue viennent de sites tiers et de foyers comme le vôtre : leurs quantités, leurs temps et leurs ingrédients sont ceux que leur source a déclarés. Le filtre allergène s'appuie sur les ingrédients reconnus, et une recette dont tous les ingrédients ne sont pas reconnus n'est jamais servie à un foyer ayant déclaré une allergie. Cela ne remplace pas votre propre lecture d'une étiquette."
+    },
+    "contact": {
+      "heading": "Nous écrire",
+      "link": "Nous écrire",
+      "unset": "Aucune adresse de contact n'est configurée sur cette instance."
+    }
   },
   "shoppingList": {
     "open": "Liste de courses",
@@ -398,6 +476,19 @@
     "operatorHintContributor": "Classer les recettes que personne n'a rangées, et traiter ce que les foyers signalent."
   },
   "admin": {
+    "pendingHeading": "Recettes proposées par des foyers",
+    "pendingIntro": "Partager publie le texte chez tous les foyers. La question est donc : est-ce un vrai plat, et ce texte a-t-il été écrit ici ou recopié d'un site ? Refuser ne coûte rien à son auteur, qui la garde.",
+    "pendingDone": "Aucune recette en attente.",
+    "noServings": "nombre de parts non indiqué",
+    "declaredSource": "lien déclaré par l'auteur",
+    "recipeVerified": "ingrédients tous reconnus",
+    "recipeUnverified": "ingrédients non tous reconnus — jamais servie à un foyer allergique",
+    "share": "Partager avec tous les foyers",
+    "reject": {
+      "not_a_meal": "Ce n'est pas un plat",
+      "copied": "Texte recopié d'un site",
+      "unusable": "Recette inutilisable"
+    },
     "heading": "Administration",
     "intro": "La qualité du catalogue, telle que les foyers la rencontrent : ce qui n'a jamais été classé, et ce qu'ils signalent.",
     "remaining": "{count, plural, one {# recette à classer} other {# recettes à classer}}",

@@ -193,12 +193,18 @@ describe("slotIssue", () => {
     expect(issue).toEqual({ kind: "unadapted", names: ["Marceau"] });
   });
 
-  it("does not name a baby whose portion is written", () => {
+  it("still names a baby whose portion is written but not confirmed", () => {
     const issue = slotIssue(
       [at("stage_for_eater")],
       [dish({ eaters: [baby("mixé, sans sel")] })],
       names,
     );
+    expect(issue).toEqual({ kind: "unadapted", names: ["Marceau"] });
+  });
+
+  it("does not name a baby whose plate a parent confirmed", () => {
+    const confirmed = { ...baby(), variant_confirmed_at: "2026-09-11T18:00:00Z" };
+    const issue = slotIssue([at("stage_for_eater")], [dish({ eaters: [confirmed] })], names);
     expect(issue).toEqual({ kind: "unadapted", names: [] });
   });
 

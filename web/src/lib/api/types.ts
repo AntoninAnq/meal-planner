@@ -188,8 +188,7 @@ export type AllergenConflict = {
  * two headings, and a row changing shape between the groups would read as a
  * different kind of thing. */
 export type Favorite = {
-  /** Null for a dish kept by its title, which `title` then is. */
-  recipe_id: string | null;
+  recipe_id: string;
   title: string;
   minutes: number | null;
   complexity: number | null;
@@ -198,10 +197,58 @@ export type Favorite = {
    * favourite is not a planned meal, and the warning belongs to the moment the
    * dish reaches a plate. */
   conflicts: AllergenConflict[];
-  /** No recipe, and someone here has an allergy: nothing checked it, so
-   * choosing it asks first. */
+  /** Its ingredients were not all recognised, and someone here has an allergy:
+   * nothing vouched for what it contains, so choosing it asks first. */
   unchecked_allergens: boolean;
 };
+
+/** One ingredient line of a household's own recipe, as the API read it.
+ *
+ * `ingredient_id` null means nobody recognised the food: the recipe still
+ * works — its author knows what they wrote — but it cannot be verified, so it
+ * is never proposed on its own and the line lands in "non reconnues" on the
+ * shopping list. */
+export type RecipeLine = {
+  raw: string;
+  quantity: string | null;
+  unit: string | null;
+  ingredient_id: string | null;
+  name: string | null;
+  /** A heading — "Pour la sauce :" — never counted against the recipe. */
+  is_structural: boolean;
+};
+
+/** A recipe this household wrote, and where it stands. */
+export type HouseholdRecipe = {
+  id: string;
+  title: string;
+  servings: number | null;
+  servings_raw: string | null;
+  instructions: string | null;
+  source_url: string | null;
+  lines: RecipeLine[];
+  /** Derived, never declared: every line recognised, to foods a person has
+   * confirmed. False means "usable, but never proposed on its own". */
+  allergens_verified: boolean;
+  state: "private" | "pending" | "shared" | "rejected";
+  rejected_reason: string | null;
+};
+
+/** A household's recipe waiting for an operator to say whether it may leave
+ * that household. The method travels: it is what tells a dish somebody cooks
+ * from a page copied off a site. */
+export type PendingRecipe = {
+  recipe_id: string;
+  title: string;
+  servings_raw: string | null;
+  instructions: string | null;
+  source_url: string | null;
+  lines: string[];
+  allergens_verified: boolean;
+};
+
+/** One food of the referential, offered while someone writes a line. */
+export type IngredientMatch = { ingredient_id: string; name: string };
 
 /** A recipe the household never wants proposed again. The other half of a
  * favourite: a recipe is never both, and setting one clears the other. */

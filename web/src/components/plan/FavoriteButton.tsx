@@ -7,18 +7,14 @@ import { useRouter } from "@/i18n/navigation";
 import { apiDelete, apiPost } from "@/lib/api/client";
 import { cx } from "@/lib/cx";
 
-/** A favourite is a recipe or, when it has none, the title it is known by. */
-function favoritePath(recipeId: string | null, title: string): string {
-  return recipeId ? `/favorites/${recipeId}` : `/favorites?label=${encodeURIComponent(title)}`;
-}
-
 /**
  * "Mettre en favori" / "En favori", as a word rather than a heart.
  *
  * The product loads no icon anywhere — no font, no SVG, no image — and
  * introducing one for this single function would create a visual dependency
- * for something a word says better. A dish without a recipe can be one too:
- * it is then known by its title, and the tab says what that costs.
+ * for something a word says better. Every dish on screen has a recipe to point
+ * at — a household writes its own for the ones the catalogue does not carry
+ * (`routers/recipes.py`), so there is no dish this control has to refuse.
  *
  * Lives in the slot panel and nowhere else. The grid was just stripped of
  * everything that does not vary (UX §5); putting a control back on every card
@@ -31,7 +27,7 @@ export function FavoriteToggle({
   favorited,
   className,
 }: {
-  recipeId: string | null;
+  recipeId: string;
   title: string;
   favorited: boolean;
   className?: string;
@@ -46,9 +42,9 @@ export function FavoriteToggle({
     start(async () => {
       try {
         if (favorited) {
-          await apiDelete(favoritePath(recipeId, title));
+          await apiDelete(`/favorites/${recipeId}`);
         } else {
-          await apiPost("/favorites", recipeId ? { recipe_id: recipeId } : { label: title });
+          await apiPost("/favorites", { recipe_id: recipeId });
         }
         router.refresh();
       } catch {
@@ -89,7 +85,7 @@ export function FavoriteToggle({
  * and a modal would cost more attention than the mistake it prevents. What it
  * does owe is a response — the row goes, and the count above it follows.
  */
-export function FavoriteRemove({ recipeId, title }: { recipeId: string | null; title: string }) {
+export function FavoriteRemove({ recipeId, title }: { recipeId: string; title: string }) {
   const t = useTranslations("favorites");
   const router = useRouter();
   const [pending, start] = useTransition();
@@ -99,7 +95,7 @@ export function FavoriteRemove({ recipeId, title }: { recipeId: string | null; t
     setFailed(false);
     start(async () => {
       try {
-        await apiDelete(favoritePath(recipeId, title));
+        await apiDelete(`/favorites/${recipeId}`);
         router.refresh();
       } catch {
         setFailed(true);

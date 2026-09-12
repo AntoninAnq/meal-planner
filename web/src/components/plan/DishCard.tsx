@@ -169,6 +169,7 @@ export async function DishCard({
                   dishId={dish.id}
                   memberId={eater.member_id}
                   name={name}
+                  variant={eater.serving_variant}
                   confirmed={eater.variant_confirmed_at !== null}
                 />
               </p>

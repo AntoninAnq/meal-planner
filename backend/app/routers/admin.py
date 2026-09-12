@@ -538,6 +538,132 @@ def dismiss(recipe_id: uuid.UUID, db: DbDep, operator: CurrentOperator) -> None:
     db.commit()
 
 
+# -- What households wrote, and whether it leaves their kitchen ---------------
+
+#: Why a recipe was not taken. A closed list, because the author reads it: an
+#: operator's own words would arrive as a verdict on the person.
+REJECTIONS = ("not_a_meal", "copied", "unusable")
+
+
+class PendingRecipeOut(BaseModel):
+    """A household's recipe, as the person deciding has to read it.
+
+    The method is here, and it is the point: it is what tells a dish somebody
+    cooks from a page copied off a site. Sharing publishes it to everyone, so
+    the operator reads it before that happens rather than after a complaint.
+    """
+
+    recipe_id: uuid.UUID
+    title: str
+    servings_raw: str | None
+    instructions: str | None
+    source_url: str | None
+    lines: list[str]
+    #: Every ingredient recognised, to foods a human confirmed. A recipe that
+    #: is not may still be shared — it is simply never served to a household
+    #: with an allergy, exactly like an unverified collected recipe.
+    allergens_verified: bool
+
+
+class RejectRequest(BaseModel):
+    reason: str = Field(pattern="|".join(REJECTIONS))
+
+
+@router.get("/recipes/pending", response_model=list[PendingRecipeOut])
+def pending_recipes(db: DbDep, operator: CurrentOperator) -> list[PendingRecipeOut]:
+    """Recipes offered to the shared catalogue, oldest first.
+
+    Oldest first and not loudest: nobody is voting here, somebody is waiting.
+    """
+    recipes = db.scalars(
+        select(Recipe)
+        .where(
+            Recipe.household_id.is_not(None),
+            Recipe.submitted_at.is_not(None),
+            Recipe.shared_at.is_(None),
+            Recipe.rejected_at.is_(None),
+        )
+        .order_by(Recipe.submitted_at)
+    ).all()
+
+    lines: dict[uuid.UUID, list[str]] = {}
+    if recipes:
+        for recipe_id, raw in db.execute(
+            select(RecipeIngredient.recipe_id, RecipeIngredient.raw_text)
+            .where(RecipeIngredient.recipe_id.in_([recipe.id for recipe in recipes]))
+            .order_by(RecipeIngredient.position)
+        ).all():
+            lines.setdefault(recipe_id, []).append(raw)
+
+    return [
+        PendingRecipeOut(
+            recipe_id=recipe.id,
+            title=recipe.title,
+            servings_raw=recipe.servings_raw,
+            instructions=recipe.instructions,
+            source_url=recipe.source_url,
+            lines=lines.get(recipe.id, []),
+            allergens_verified=recipe.allergens_verified,
+        )
+        for recipe in recipes
+    ]
+
+
+def _pending(db: Session, recipe_id: uuid.UUID) -> Recipe:
+    recipe = db.get(Recipe, recipe_id)
+    if recipe is None or recipe.household_id is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "no such recipe")
+    return recipe
+
+
+@router.post("/recipes/{recipe_id}/share", status_code=status.HTTP_204_NO_CONTENT)
+def share_recipe(recipe_id: uuid.UUID, db: DbDep, operator: CurrentOperator) -> None:
+    """It leaves its household and becomes everyone's.
+
+    The author stays recorded: a recipe other households cook with is one
+    somebody may later ask us to take down, and there has to be a person to go
+    back to. Verification is a separate gate and is not touched here — an
+    unverified recipe is shared like any other and simply never reaches a
+    household with an allergy (I3).
+    """
+    recipe = _pending(db, recipe_id)
+    recipe.shared_at = datetime.now(UTC)
+    recipe.rejected_at = None
+    recipe.rejected_reason = None
+    db.commit()
+
+
+@router.post("/recipes/{recipe_id}/reject", status_code=status.HTTP_204_NO_CONTENT)
+def reject_recipe(
+    recipe_id: uuid.UUID, payload: RejectRequest, db: DbDep, operator: CurrentOperator
+) -> None:
+    """It stays its household's, and nothing is destroyed.
+
+    A refusal is about the shared catalogue, never about the dish somebody
+    eats: deleting it would punish a person for writing down their own dinner.
+    The reason shows on their own screen, in words chosen from a closed list.
+    """
+    recipe = _pending(db, recipe_id)
+    recipe.rejected_at = datetime.now(UTC)
+    recipe.rejected_reason = payload.reason
+    recipe.shared_at = None
+    db.commit()
+
+
+@router.post("/recipes/{recipe_id}/unshare", status_code=status.HTTP_204_NO_CONTENT)
+def unshare_recipe(recipe_id: uuid.UUID, db: DbDep, operator: CurrentOperator) -> None:
+    """Take a shared recipe back out, without taking it from its author.
+
+    Different from `withdraw`, which marks a recipe dead for everyone including
+    the household that wrote it. This is the answer to a complaint about a text
+    — the recipe goes back to being private, and the week that already holds it
+    keeps its dish.
+    """
+    recipe = _pending(db, recipe_id)
+    recipe.shared_at = None
+    db.commit()
+
+
 def _resolve_reports(db: Session, recipe_id: uuid.UUID, by: str) -> None:
     """Close every open report on a recipe, once it has been acted on."""
     for report in db.scalars(

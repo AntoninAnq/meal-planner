@@ -73,6 +73,24 @@ def offerable() -> ColumnElement[bool]:
     )
 
 
+def visible_to(household_id: uuid.UUID) -> ColumnElement[bool]:
+    """Which recipes this household may be shown at all.
+
+    The collected catalogue belongs to nobody and is everyone's. A recipe
+    somebody typed belongs to their household until an operator shares it —
+    private, usable, and invisible to every other household in the meantime.
+
+    Separate from `offerable()` because the two answer different questions: one
+    is about the recipe (is it a meal, is its source alive), the other about who
+    is asking.
+    """
+    return (
+        Recipe.household_id.is_(None)
+        | (Recipe.household_id == household_id)
+        | Recipe.shared_at.is_not(None)
+    )
+
+
 #: How many candidates reach the prompt. Sized on the grid rather than guessed:
 #: the default week is 9 slots and `max_dishes_soft_limit` is 2, so 18 dishes
 #: are drawn; a candidate set must be several times that or the arbitration has
@@ -448,6 +466,9 @@ class SqlCatalogue:
         quick_share: float = 0.0,
     ) -> None:
         self._db = db
+        #: Whose pool this is. Read by `visible_to`: a household's own recipes
+        #: are candidates for it alone until they are shared.
+        self._household_id = household_id
         #: How much of the candidate list should be quick dishes, between 0 and
         #: 1. `0` means the household said nothing about time. `1` means it
         #: said so for the whole week. Anything between is a constraint naming
@@ -610,7 +631,7 @@ class SqlCatalogue:
     # -- Ranking ----------------------------------------------------------
 
     def _eligible(self) -> list[uuid.UUID]:
-        statement = select(Recipe.id).where(offerable())
+        statement = select(Recipe.id).where(offerable(), visible_to(self._household_id))
 
         if self._household.require_verified:
             statement = statement.where(Recipe.allergens_verified.is_(True))

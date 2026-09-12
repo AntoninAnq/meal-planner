@@ -308,6 +308,8 @@ Ollama, Postgres local, chemins de fichiers, URL de base, endpoints, secrets : *
 
 ### I9 — Republication interdite
 
+> **Portée, précisée le 2026-09-12.** I9 porte sur le **contenu d'un tiers**. Le texte qu'une personne écrit **ici**, dans sa propre recette (`recipe.instructions`, `source_type = 'user'`), lui appartient : elle nous autorise à le diffuser si elle propose sa recette au catalogue partagé, et il part sur signalement. La contrainte `ck_recipe_instructions_user` rend la distinction vérifiable par la base — une campagne de collecte ne peut pas remplir cette colonne, même par accident. Le lien source reste demandé à l'auteur quand la recette vient d'ailleurs : c'est le signal le plus net qu'un texte n'est pas le sien, et un motif de refus dans le backoffice.
+
 Pour tout contenu externe, on stocke **uniquement des métadonnées structurées** (ingrédients, quantités, temps, tags — des faits, non protégeables), déclarées par la source elle-même en `schema.org/Recipe`, et on **renvoie vers la source**. Jamais le texte ni la prose de l'auteur.
 
 > **Correction, mesurée en phase 1.** Ce paragraphe disait « extraites du JSON-LD `schema.org/Recipe` ». C'est faux sur la moitié des sources retenues (§11.5) : une source publie un JSON-LD **invalide et sans ingrédients** — ceux-ci vivent en microdata — et une autre utilise la propriété **dépréciée** `itemprop="ingredients"`. Le format n'est pas ce qui compte ; ce qui compte est que la donnée soit **déclarée par la source comme une métadonnée**, et non lue dans sa prose. JSON-LD, microdata et RDFa satisfont tous les trois cette condition.
