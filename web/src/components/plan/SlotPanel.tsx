@@ -411,7 +411,12 @@ export function SlotPanel({
                   {dish.eaters.length > 0 && (
                     <ul className="flex flex-col gap-1.5">
                       {(() => {
-                        const plain = dish.eaters.filter((e) => !e.serving_variant);
+                        // Eating it as it comes: no variant, and nothing to
+                        // decide. A baby with neither is NOT one of them — its
+                        // plate is the whole question, and it gets its own row.
+                        const plain = dish.eaters.filter(
+                          (e) => !e.serving_variant && !e.requires_confirmation,
+                        );
                         return plain.length > 0 ? (
                           <ListRow>
                             {plain.map((e) => memberNames[e.member_id] ?? "?").join(", ")}
@@ -420,7 +425,7 @@ export function SlotPanel({
                       })()}
 
                       {dish.eaters
-                        .filter((eater) => eater.serving_variant)
+                        .filter((eater) => eater.serving_variant || eater.requires_confirmation)
                         .map((eater) => {
                           const name = memberNames[eater.member_id] ?? "?";
                           return (
@@ -433,15 +438,20 @@ export function SlotPanel({
                                     dishId={dish.id}
                                     memberId={eater.member_id}
                                     name={name}
+                                    variant={eater.serving_variant}
                                     confirmed={eater.variant_confirmed_at !== null}
                                   />
                                 ) : undefined
                               }
                             >
                               {name}
-                              <span className="text-accent-hover">
+                              <span
+                                className={
+                                  eater.serving_variant ? "text-accent-hover" : "text-ink-muted"
+                                }
+                              >
                                 {" "}
-                                — {eater.serving_variant}
+                                — {eater.serving_variant ?? tPlan("variantMissing")}
                               </span>
                             </ListRow>
                           );

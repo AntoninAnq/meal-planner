@@ -187,6 +187,9 @@
     "notPlannedHeading": "Some meals are not planned",
     "notPlannedBody": "The catalogue holds no recipe suited to a baby under 18 months. Those meals stay yours to make.",
     "variantConfirmShort": "To confirm",
+    "variantMissing": "no adapted portion",
+    "variantWritePlaceholder": "their portion, if you want to note it",
+    "variantWriteLabel": "Write {name}'s portion",
     "sharedIngredients": "same ingredients"
   },
   "favorites": {

@@ -242,6 +242,10 @@ class VariantConfirmation(BaseModel):
 
     member_id: uuid.UUID
     confirmed: bool = True
+    #: The portion, written by the parent, when they want to write it down —
+    #: for whoever cooks on Thursday. Optional: confirming is the act, and a
+    #: parent who knows what they will do owes nobody a sentence.
+    variant: str | None = Field(default=None, max_length=200)
 
 
 class DishOut(BaseModel):

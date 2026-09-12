@@ -187,6 +187,9 @@
     "notPlannedHeading": "Certains repas ne sont pas planifiés",
     "notPlannedBody": "Le catalogue ne contient aucune recette adaptée à un bébé de moins de 18 mois. Ses repas restent à votre main.",
     "variantConfirmShort": "À valider",
+    "variantMissing": "sans part adaptée",
+    "variantWritePlaceholder": "sa part, si vous voulez la noter",
+    "variantWriteLabel": "Écrire la part de {name}",
     "sharedIngredients": "mêmes ingrédients"
   },
   "favorites": {

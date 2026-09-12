@@ -30,6 +30,7 @@ from app.db.models import (
 from app.db.session import get_db
 from app.domain.days import parse_slot
 from app.domain.enums import DishSource, GenerationKind, LifeStage, MealType
+from app.domain.planning import STAGE_FOR_EATER
 from app.domain.shared_ingredients import pantry, shared_ingredient_links
 from app.llm.base import LLMClient, LLMError, SchemaValidationError
 from app.llm.factory import get_llm_client
@@ -705,6 +706,70 @@ def regenerate_dish(
     return _serialise(db, plan)
 
 
+def _mark_stage_gap(db: Session, plan: MealPlan, day_of_week: int, meal_type: MealType) -> None:
+    """Keep `STAGE_FOR_EATER` on this slot in step with the plates.
+
+    Written at generation and, until now, never revisited: a parent who dealt
+    with the baby's portion kept the mark all week, which is how a warning
+    becomes something people learn to ignore. Recomputed in both directions —
+    un-confirming puts it back — because a mark that only ever disappears is
+    not a mark, it is a dismissal.
+    """
+    babies = set(
+        db.scalars(
+            select(Member.id).where(
+                Member.household_id == plan.household_id, Member.life_stage == LifeStage.BABY
+            )
+        )
+    )
+    dishes = list(
+        db.scalars(
+            select(PlannedDish).where(
+                PlannedDish.meal_plan_id == plan.id,
+                PlannedDish.day_of_week == day_of_week,
+                PlannedDish.meal_type == meal_type,
+            )
+        )
+    )
+    suits_baby = set(
+        db.scalars(
+            select(RecipeSuitableStage.recipe_id).where(
+                RecipeSuitableStage.life_stage == LifeStage.BABY
+            )
+        )
+    )
+
+    pending = any(
+        assignment.member_id in babies and assignment.variant_confirmed_at is None
+        for dish in dishes
+        if dish.recipe_id not in suits_baby
+        for assignment in dish.eaters
+    )
+
+    kept = [
+        entry
+        for entry in (plan.violations or [])
+        if not (
+            entry.get("code") == STAGE_FOR_EATER
+            and entry.get("day_of_week") == day_of_week
+            and entry.get("meal_type") == meal_type
+        )
+    ]
+    plan.violations = kept + (
+        [
+            {
+                # The detail is for the logs; the interface reads the plate.
+                "code": STAGE_FOR_EATER,
+                "detail": "a baby's portion on this slot is not confirmed",
+                "day_of_week": day_of_week,
+                "meal_type": meal_type,
+            }
+        ]
+        if pending
+        else []
+    )
+
+
 @router.post(
     "/{plan_id}/dishes/{dish_id}/variant-confirmation",
     status_code=status.HTTP_204_NO_CONTENT,
@@ -730,8 +795,15 @@ def confirm_variant(
     Reversible: `confirmed: false` clears it. A parent who confirmed too
     quickly must be able to take it back, and a confirmation that cannot be
     withdrawn teaches people not to give it.
+
+    The parent may also WRITE the portion here, and it is optional. Haiku
+    writes none — 45 generations out of 45 — so the plate that needs one has
+    nothing to confirm, and refusing a confirmation without text would leave
+    the household with a mark it has no way to clear. What is confirmed is
+    that a person looked at the dish and decided the baby can eat; the sentence
+    is for whoever cooks on Thursday.
     """
-    _load_dish(db, plan_id, dish_id, household_id)
+    dish = _load_dish(db, plan_id, dish_id, household_id)
 
     # Scoped to the household, so one household cannot confirm another's plate.
     member = db.get(Member, payload.member_id)
@@ -742,16 +814,14 @@ def confirm_variant(
     if assignment is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "this member does not eat this dish")
 
-    # Refused rather than ignored on a dish carrying no variant: confirming
-    # nothing would store a parent's approval of a plate that was never
-    # described to them.
-    if payload.confirmed and not assignment.serving_variant:
-        raise HTTPException(
-            status.HTTP_422_UNPROCESSABLE_CONTENT,
-            "there is no serving variant to confirm on this dish",
-        )
+    if payload.variant is not None:
+        assignment.serving_variant = payload.variant.strip() or None
 
     assignment.variant_confirmed_at = datetime.now(UTC) if payload.confirmed else None
+
+    plan = db.get(MealPlan, plan_id)
+    assert plan is not None
+    _mark_stage_gap(db, plan, dish.day_of_week, dish.meal_type)
     db.commit()
 
 

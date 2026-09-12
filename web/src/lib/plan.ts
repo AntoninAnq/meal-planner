@@ -109,10 +109,12 @@ export function slotIssue(
   if (violations.some((v) => UNADAPTED_CODES.has(v.code))) {
     // Read off the plate, not off the violation, whose detail is written for
     // the logs: an eater whose assignment only holds through a variant, and
-    // who has none, is precisely the one missing a portion.
+    // whose plate nobody has confirmed, is precisely the one still pending.
+    // Confirmation, not the text: writing the portion is optional, deciding
+    // the baby can eat is not.
     const names = dishes.flatMap((dish) =>
       dish.eaters
-        .filter((eater) => eater.requires_confirmation && !eater.serving_variant)
+        .filter((eater) => eater.requires_confirmation && eater.variant_confirmed_at === null)
         .map((eater) => memberNames[eater.member_id])
         .filter((name): name is string => Boolean(name)),
     );
