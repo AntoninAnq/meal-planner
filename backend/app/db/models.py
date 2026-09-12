@@ -239,13 +239,11 @@ class HouseholdFavorite(Base):
     nobody wants twice a month, and a favourite can have gone badly the one
     time it was tried. They share no storage and no display.
 
-    **A recipe, or a title.** Most favourites point at a catalogue recipe. A
-    dish someone makes without one — "pâtes au jambon" — is kept as its title,
-    exactly as written. It never becomes a recipe (I7 is about the catalogue,
-    and this row is the household's), it has no ingredients, so nothing checks
-    its allergens and it adds nothing to the shopping list, and the generation
-    never proposes it: it is placed by hand, from the slot panel. Exactly one of
-    the two is set.
+    **Always a recipe.** A dish someone makes without one — "pâtes au jambon" —
+    is written as a recipe OF THE HOUSEHOLD (`recipe.household_id`), private to
+    it, and favourited like any other. It was briefly a title carried here
+    instead; one object rather than two is what stopped the panel, the shopping
+    list and this table from each having to know about both.
 
     **At the household, not at the account.** The plan is the household's,
     `household_access` already carries the sharing, and two parents planning
@@ -260,24 +258,15 @@ class HouseholdFavorite(Base):
     __tablename__ = "household_favorite"
     __table_args__ = (
         UniqueConstraint("household_id", "recipe_id", name="uq_favorite_household_recipe"),
-        # The same dish typed twice is one favourite. NULLs are distinct, so
-        # neither constraint gets in the way of the other kind of row.
-        UniqueConstraint("household_id", "label", name="uq_favorite_household_label"),
-        CheckConstraint(
-            "(recipe_id IS NULL) <> (label IS NULL)", name="ck_favorite_recipe_or_label"
-        ),
     )
 
     id: Mapped[uuid.UUID] = _pk()
     household_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("household.id", ondelete="CASCADE"), index=True
     )
-    recipe_id: Mapped[uuid.UUID | None] = mapped_column(
-        ForeignKey("recipe.id", ondelete="CASCADE"), index=True, nullable=True
+    recipe_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("recipe.id", ondelete="CASCADE"), index=True
     )
-    #: The title of a dish with no recipe, as it was written. Null when
-    #: `recipe_id` is set.
-    label: Mapped[str | None] = mapped_column(String(200), nullable=True)
     #: What the list is ordered by, most recent first. Nothing else reads it.
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
@@ -901,11 +890,39 @@ class Recipe(Base):
         CheckConstraint(
             "complexity IS NULL OR complexity BETWEEN 1 AND 3", name="ck_recipe_complexity"
         ),
+        # I9, made unforgeable rather than remembered. A third party's prose is
+        # never stored; what a household writes here is its own, and the
+        # database is what stops a collection run from ever filling this in.
+        CheckConstraint(
+            "instructions IS NULL OR source_type = 'user'", name="ck_recipe_instructions_user"
+        ),
     )
 
     id: Mapped[uuid.UUID] = _pk()
     title: Mapped[str] = mapped_column(String(300))
     source_type: Mapped[RecipeSourceType] = mapped_column(recipe_source_enum)
+    #: The household that wrote it, for a recipe somebody typed here. NULL for
+    #: the collected catalogue, which belongs to nobody. A recipe with a
+    #: household is PRIVATE to it until `shared_at`, and stays usable by it
+    #: whatever the review decides.
+    #:
+    #: `SET NULL` rather than cascade: a household that leaves must not take a
+    #: recipe other households already cook with. What is lost then is the
+    #: person to go back to, which is a reason to keep the row, not to drop it.
+    household_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("household.id", ondelete="SET NULL"), index=True
+    )
+    #: The method, as its author wrote it. The one place prose is stored, and
+    #: the check constraint above is what keeps it that way: a collected recipe
+    #: links to its source and never copies it (I9).
+    instructions: Mapped[str | None] = mapped_column(Text)
+    #: When its author offered it to the shared catalogue, when reviewed, and
+    #: when refused with the reason. A refusal changes nothing for the author:
+    #: the recipe stays theirs and stays usable.
+    submitted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    shared_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True)
+    rejected_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    rejected_reason: Mapped[str | None] = mapped_column(String(40))
     #: The site. `source_url` is the page. A string matching the key of the YAML
     #: descriptor rather than a foreign key: a `catalog_source` table would
     #: duplicate the descriptor, and the two would drift (§8.2).

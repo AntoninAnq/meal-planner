@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import date, datetime
+from decimal import Decimal
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, computed_field
@@ -482,10 +483,75 @@ class FavoriteOut(BaseModel):
 
 
 class FavoriteCreate(BaseModel):
-    """A catalogue recipe, or a dish's title as it was written — one of the two."""
+    recipe_id: uuid.UUID
 
-    recipe_id: uuid.UUID | None = None
-    label: str | None = Field(default=None, max_length=200)
+
+class IngredientMatchOut(BaseModel):
+    """One food of the referential, for someone naming a line themselves."""
+
+    ingredient_id: uuid.UUID
+    name: str
+
+
+class RecipeLineOut(BaseModel):
+    """An ingredient line as the database holds it, and what to say about it.
+
+    `ingredient_id` null on a line nobody recognised: the recipe still works —
+    its author knows what they wrote — but it cannot be verified (I3), so it is
+    never proposed automatically and its line lands in "non reconnues" on the
+    shopping list.
+    """
+
+    raw: str
+    quantity: Decimal | None = None
+    unit: str | None = None
+    ingredient_id: uuid.UUID | None = None
+    name: str | None = None
+    #: A heading rather than a food — "Pour la pâte :". Held apart so it never
+    #: counts against the recipe.
+    is_structural: bool = False
+
+
+class RecipeIn(BaseModel):
+    """A dish someone writes down, as the form asks for it.
+
+    Only the title is required. "Steak purée" is a legitimate answer to "what
+    are we eating", and a form that demands quantities before it accepts that
+    is a form nobody fills in.
+    """
+
+    title: str = Field(min_length=1, max_length=300)
+    #: How many PEOPLE it feeds. Never a count of pieces: the shopping list
+    #: scales on people, and this is the one place the number is stated rather
+    #: than guessed from a source's `recipeYield`.
+    servings: int | None = Field(default=None, ge=1, le=50)
+    #: One line each, as they would be written on paper.
+    lines: list[str] = Field(default_factory=list, max_length=60)
+    #: The method, in the author's words. Stays private to the household until
+    #: an operator shares the recipe (I9 — see `Recipe.instructions`).
+    instructions: str | None = Field(default=None, max_length=4000)
+    #: Where it comes from, when it comes from somewhere. Optional, and the one
+    #: honest signal that a text was not written here.
+    source_url: str | None = Field(default=None, max_length=500)
+
+
+class RecipeOut(BaseModel):
+    """A household's own recipe, and where it stands."""
+
+    id: uuid.UUID
+    title: str
+    servings: int | None = None
+    servings_raw: str | None = None
+    instructions: str | None = None
+    source_url: str | None = None
+    lines: list[RecipeLineOut] = Field(default_factory=list)
+    #: Derived, never declared (I3): every line resolved, to foods a human has
+    #: confirmed. False means "usable, but never proposed on its own".
+    allergens_verified: bool = False
+    #: `private`, `pending`, `shared` or `rejected`, plus the reason when it was
+    #: refused. A refusal costs the author nothing: the recipe stays theirs.
+    state: str = "private"
+    rejected_reason: str | None = None
 
 
 class ExclusionOut(BaseModel):

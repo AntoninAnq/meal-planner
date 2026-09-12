@@ -30,7 +30,6 @@ from fractions import Fraction
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.catalog.ingredient_lines import parse_line
 from app.catalog.referential import find, spelling_index
 from app.db.models import (
     Ingredient,
@@ -39,6 +38,7 @@ from app.db.models import (
     RecipeAllergen,
     RecipeIngredient,
 )
+from app.domain.ingredient_lines import parse_line
 
 
 @dataclass

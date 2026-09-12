@@ -38,9 +38,9 @@ from dataclasses import dataclass, field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.catalog.ingredient_lines import parse_line
 from app.db.models import Recipe, RecipeIngredient
 from app.domain.enums import NOT_A_MEAL
+from app.domain.ingredient_lines import parse_line
 
 #: Where a human has to look. Left empty on purpose rather than guessed: a
 #: category is cheap to fix and an allergen is not, so neither is invented.

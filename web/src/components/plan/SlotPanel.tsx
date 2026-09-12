@@ -94,15 +94,7 @@ export function SlotPanel({
   // a favourite whose source has since been withdrawn is not in it — the toggle
   // then offers to add one that is already there, and the endpoint is
   // idempotent, so the worst case is a button that says the wrong word once.
-  const favorited = new Set(
-    (favorites ?? []).flatMap((favorite) => (favorite.recipe_id ? [favorite.recipe_id] : [])),
-  );
-  // A favourite with no recipe is known by its title, as it was written.
-  const favoritedTitles = new Set(
-    (favorites ?? [])
-      .filter((favorite) => favorite.recipe_id === null)
-      .map((favorite) => favorite.title),
-  );
+  const favorited = new Set((favorites ?? []).map((favorite) => favorite.recipe_id));
   const withheld = new Set(excluded);
 
   // Named, both of them. `recipe_allergen` and `dietary_constraint` give the
@@ -196,14 +188,12 @@ export function SlotPanel({
   // set them, so nothing lingers from an earlier choice.
   const choose = (
     dish: Dish,
-    // A catalogue recipe, or — for a favourite that has none — its title,
-    // written onto the plan exactly like one typed by hand.
-    target: { recipe_id: string } | { label: string },
+    recipeId: string,
     { fromFavorite = false, overrideAllergen = false } = {},
   ) =>
     act(async () => {
       await apiPut(`/meal-plans/${planId}/dishes/${dish.id}`, {
-        ...target,
+        recipe_id: recipeId,
         from_favorite: fromFavorite,
         allergen_override: overrideAllergen,
       });
@@ -325,18 +315,16 @@ export function SlotPanel({
                           {tExclusions("pill")}
                         </span>
                       )}
-                      {/* Any dish with a title. One without a recipe is kept
-                          as written — it never becomes one, I7 is about the
-                          catalogue — and the tab says what that costs. */}
-                      {dish.label && (
+                      {/* Every dish worth keeping has a recipe to point at:
+                          the catalogue's, or one this household wrote for the
+                          dishes the catalogue does not carry. A title typed
+                          straight into a slot is the one exception, and it is
+                          saved by writing it as a recipe. */}
+                      {dish.recipe_id && dish.label && (
                         <FavoriteToggle
                           recipeId={dish.recipe_id}
                           title={dish.label}
-                          favorited={
-                            dish.recipe_id
-                              ? favorited.has(dish.recipe_id)
-                              : favoritedTitles.has(dish.label)
-                          }
+                          favorited={favorited.has(dish.recipe_id)}
                         />
                       )}
                       {/* Beside the favourite because it is its opposite, and
@@ -516,9 +504,7 @@ export function SlotPanel({
                                     <Button
                                       size="sm"
                                       disabled={busy}
-                                      onClick={() =>
-                                        choose(dish, { recipe_id: alternative.recipe_id })
-                                      }
+                                      onClick={() => choose(dish, alternative.recipe_id)}
                                     >
                                       {t("choose")}
                                     </Button>
@@ -572,20 +558,11 @@ export function SlotPanel({
                           </h4>
                           <ul className="flex flex-col gap-1.5">
                             {favorites.map((favorite) => {
-                              const key = favorite.recipe_id ?? `title:${favorite.title}`;
-                              const target = favorite.recipe_id
-                                ? { recipe_id: favorite.recipe_id }
-                                : { label: favorite.title };
+                              const key = favorite.recipe_id;
                               const open = warning === key;
                               const meta = (
                                 <>
                                   <span className="text-sm">{favorite.title}</span>
-                                  {favorite.recipe_id === null && (
-                                    <span className="text-xs text-ink-muted italic">
-                                      {" "}
-                                      — {tPlan("handWritten")}
-                                    </span>
-                                  )}
                                   {favorite.minutes !== null && (
                                     <span className="text-ink-body">
                                       {" "}
@@ -632,7 +609,9 @@ export function SlotPanel({
                                           favorite.conflicts.length > 0 ||
                                           favorite.unchecked_allergens
                                             ? setWarning(key)
-                                            : choose(dish, target, { fromFavorite: true })
+                                            : choose(dish, favorite.recipe_id, {
+                                                fromFavorite: true,
+                                              })
                                         }
                                       >
                                         {t("choose")}
@@ -684,7 +663,7 @@ export function SlotPanel({
                                       variant="danger"
                                       disabled={busy}
                                       onClick={() =>
-                                        choose(dish, target, {
+                                        choose(dish, favorite.recipe_id, {
                                           fromFavorite: true,
                                           // Only a known conflict is overridden;
                                           // an unchecked title has none to keep.

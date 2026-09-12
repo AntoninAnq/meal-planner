@@ -2,6 +2,7 @@ import { getTranslations } from "next-intl/server";
 
 import { ExclusionRestore } from "@/components/plan/ExclusionButton";
 import { FavoriteRemove } from "@/components/plan/FavoriteButton";
+import { Link } from "@/i18n/navigation";
 import type { Exclusion, Favorite } from "@/lib/api/types";
 
 /**
@@ -35,6 +36,19 @@ export async function FavoritesView({
   const t = await getTranslations("favorites");
   const tPlan = await getTranslations("plan");
   const tExclusions = await getTranslations("exclusions");
+  const tRecipes = await getTranslations("recipes");
+
+  /* The way out of the one thing this tab cannot do: a dish the catalogue does
+     not carry. Written as a recipe of the household, it lands here like any
+     other favourite. */
+  const write = (
+    <Link
+      href="/recipes"
+      className="text-sm text-accent underline underline-offset-4 hover:text-accent-hover"
+    >
+      {tRecipes("write")}
+    </Link>
+  );
 
   const saved =
     favorites.length === 0 ? (
@@ -49,6 +63,7 @@ export async function FavoritesView({
             list, so no allergen check and nothing on the shopping list, and
             never proposed by a week. */}
         <p className="max-w-[56ch] text-[13px] leading-[1.6] text-ink-muted">{t("emptyRule")}</p>
+        {write}
       </div>
     ) : (
       <section>
@@ -58,6 +73,7 @@ export async function FavoritesView({
         </div>
 
         <p className="mt-2 max-w-[70ch] text-sm leading-[1.55] text-ink-body">{t("help")}</p>
+        <p className="mt-2">{write}</p>
 
         <ul className="mt-[22px] overflow-hidden rounded-card border border-border bg-surface-raised">
           {favorites.map((favorite) => {
@@ -70,20 +86,13 @@ export async function FavoritesView({
 
             return (
               <li
-                key={favorite.recipe_id ?? `title:${favorite.title}`}
+                key={favorite.recipe_id}
                 className="flex items-center gap-5 border-b border-border px-[18px] py-[15px] last:border-b-0"
               >
                 <div className="min-w-0 flex-1">
                   <p className="text-[15px] font-semibold text-ink [overflow-wrap:anywhere]">
                     {favorite.title}
                   </p>
-                  {/* Kept as written, so nothing checked it — the same mark as
-                      a title typed into a meal. */}
-                  {favorite.recipe_id === null && (
-                    <p className="mt-0.5 text-[13px] text-ink-muted italic">
-                      {tPlan("handWritten")}
-                    </p>
-                  )}
                   {/* Silent on the fifth of the catalogue that declares neither a
                       time nor a step count, rather than implying it is quick. */}
                   {effort.length > 0 && (

@@ -8,7 +8,7 @@ set of recipes.
 `tests/test_catalog_boundaries.py` forbids the second from importing the first,
 and rightly: the day the pipeline earns its own deployment, that import is the
 thing that would break the API. So what both need lives here, and
-`app/catalog/ingredient_lines.py` re-exports it so its own callers see nothing.
+`app/domain/ingredient_lines.py` re-exports it so its own callers see nothing.
 """
 
 from __future__ import annotations
